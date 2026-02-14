@@ -1,6 +1,6 @@
-# Beans
+# Toba TODO
 
-**Beans is an issue tracker for you, your team, and your coding agents.** Instead of tracking tasks in a separate application, Beans stores them right alongside your code as plain Markdown files. You can use the `beans` CLI to interact with your tasks, but more importantly, so can your favorite coding agent.
+**todo is an issue tracker for you, your team, and your coding agents.** Instead of tracking tasks in a separate application, todo stores them right alongside your code as plain Markdown files. You can use the `beans` CLI to interact with your tasks, but more importantly, so can your favorite coding agent.
 
 This gives your robot friends a juicy upgrade: now they get a complete view of your project, make suggestions for what to work on next, track their progress, create bug issues for problems they find, and more.
 
@@ -20,7 +20,7 @@ This gives your robot friends a juicy upgrade: now they get a complete view of y
 
 ## Installation
 
-Either download Beans from the [Releases section](https://github.com/toba/todo/releases), or install it via Homebrew:
+Either download todo from the [Releases section](https://github.com/toba/todo/releases), or install it via Homebrew:
 
 ```bash
 brew install toba/todo/todo
@@ -68,7 +68,7 @@ extensions:
 
 ## Agent Configuration
 
-The most basic way to teach your agent about Beans is to add the following instruction to your `AGENTS.md`, `CLAUDE.md`, or equivalent file:
+The most basic way to teach your agent about todo is to add the following instruction to your `AGENTS.md`, `CLAUDE.md`, or equivalent file:
 
 ```
 **IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
@@ -104,7 +104,7 @@ beans sync          # Sync to ClickUp or GitHub Issues
 
 ### Agent Workflows
 
-The real power of Beans comes from letting your coding agent manage tasks. Assuming you have integrated Beans into your agent, you can use natural language:
+The real power of todo comes from letting your coding agent manage tasks. Assuming you have integrated todo into your agent, you can use natural language:
 
 ```
 Are there any tasks we should be tracking for this project? If so, please create beans for them.
@@ -124,7 +124,7 @@ Please inspect this project's beans and reorganize them into epics and milestone
 
 ## Syncing with External Trackers
 
-Beans syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `extensions`, then run:
+todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `extensions`, then run:
 
 ```bash
 beans sync                  # Sync all issues
@@ -175,7 +175,7 @@ extensions:
 
 ## Extensions
 
-Beans supports extensions for syncing with external systems. Per-bean sync state is stored in frontmatter:
+todo supports extensions for syncing with external systems. Per-bean sync state is stored in frontmatter:
 
 ```yaml
 ---
