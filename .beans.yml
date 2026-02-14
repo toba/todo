@@ -1,6 +1,4 @@
 beans:
     path: .issues
-    prefix: beans-
-    id_length: 4
-    default_status: todo
+    default_status: ready
     default_type: task

@@ -5,7 +5,7 @@ scalar Map
 
 type Query {
   """
-  Get a single issue by ID. Accepts either the full ID (e.g., "todo-abc1") or the short ID without prefix (e.g., "abc1").
+  Get a single issue by ID.
   """
   issue(id: ID!): Issue
 
@@ -91,8 +91,6 @@ input CreateIssueInput {
   blocking: [String!]
   "Issue IDs that are blocking this issue"
   blockedBy: [String!]
-  "Custom ID prefix (overrides config prefix for this issue)"
-  prefix: String
 }
 
 """

@@ -87,7 +87,6 @@ beans create --json "Title" -t <type> -d "Description..." -s <status>
 | `--parent` | | Parent bean ID |
 | `--blocking` | | ID of bean this blocks (can be repeated) |
 | `--blocked-by` | | ID of bean that blocks this (can be repeated) |
-| `--prefix` | | Custom ID prefix (overrides config) |
 
 ## Update Options
 
@@ -246,7 +245,7 @@ The `beans query` command allows advanced querying using GraphQL.
 beans query --json '{ beans(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
 
 # Get a single bean with its relationships
-beans query --json '{ bean(id: "bean-abc") { title body parent { title } children { id title status } } }'
+beans query --json '{ bean(id: "abc-def") { title body parent { title } children { id title status } } }'
 
 # Find high-priority bugs
 beans query --json '{ beans(filter: { type: ["bug"], priority: ["critical", "high"] }) { id title } }'

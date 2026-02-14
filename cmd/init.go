@@ -20,13 +20,11 @@ var initCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var projectDir string
 		var dataDir string
-		var dirName string
 
 		if dataPath != "" {
 			// Use explicit path for beans directory
 			dataDir = dataPath
 			projectDir = filepath.Dir(dataDir)
-			dirName = filepath.Base(projectDir)
 			// Create the directory using Core.Init to set up .gitignore
 			c := core.New(dataDir, nil)
 			if err := c.Init(); err != nil {
@@ -54,12 +52,11 @@ var initCmd = &cobra.Command{
 
 			projectDir = dir
 			dataDir = filepath.Join(dir, config.DefaultDataPath)
-			dirName = filepath.Base(dir)
 		}
 
-		// Create default config file with directory name as prefix
+		// Create default config file
 		// Config is saved at project root (not inside .todo/)
-		defaultCfg := config.DefaultWithPrefix(dirName + "-")
+		defaultCfg := config.Default()
 		defaultCfg.SetConfigDir(projectDir)
 		if err := defaultCfg.Save(projectDir); err != nil {
 			if initJSON {

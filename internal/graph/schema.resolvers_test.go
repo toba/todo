@@ -779,66 +779,25 @@ func TestMutationCreateIssue(t *testing.T) {
 	})
 }
 
-func TestMutationCreateIssueWithCustomPrefix(t *testing.T) {
+func TestMutationCreateIssueGeneratesID(t *testing.T) {
 	resolver, _ := setupTestResolver(t)
 	ctx := context.Background()
 
-	t.Run("create with custom prefix", func(t *testing.T) {
-		mr := resolver.Mutation()
-		customPrefix := "SYNC-TASK-"
-		input := model.CreateIssueInput{
-			Title:  "Custom Prefix Bean",
-			Prefix: &customPrefix,
-		}
-		got, err := mr.CreateIssue(ctx, input)
-		if err != nil {
-			t.Fatalf("CreateIssue() error = %v", err)
-		}
-		if got == nil {
-			t.Fatal("CreateIssue() returned nil")
-		}
-		// ID should start with the custom prefix
-		if !strings.HasPrefix(got.ID, "SYNC-TASK-") {
-			t.Errorf("CreateIssue().ID = %q, want prefix %q", got.ID, "SYNC-TASK-")
-		}
-		// ID should be prefix + 4 chars (default length)
-		if len(got.ID) != len("SYNC-TASK-")+4 {
-			t.Errorf("CreateIssue().ID length = %d, want %d", len(got.ID), len("SYNC-TASK-")+4)
-		}
-	})
-
-	t.Run("create without prefix uses config default", func(t *testing.T) {
-		mr := resolver.Mutation()
-		input := model.CreateIssueInput{
-			Title: "No Custom Prefix Bean",
-		}
-		got, err := mr.CreateIssue(ctx, input)
-		if err != nil {
-			t.Fatalf("CreateIssue() error = %v", err)
-		}
-		// Without custom prefix, should use config default (empty in test setup)
-		// ID should just be 4 chars
-		if len(got.ID) != 4 {
-			t.Errorf("CreateIssue().ID length = %d, want 4", len(got.ID))
-		}
-	})
-
-	t.Run("create with empty prefix string uses config default", func(t *testing.T) {
-		mr := resolver.Mutation()
-		emptyPrefix := ""
-		input := model.CreateIssueInput{
-			Title:  "Empty Prefix Bean",
-			Prefix: &emptyPrefix,
-		}
-		got, err := mr.CreateIssue(ctx, input)
-		if err != nil {
-			t.Fatalf("CreateIssue() error = %v", err)
-		}
-		// Empty string prefix should fall back to config default
-		if len(got.ID) != 4 {
-			t.Errorf("CreateIssue().ID length = %d, want 4", len(got.ID))
-		}
-	})
+	mr := resolver.Mutation()
+	input := model.CreateIssueInput{
+		Title: "Auto ID Bean",
+	}
+	got, err := mr.CreateIssue(ctx, input)
+	if err != nil {
+		t.Fatalf("CreateIssue() error = %v", err)
+	}
+	// ID should be xxx-xxx format (7 chars, hyphen at pos 3)
+	if len(got.ID) != 7 {
+		t.Errorf("CreateIssue().ID length = %d, want 7", len(got.ID))
+	}
+	if got.ID[3] != '-' {
+		t.Errorf("CreateIssue().ID = %q, want hyphen at position 3", got.ID)
+	}
 }
 
 func TestMutationUpdateIssue(t *testing.T) {
@@ -1255,23 +1214,6 @@ func TestRelationshipFieldsWithFilter(t *testing.T) {
 	})
 }
 
-// setupTestResolverWithPrefix creates a test resolver with a configured prefix.
-func setupTestResolverWithPrefix(t *testing.T, prefix string) (*Resolver, *core.Core) {
-	t.Helper()
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, ".issues")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .issues dir: %v", err)
-	}
-
-	cfg := config.DefaultWithPrefix(prefix)
-	c := core.New(dataDir, cfg)
-	if err := c.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	return &Resolver{Core: c}, c
-}
 
 // setupTestResolverWithRequireIfMatch creates a test resolver with require_if_match enabled.
 func setupTestResolverWithRequireIfMatch(t *testing.T) (*Resolver, *core.Core) {
@@ -1455,100 +1397,6 @@ func TestRequireIfMatchConfig(t *testing.T) {
 		_, err := mr.RemoveBlocking(ctx, "req-blocker2", "req-target2", nil)
 		if err == nil {
 			t.Error("RemoveBlocking() without etag should fail when require_if_match is true")
-		}
-	})
-}
-
-func TestShortIDNormalization(t *testing.T) {
-	// Use a prefix so we can test short ID resolution
-	resolver, c := setupTestResolverWithPrefix(t, "beans-")
-	ctx := context.Background()
-
-	// Create test beans with full IDs (prefix + short ID)
-	parent := &issue.Issue{ID: "beans-parent1", Title: "Parent", Status: "todo", Type: "epic"}
-	child := &issue.Issue{ID: "beans-child1", Title: "Child", Status: "todo", Type: "task"}
-	target := &issue.Issue{ID: "beans-target1", Title: "Target", Status: "todo", Type: "task"}
-	c.Create(parent)
-	c.Create(child)
-	c.Create(target)
-
-	t.Run("SetParent normalizes short ID", func(t *testing.T) {
-		mr := resolver.Mutation()
-		// Use short ID (without prefix)
-		shortParentID := "parent1"
-		got, err := mr.SetParent(ctx, "beans-child1", &shortParentID, nil)
-		if err != nil {
-			t.Fatalf("SetParent() error = %v", err)
-		}
-		// Should store the full ID, not the short one
-		if got.Parent != "beans-parent1" {
-			t.Errorf("SetParent().Parent = %q, want %q", got.Parent, "beans-parent1")
-		}
-	})
-
-	t.Run("AddBlocking normalizes short ID", func(t *testing.T) {
-		mr := resolver.Mutation()
-		// Use short ID (without prefix)
-		got, err := mr.AddBlocking(ctx, "beans-child1", "target1", nil)
-		if err != nil {
-			t.Fatalf("AddBlocking() error = %v", err)
-		}
-		// Should store the full ID, not the short one
-		if len(got.Blocking) != 1 {
-			t.Fatalf("AddBlocking().Blocking count = %d, want 1", len(got.Blocking))
-		}
-		if got.Blocking[0] != "beans-target1" {
-			t.Errorf("AddBlocking().Blocking[0] = %q, want %q", got.Blocking[0], "beans-target1")
-		}
-	})
-
-	t.Run("RemoveBlocking normalizes short ID", func(t *testing.T) {
-		mr := resolver.Mutation()
-		// Remove using short ID
-		got, err := mr.RemoveBlocking(ctx, "beans-child1", "target1", nil)
-		if err != nil {
-			t.Fatalf("RemoveBlocking() error = %v", err)
-		}
-		if len(got.Blocking) != 0 {
-			t.Errorf("RemoveBlocking().Blocking count = %d, want 0", len(got.Blocking))
-		}
-	})
-
-	t.Run("CreateIssue normalizes parent short ID", func(t *testing.T) {
-		mr := resolver.Mutation()
-		beanType := "task"
-		shortParentID := "parent1"
-		input := model.CreateIssueInput{
-			Title:  "New Child",
-			Type:   &beanType,
-			Parent: &shortParentID,
-		}
-		got, err := mr.CreateIssue(ctx, input)
-		if err != nil {
-			t.Fatalf("CreateIssue() error = %v", err)
-		}
-		if got.Parent != "beans-parent1" {
-			t.Errorf("CreateIssue().Parent = %q, want %q", got.Parent, "beans-parent1")
-		}
-	})
-
-	t.Run("CreateIssue normalizes blocking short IDs", func(t *testing.T) {
-		mr := resolver.Mutation()
-		beanType := "task"
-		input := model.CreateIssueInput{
-			Title:    "Blocker Bean",
-			Type:     &beanType,
-			Blocking: []string{"target1"},
-		}
-		got, err := mr.CreateIssue(ctx, input)
-		if err != nil {
-			t.Fatalf("CreateIssue() error = %v", err)
-		}
-		if len(got.Blocking) != 1 {
-			t.Fatalf("CreateIssue().Blocking count = %d, want 1", len(got.Blocking))
-		}
-		if got.Blocking[0] != "beans-target1" {
-			t.Errorf("CreateIssue().Blocking[0] = %q, want %q", got.Blocking[0], "beans-target1")
 		}
 	})
 }

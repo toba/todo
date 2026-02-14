@@ -343,7 +343,7 @@ func TestSearch_Limit(t *testing.T) {
 	// Index many beans
 	for range 20 {
 		b := &issue.Issue{
-			ID:    issue.NewID("", 4),
+			ID:    issue.NewID(),
 			Title: "Test Bean",
 			Body:  "Content",
 		}

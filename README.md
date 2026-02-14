@@ -150,7 +150,7 @@ What should we work on next?
 You can also specifically ask it to start working on a particular bean:
 
 ```
-It's time to tackle myproj-123.
+It's time to tackle abc-def.
 ```
 
 Consider that your agent will be just as capable to deal with beans as it is with code, so how about using it to quickly restructure your tasks?
@@ -190,13 +190,13 @@ This data is readable and writable via the GraphQL API:
 
 ```graphql
 # Read extension data
-{ bean(id: "bean-abc") { extensions { name data } } }
+{ bean(id: "abc-def") { extensions { name data } } }
 
 # Write extension data
-mutation { setExtensionData(id: "bean-abc", name: "clickup", data: { task_id: "xyz" }) { id } }
+mutation { setExtensionData(id: "abc-def", name: "clickup", data: { task_id: "xyz" }) { id } }
 
 # Remove extension data
-mutation { removeExtensionData(id: "bean-abc", name: "clickup") { id } }
+mutation { removeExtensionData(id: "abc-def", name: "clickup") { id } }
 
 # Filter by extension
 { beans(filter: { hasExtension: "clickup" }) { id title } }
@@ -209,7 +209,7 @@ Extensions can store project-level config under `extensions.<name>` in `.todo.ym
 
 ```yaml
 beans:
-  prefix: proj-
+  path: .issues
 extensions:
   clickup:
     list_id: "123456"

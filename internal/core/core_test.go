@@ -114,7 +114,7 @@ func TestCreate(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
 	b := &issue.Issue{
-		ID:     "abc1",
+		ID:     "abc-def",
 		Slug:   "test-bean",
 		Title:  "Test Bean",
 		Status: "todo",
@@ -126,8 +126,8 @@ func TestCreate(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	// Check file exists
-	expectedPath := filepath.Join(dataDir, "abc1--test-bean.md")
+	// Check file exists in hash subfolder
+	expectedPath := filepath.Join(dataDir, "a", "abc-def--test-bean.md")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("bean file not created at %s", expectedPath)
 	}
@@ -140,9 +140,9 @@ func TestCreate(t *testing.T) {
 		t.Error("UpdatedAt not set")
 	}
 
-	// Check Path was set
-	if b.Path != "abc1--test-bean.md" {
-		t.Errorf("Path = %q, want %q", b.Path, "abc1--test-bean.md")
+	// Check Path was set to hash subfolder path
+	if b.Path != filepath.Join("a", "abc-def--test-bean.md") {
+		t.Errorf("Path = %q, want %q", b.Path, filepath.Join("a", "abc-def--test-bean.md"))
 	}
 
 	// Check in-memory state
@@ -168,8 +168,12 @@ func TestCreateGeneratesID(t *testing.T) {
 	if b.ID == "" {
 		t.Error("ID was not generated")
 	}
-	if len(b.ID) != 4 { // Default ID length
-		t.Errorf("ID length = %d, want 4", len(b.ID))
+	// xxx-xxx format: 7 chars total with hyphen at position 3
+	if len(b.ID) != 7 {
+		t.Errorf("ID length = %d, want 7 (xxx-xxx format)", len(b.ID))
+	}
+	if b.ID[3] != '-' {
+		t.Errorf("ID = %q, want hyphen at position 3", b.ID)
 	}
 }
 
@@ -230,66 +234,6 @@ func TestGetNotFound(t *testing.T) {
 	}
 }
 
-func TestGetShortID(t *testing.T) {
-	// Create a core with a configured prefix
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, DataDir)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
-	}
-
-	cfg := config.DefaultWithPrefix("beans-")
-	core := New(dataDir, cfg)
-	core.SetWarnWriter(nil)
-	if err := core.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	// Create beans with the prefix
-	createTestBean(t, core, "beans-abc1", "First", "todo")
-	createTestBean(t, core, "beans-def2", "Second", "todo")
-
-	t.Run("short ID exact match", func(t *testing.T) {
-		b, err := core.Get("abc1")
-		if err != nil {
-			t.Fatalf("Get() error = %v", err)
-		}
-		if b.ID != "beans-abc1" {
-			t.Errorf("ID = %q, want %q", b.ID, "beans-abc1")
-		}
-	})
-
-	t.Run("full ID exact match", func(t *testing.T) {
-		b, err := core.Get("beans-abc1")
-		if err != nil {
-			t.Fatalf("Get() error = %v", err)
-		}
-		if b.ID != "beans-abc1" {
-			t.Errorf("ID = %q, want %q", b.ID, "beans-abc1")
-		}
-	})
-
-	t.Run("partial short ID not found", func(t *testing.T) {
-		_, err := core.Get("abc")
-		if err != ErrNotFound {
-			t.Errorf("Get() error = %v, want ErrNotFound", err)
-		}
-	})
-
-	t.Run("partial full ID not found", func(t *testing.T) {
-		_, err := core.Get("beans-ab")
-		if err != ErrNotFound {
-			t.Errorf("Get() error = %v, want ErrNotFound", err)
-		}
-	})
-
-	t.Run("nonexistent ID not found", func(t *testing.T) {
-		_, err := core.Get("xyz")
-		if err != ErrNotFound {
-			t.Errorf("Get() error = %v, want ErrNotFound", err)
-		}
-	})
-}
 
 func TestUpdate(t *testing.T) {
 	core, _ := setupTestCore(t)
@@ -382,35 +326,6 @@ func TestDeleteNotFound(t *testing.T) {
 	}
 }
 
-func TestDeleteShortID(t *testing.T) {
-	// Create a core with a configured prefix
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, DataDir)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
-	}
-
-	cfg := config.DefaultWithPrefix("beans-")
-	core := New(dataDir, cfg)
-	core.SetWarnWriter(nil)
-	if err := core.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	createTestBean(t, core, "beans-xyz1", "Test", "todo")
-
-	// Delete by short ID (without prefix)
-	err := core.Delete("xyz1")
-	if err != nil {
-		t.Fatalf("Delete() error = %v", err)
-	}
-
-	// Verify it's gone
-	_, err = core.Get("beans-xyz1")
-	if err != ErrNotFound {
-		t.Error("bean should be deleted")
-	}
-}
 
 func TestDeletePartialIDNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
@@ -554,7 +469,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	// Create some initial beans
 	for range 10 {
-		createTestBean(t, core, issue.NewID("", 4), "Initial Bean", "todo")
+		createTestBean(t, core, issue.NewID(), "Initial Bean", "todo")
 	}
 
 	// Run concurrent operations
@@ -1136,11 +1051,11 @@ status: todo
 func TestArchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "arc1", "To Archive", "completed")
+	b := createTestBean(t, core, "arc-001", "To Archive", "completed")
 	originalFilename := filepath.Base(b.Path)
 
 	// Archive the issue
-	err := core.Archive("arc1")
+	err := core.Archive("arc-001")
 	if err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -1151,34 +1066,34 @@ func TestArchive(t *testing.T) {
 		t.Error("bean file should exist in archive directory")
 	}
 
-	// Verify file no longer in main directory
-	mainPath := filepath.Join(dataDir, "arc1--to-archive.md")
-	if _, err := os.Stat(mainPath); !os.IsNotExist(err) {
-		t.Error("bean file should not exist in main directory")
+	// Verify file no longer in hash subfolder
+	subfolderPath := filepath.Join(dataDir, "a", "arc-001--to-archive.md")
+	if _, err := os.Stat(subfolderPath); !os.IsNotExist(err) {
+		t.Error("bean file should not exist in hash subfolder")
 	}
 
 	// Verify bean is still accessible in memory
-	archived, err := core.Get("arc1")
+	archived, err := core.Get("arc-001")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
 
 	// Verify path is updated
-	if archived.Path != filepath.Join(ArchiveDir, "arc1--to-archive.md") {
-		t.Errorf("Path = %q, want %q", archived.Path, filepath.Join(ArchiveDir, "arc1--to-archive.md"))
+	if archived.Path != filepath.Join(ArchiveDir, "arc-001--to-archive.md") {
+		t.Errorf("Path = %q, want %q", archived.Path, filepath.Join(ArchiveDir, "arc-001--to-archive.md"))
 	}
 }
 
 func TestArchiveIdempotent(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "arc1", "To Archive", "completed")
+	createTestBean(t, core, "arc-001", "To Archive", "completed")
 
 	// Archive twice should not error
-	if err := core.Archive("arc1"); err != nil {
+	if err := core.Archive("arc-001"); err != nil {
 		t.Fatalf("first Archive() error = %v", err)
 	}
-	if err := core.Archive("arc1"); err != nil {
+	if err := core.Archive("arc-001"); err != nil {
 		t.Fatalf("second Archive() error = %v", err)
 	}
 }
@@ -1195,24 +1110,24 @@ func TestArchiveNotFound(t *testing.T) {
 func TestUnarchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "una1", "To Unarchive", "completed")
+	b := createTestBean(t, core, "una-001", "To Unarchive", "completed")
 	originalFilename := filepath.Base(b.Path)
 
 	// Archive first
-	if err := core.Archive("una1"); err != nil {
+	if err := core.Archive("una-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
 
 	// Unarchive
-	err := core.Unarchive("una1")
+	err := core.Unarchive("una-001")
 	if err != nil {
 		t.Fatalf("Unarchive() error = %v", err)
 	}
 
-	// Verify file moved back to main directory
-	mainPath := filepath.Join(dataDir, originalFilename)
-	if _, err := os.Stat(mainPath); os.IsNotExist(err) {
-		t.Error("bean file should exist in main directory")
+	// Verify file moved to hash subfolder
+	subfolderPath := filepath.Join(dataDir, "u", originalFilename)
+	if _, err := os.Stat(subfolderPath); os.IsNotExist(err) {
+		t.Error("bean file should exist in hash subfolder")
 	}
 
 	// Verify file no longer in archive
@@ -1221,23 +1136,24 @@ func TestUnarchive(t *testing.T) {
 		t.Error("bean file should not exist in archive directory")
 	}
 
-	// Verify path is updated
-	unarchived, err := core.Get("una1")
+	// Verify path is updated to hash subfolder path
+	unarchived, err := core.Get("una-001")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if unarchived.Path != "una1--to-unarchive.md" {
-		t.Errorf("Path = %q, want %q", unarchived.Path, "una1--to-unarchive.md")
+	expectedPath := filepath.Join("u", "una-001--to-unarchive.md")
+	if unarchived.Path != expectedPath {
+		t.Errorf("Path = %q, want %q", unarchived.Path, expectedPath)
 	}
 }
 
 func TestUnarchiveIdempotent(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "una1", "To Unarchive", "completed")
+	createTestBean(t, core, "una-001", "To Unarchive", "completed")
 
 	// Unarchive non-archived bean should not error
-	if err := core.Unarchive("una1"); err != nil {
+	if err := core.Unarchive("una-001"); err != nil {
 		t.Fatalf("Unarchive() on non-archived bean error = %v", err)
 	}
 }
@@ -1245,21 +1161,21 @@ func TestUnarchiveIdempotent(t *testing.T) {
 func TestIsArchived(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "isa1", "Test Archived", "completed")
+	createTestBean(t, core, "isa-001", "Test Archived", "completed")
 
 	t.Run("not archived", func(t *testing.T) {
-		if core.IsArchived("isa1") {
+		if core.IsArchived("isa-001") {
 			t.Error("IsArchived() should return false for non-archived bean")
 		}
 	})
 
 	// Archive the issue
-	if err := core.Archive("isa1"); err != nil {
+	if err := core.Archive("isa-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
 
 	t.Run("archived", func(t *testing.T) {
-		if !core.IsArchived("isa1") {
+		if !core.IsArchived("isa-001") {
 			t.Error("IsArchived() should return true for archived bean")
 		}
 	})
@@ -1275,9 +1191,9 @@ func TestArchivedBeansAlwaysLoaded(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
 	// Create beans and archive one
-	createTestBean(t, core, "act1", "Active Bean", "todo")
-	createTestBean(t, core, "arc1", "Archived Bean", "completed")
-	if err := core.Archive("arc1"); err != nil {
+	createTestBean(t, core, "act-001", "Active Bean", "todo")
+	createTestBean(t, core, "arc-001", "Archived Bean", "completed")
+	if err := core.Archive("arc-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
 
@@ -1296,24 +1212,24 @@ func TestArchivedBeansAlwaysLoaded(t *testing.T) {
 	})
 
 	t.Run("active bean accessible", func(t *testing.T) {
-		if _, err := core2.Get("act1"); err != nil {
+		if _, err := core2.Get("act-001"); err != nil {
 			t.Errorf("active bean should be found: %v", err)
 		}
 	})
 
 	t.Run("archived bean accessible", func(t *testing.T) {
-		if _, err := core2.Get("arc1"); err != nil {
+		if _, err := core2.Get("arc-001"); err != nil {
 			t.Errorf("archived bean should be found: %v", err)
 		}
 	})
 
 	t.Run("archived bean has correct path", func(t *testing.T) {
-		b, _ := core2.Get("arc1")
-		if !core2.IsArchived("arc1") {
+		b, _ := core2.Get("arc-001")
+		if !core2.IsArchived("arc-001") {
 			t.Error("archived bean should be identified as archived")
 		}
-		if b.Path != "archive/arc1--archived-bean.md" {
-			t.Errorf("archived bean path = %q, want %q", b.Path, "archive/arc1--archived-bean.md")
+		if b.Path != "archive/arc-001--archived-bean.md" {
+			t.Errorf("archived bean path = %q, want %q", b.Path, "archive/arc-001--archived-bean.md")
 		}
 	})
 }
@@ -1401,8 +1317,8 @@ Test bean content.
 func TestGetFromArchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "gfa1", "Get From Archive", "completed")
-	if err := core.Archive("gfa1"); err != nil {
+	createTestBean(t, core, "gfa-001", "Get From Archive", "completed")
+	if err := core.Archive("gfa-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
 
@@ -1414,15 +1330,15 @@ func TestGetFromArchive(t *testing.T) {
 	}
 
 	t.Run("bean in archive", func(t *testing.T) {
-		b, err := core2.GetFromArchive("gfa1")
+		b, err := core2.GetFromArchive("gfa-001")
 		if err != nil {
 			t.Fatalf("GetFromArchive() error = %v", err)
 		}
 		if b == nil {
 			t.Fatal("GetFromArchive() returned nil")
 		}
-		if b.ID != "gfa1" {
-			t.Errorf("ID = %q, want %q", b.ID, "gfa1")
+		if b.ID != "gfa-001" {
+			t.Errorf("ID = %q, want %q", b.ID, "gfa-001")
 		}
 	})
 
@@ -1462,8 +1378,8 @@ func TestGetFromArchive(t *testing.T) {
 func TestLoadAndUnarchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "lau1", "Load And Unarchive", "completed")
-	if err := core.Archive("lau1"); err != nil {
+	createTestBean(t, core, "lau-001", "Load And Unarchive", "completed")
+	if err := core.Archive("lau-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
 
@@ -1475,16 +1391,16 @@ func TestLoadAndUnarchive(t *testing.T) {
 	}
 
 	// Bean should be accessible (archived issues are always loaded)
-	b, err := core2.Get("lau1")
+	b, err := core2.Get("lau-001")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if !core2.IsArchived("lau1") {
+	if !core2.IsArchived("lau-001") {
 		t.Error("bean should be identified as archived before LoadAndUnarchive")
 	}
 
 	// Load and unarchive should move the file
-	unarchived, err := core2.LoadAndUnarchive("lau1")
+	unarchived, err := core2.LoadAndUnarchive("lau-001")
 	if err != nil {
 		t.Fatalf("LoadAndUnarchive() error = %v", err)
 	}
@@ -1496,18 +1412,18 @@ func TestLoadAndUnarchive(t *testing.T) {
 	}
 
 	// Bean should no longer be archived
-	if core2.IsArchived("lau1") {
+	if core2.IsArchived("lau-001") {
 		t.Error("bean should not be archived after LoadAndUnarchive")
 	}
 
-	// File should be in main directory, not archive
-	mainPath := filepath.Join(dataDir, "lau1--load-and-unarchive.md")
-	if _, err := os.Stat(mainPath); os.IsNotExist(err) {
-		t.Error("bean file should exist in main directory after LoadAndUnarchive")
+	// File should be in hash subfolder, not archive
+	subfolderPath := filepath.Join(dataDir, "l", "lau-001--load-and-unarchive.md")
+	if _, err := os.Stat(subfolderPath); os.IsNotExist(err) {
+		t.Error("bean file should exist in hash subfolder after LoadAndUnarchive")
 	}
 
 	// File should NOT be in archive directory
-	archivePath := filepath.Join(dataDir, "archive", "lau1--load-and-unarchive.md")
+	archivePath := filepath.Join(dataDir, "archive", "lau-001--load-and-unarchive.md")
 	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
 		t.Error("bean file should not exist in archive directory after LoadAndUnarchive")
 	}
@@ -1522,66 +1438,19 @@ func TestLoadAndUnarchiveNotFound(t *testing.T) {
 	}
 }
 
-func TestArchiveShortID(t *testing.T) {
-	// Create a core with a configured prefix
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, DataDir)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
-	}
-
-	cfg := config.DefaultWithPrefix("beans-")
-	core := New(dataDir, cfg)
-	core.SetWarnWriter(nil)
-	if err := core.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	createTestBean(t, core, "beans-xyz1", "Test", "completed")
-
-	// Archive by short ID (without prefix)
-	err := core.Archive("xyz1")
-	if err != nil {
-		t.Fatalf("Archive() error = %v", err)
-	}
-
-	// Verify it's archived
-	if !core.IsArchived("beans-xyz1") {
-		t.Error("bean should be archived")
-	}
-}
 
 func TestNormalizeID(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, DataDir)
-	os.MkdirAll(dataDir, 0755)
+	core, _ := setupTestCore(t)
 
-	cfg := config.DefaultWithPrefix("beans-")
-	core := New(dataDir, cfg)
-	core.SetWarnWriter(nil)
-	if err := core.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	createTestBean(t, core, "beans-abc1", "Test Bean", "todo")
+	createTestBean(t, core, "abc-def", "Test Bean", "todo")
 
 	t.Run("exact match returns same ID", func(t *testing.T) {
-		normalized, found := core.NormalizeID("beans-abc1")
+		normalized, found := core.NormalizeID("abc-def")
 		if !found {
 			t.Error("NormalizeID() should find exact match")
 		}
-		if normalized != "beans-abc1" {
-			t.Errorf("NormalizeID() = %q, want %q", normalized, "beans-abc1")
-		}
-	})
-
-	t.Run("short ID normalizes to full ID", func(t *testing.T) {
-		normalized, found := core.NormalizeID("abc1")
-		if !found {
-			t.Error("NormalizeID() should find short ID match")
-		}
-		if normalized != "beans-abc1" {
-			t.Errorf("NormalizeID() = %q, want %q", normalized, "beans-abc1")
+		if normalized != "abc-def" {
+			t.Errorf("NormalizeID() = %q, want %q", normalized, "abc-def")
 		}
 	})
 

@@ -40,8 +40,6 @@ type CreateIssueInput struct {
 	Blocking []string `json:"blocking,omitempty"`
 	// Issue IDs that are blocking this issue
 	BlockedBy []string `json:"blockedBy,omitempty"`
-	// Custom ID prefix (overrides config prefix for this issue)
-	Prefix *string `json:"prefix,omitempty"`
 }
 
 // Extension metadata entry for a single extension

@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -10,13 +11,20 @@ import (
 
 const idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-// NewID generates a new NanoID for a bean with an optional prefix and configurable length.
-func NewID(prefix string, length int) string {
-	id, err := gonanoid.Generate(idAlphabet, length)
+// NewID generates a new bean ID in the fixed xxx-xxx format (3 random chars, hyphen, 3 random chars).
+func NewID() string {
+	raw, err := gonanoid.Generate(idAlphabet, 6)
 	if err != nil {
 		panic(err) // should never happen with valid alphabet
 	}
-	return prefix + id
+	return raw[:3] + "-" + raw[3:]
+}
+
+// BuildPath returns the hash-prefixed relative path for a bean file.
+// The first character of the ID is used as a subfolder for filesystem organization.
+func BuildPath(id, slug string) string {
+	prefix := string(id[0])
+	return filepath.Join(prefix, BuildFilename(id, slug))
 }
 
 // ParseFilename extracts the ID and optional slug from a bean filename.

@@ -14,8 +14,6 @@ const (
 	ConfigFileName = ".todo.yml"
 	// DefaultDataPath is the default directory for storing issues
 	DefaultDataPath = ".issues"
-	// DefaultIDLength is the default number of random characters in an issue ID.
-	DefaultIDLength = 4
 )
 
 // Status name constants.
@@ -112,8 +110,6 @@ type Config struct {
 type IssuesConfig struct {
 	// Path is the path to the issues directory (relative to config file location)
 	Path           string `yaml:"path,omitempty"`
-	Prefix         string `yaml:"prefix"`
-	IDLength       int    `yaml:"id_length"`
 	DefaultStatus  string `yaml:"default_status,omitempty"`
 	DefaultType    string `yaml:"default_type,omitempty"`
 	DefaultSort    string `yaml:"default_sort,omitempty"`
@@ -126,19 +122,10 @@ func Default() *Config {
 	return &Config{
 		Issues: IssuesConfig{
 			Path:          DefaultDataPath,
-			Prefix:        "",
-			IDLength:      DefaultIDLength,
 			DefaultStatus: StatusReady,
 			DefaultType:   TypeTask,
 		},
 	}
-}
-
-// DefaultWithPrefix returns a Config with the given prefix.
-func DefaultWithPrefix(prefix string) *Config {
-	cfg := Default()
-	cfg.Issues.Prefix = prefix
-	return cfg
 }
 
 // FindConfig searches upward from the given directory for a .todo.yml config file.
@@ -185,7 +172,6 @@ func Load(configPath string) (*Config, error) {
 
 	// Apply defaults for missing values
 	cfg.Issues.Path = cmp.Or(cfg.Issues.Path, DefaultDataPath)
-	cfg.Issues.IDLength = cmp.Or(cfg.Issues.IDLength, DefaultIDLength)
 	cfg.Issues.DefaultStatus = cmp.Or(cfg.Issues.DefaultStatus, StatusReady)
 	cfg.Issues.DefaultType = cmp.Or(cfg.Issues.DefaultType, DefaultTypes[0].Name)
 

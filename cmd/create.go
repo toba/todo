@@ -24,7 +24,6 @@ var (
 	createParent    string
 	createBlocking  []string
 	createBlockedBy []string
-	createPrefix    string
 	createJSON      bool
 )
 
@@ -97,11 +96,6 @@ var createCmd = &cobra.Command{
 			input.BlockedBy = createBlockedBy
 		}
 
-		// Add custom prefix
-		if createPrefix != "" {
-			input.Prefix = &createPrefix
-		}
-
 		// Create via GraphQL mutation
 		resolver := &graph.Resolver{Core: store}
 		b, err := resolver.Mutation().CreateIssue(context.Background(), input)
@@ -134,7 +128,6 @@ func init() {
 	createCmd.Flags().StringVar(&createParent, "parent", "", "Parent issue ID")
 	createCmd.Flags().StringArrayVar(&createBlocking, "blocking", nil, "ID of issue this blocks (can be repeated)")
 	createCmd.Flags().StringArrayVar(&createBlockedBy, "blocked-by", nil, "ID of issue that blocks this one (can be repeated)")
-	createCmd.Flags().StringVar(&createPrefix, "prefix", "", "Custom ID prefix (overrides config prefix)")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")
 	createCmd.MarkFlagsMutuallyExclusive("body", "body-file")
 	rootCmd.AddCommand(createCmd)

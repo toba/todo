@@ -20,15 +20,15 @@ const (
 
 // Response is the standard JSON response envelope.
 type Response struct {
-	Success  bool         `json:"success"`
+	Success  bool           `json:"success"`
 	Issue    *issue.Issue   `json:"issue,omitempty"`
 	Issues   []*issue.Issue `json:"issues,omitempty"`
-	Count    int          `json:"count,omitempty"`
-	Message  string       `json:"message,omitempty"`
-	Warnings []string     `json:"warnings,omitempty"`
-	Error    string       `json:"error,omitempty"`
-	Code     string       `json:"code,omitempty"`
-	Path     string       `json:"path,omitempty"`
+	Count    int            `json:"count,omitempty"`
+	Message  string         `json:"message,omitempty"`
+	Warnings []string       `json:"warnings,omitempty"`
+	Error    string         `json:"error,omitempty"`
+	Code     string         `json:"code,omitempty"`
+	Path     string         `json:"path,omitempty"`
 }
 
 // JSON outputs a response as JSON to stdout.
@@ -42,7 +42,7 @@ func JSON(resp Response) error {
 func Success(b *issue.Issue, message string) error {
 	return JSON(Response{
 		Success: true,
-		Issue:    b,
+		Issue:   b,
 		Message: message,
 	})
 }
@@ -51,7 +51,7 @@ func Success(b *issue.Issue, message string) error {
 func SuccessWithWarnings(b *issue.Issue, message string, warnings []string) error {
 	return JSON(Response{
 		Success:  true,
-		Issue:     b,
+		Issue:    b,
 		Message:  message,
 		Warnings: warnings,
 	})

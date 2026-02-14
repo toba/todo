@@ -113,33 +113,26 @@ func TestBuildFilename(t *testing.T) {
 }
 
 func TestNewID(t *testing.T) {
-	t.Run("length without prefix", func(t *testing.T) {
-		id := NewID("", 4)
-		if len(id) != 4 {
-			t.Errorf("NewID(\"\", 4) length = %d, want 4", len(id))
+	t.Run("format is xxx-xxx", func(t *testing.T) {
+		id := NewID()
+		if len(id) != 7 {
+			t.Errorf("NewID() length = %d, want 7", len(id))
 		}
-	})
-
-	t.Run("length with prefix", func(t *testing.T) {
-		id := NewID("beans-", 4)
-		if len(id) != 10 { // "beans-" (6) + 4
-			t.Errorf("NewID(\"beans-\", 4) length = %d, want 10", len(id))
-		}
-	})
-
-	t.Run("prefix preserved", func(t *testing.T) {
-		prefix := "myapp-"
-		id := NewID(prefix, 4)
-		if !strings.HasPrefix(id, prefix) {
-			t.Errorf("NewID(%q, 4) = %q, should start with prefix", prefix, id)
+		if id[3] != '-' {
+			t.Errorf("NewID() = %q, want hyphen at position 3", id)
 		}
 	})
 
 	t.Run("uses valid alphabet", func(t *testing.T) {
-		id := NewID("", 100) // generate long ID to test alphabet
-		for _, r := range id {
-			if !strings.ContainsRune(idAlphabet, r) {
-				t.Errorf("NewID contains invalid character %q, should only use %q", r, idAlphabet)
+		for range 100 {
+			id := NewID()
+			for i, r := range id {
+				if i == 3 {
+					continue // skip the hyphen
+				}
+				if !strings.ContainsRune(idAlphabet, r) {
+					t.Errorf("NewID contains invalid character %q at position %d, should only use %q", r, i, idAlphabet)
+				}
 			}
 		}
 	})
@@ -147,7 +140,7 @@ func TestNewID(t *testing.T) {
 	t.Run("generates unique IDs", func(t *testing.T) {
 		seen := make(map[string]bool)
 		for range 100 {
-			id := NewID("", 8)
+			id := NewID()
 			if seen[id] {
 				t.Errorf("NewID generated duplicate: %q", id)
 			}
@@ -156,15 +149,37 @@ func TestNewID(t *testing.T) {
 	})
 }
 
+func TestBuildPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		slug     string
+		expected string
+	}{
+		{"with slug", "abc-def", "my-slug", "a/abc-def--my-slug.md"},
+		{"empty slug", "abc-def", "", "a/abc-def.md"},
+		{"numeric prefix", "9xy-abc", "test", "9/9xy-abc--test.md"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildPath(tt.id, tt.slug)
+			if got != tt.expected {
+				t.Errorf("BuildPath(%q, %q) = %q, want %q",
+					tt.id, tt.slug, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestParseFilenameAndBuildFilenameRoundtrip(t *testing.T) {
 	tests := []struct {
 		name string
 		id   string
 		slug string
 	}{
-		{"basic", "abc", "my-slug"},
-		{"with prefix", "beans-z5r9", "add-tests"},
-		{"no slug", "xyz", ""},
+		{"basic", "abc-def", "my-slug"},
+		{"long slug", "xyz-123", "this-is-a-longer-slug"},
 	}
 
 	for _, tt := range tests {

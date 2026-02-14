@@ -9,14 +9,8 @@ import (
 func TestDefault(t *testing.T) {
 	cfg := Default()
 
-	if cfg.Issues.IDLength != 4 {
-		t.Errorf("IDLength = %d, want 4", cfg.Issues.IDLength)
-	}
-	if cfg.Issues.Prefix != "" {
-		t.Errorf("Prefix = %q, want empty", cfg.Issues.Prefix)
-	}
-	if cfg.Issues.DefaultStatus != "todo" {
-		t.Errorf("DefaultStatus = %q, want \"todo\"", cfg.Issues.DefaultStatus)
+	if cfg.Issues.DefaultStatus != "ready" {
+		t.Errorf("DefaultStatus = %q, want \"ready\"", cfg.Issues.DefaultStatus)
 	}
 	if cfg.Issues.DefaultType != "task" {
 		t.Errorf("DefaultType = %q, want \"task\"", cfg.Issues.DefaultType)
@@ -30,18 +24,6 @@ func TestDefault(t *testing.T) {
 	}
 }
 
-func TestDefaultWithPrefix(t *testing.T) {
-	cfg := DefaultWithPrefix("myapp-")
-
-	if cfg.Issues.Prefix != "myapp-" {
-		t.Errorf("Prefix = %q, want \"myapp-\"", cfg.Issues.Prefix)
-	}
-	// Other defaults should still apply
-	if cfg.Issues.IDLength != 4 {
-		t.Errorf("IDLength = %d, want 4", cfg.Issues.IDLength)
-	}
-}
-
 func TestIsValidStatus(t *testing.T) {
 	cfg := Default()
 
@@ -50,17 +32,17 @@ func TestIsValidStatus(t *testing.T) {
 		want   bool
 	}{
 		{"draft", true},
-		{"todo", true},
+		{"ready", true},
 		{"in-progress", true},
 		{"completed", true},
 		{"scrapped", true},
 		{"invalid", false},
 		{"", false},
-		{"TODO", false}, // case sensitive
+		{"READY", false}, // case sensitive
 		// Old status names should no longer be valid
 		{"open", false},
 		{"done", false},
-		{"ready", false},
+		{"todo", false},
 		{"not-ready", false},
 		{"backlog", false}, // renamed to draft
 	}
@@ -78,7 +60,7 @@ func TestIsValidStatus(t *testing.T) {
 func TestStatusList(t *testing.T) {
 	cfg := Default()
 	got := cfg.StatusList()
-	want := "in-progress, todo, draft, completed, scrapped"
+	want := "in-progress, ready, draft, completed, scrapped"
 
 	if got != want {
 		t.Errorf("StatusList() = %q, want %q", got, want)
@@ -92,7 +74,7 @@ func TestStatusNames(t *testing.T) {
 	if len(got) != 5 {
 		t.Fatalf("len(StatusNames()) = %d, want 5", len(got))
 	}
-	expected := []string{"in-progress", "todo", "draft", "completed", "scrapped"}
+	expected := []string{"in-progress", "ready", "draft", "completed", "scrapped"}
 	for i, name := range expected {
 		if got[i] != name {
 			t.Errorf("StatusNames()[%d] = %q, want %q", i, got[i], name)
@@ -104,12 +86,12 @@ func TestGetStatus(t *testing.T) {
 	cfg := Default()
 
 	t.Run("existing status", func(t *testing.T) {
-		s := cfg.GetStatus("todo")
+		s := cfg.GetStatus("ready")
 		if s == nil {
-			t.Fatal("GetStatus(\"todo\") = nil, want non-nil")
+			t.Fatal("GetStatus(\"ready\") = nil, want non-nil")
 		}
-		if s.Name != "todo" {
-			t.Errorf("Name = %q, want \"todo\"", s.Name)
+		if s.Name != "ready" {
+			t.Errorf("Name = %q, want \"ready\"", s.Name)
 		}
 		if s.Color != "green" {
 			t.Errorf("Color = %q, want \"green\"", s.Color)
@@ -132,9 +114,9 @@ func TestGetStatus(t *testing.T) {
 		if s != nil {
 			t.Errorf("GetStatus(\"done\") = %v, want nil (old status name)", s)
 		}
-		s = cfg.GetStatus("ready")
+		s = cfg.GetStatus("todo")
 		if s != nil {
-			t.Errorf("GetStatus(\"ready\") = %v, want nil (old status name)", s)
+			t.Errorf("GetStatus(\"todo\") = %v, want nil (old status name)", s)
 		}
 	})
 }
@@ -143,8 +125,8 @@ func TestGetDefaultStatus(t *testing.T) {
 	cfg := Default()
 	got := cfg.GetDefaultStatus()
 
-	if got != "todo" {
-		t.Errorf("GetDefaultStatus() = %q, want \"todo\"", got)
+	if got != "ready" {
+		t.Errorf("GetDefaultStatus() = %q, want \"ready\"", got)
 	}
 }
 
@@ -190,8 +172,8 @@ func TestLoadNonExistent(t *testing.T) {
 	}
 
 	// Should have default values
-	if cfg.Issues.IDLength != 4 {
-		t.Errorf("IDLength = %d, want 4", cfg.Issues.IDLength)
+	if cfg.Issues.Path != DefaultDataPath {
+		t.Errorf("Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
 	}
 }
 
@@ -203,8 +185,6 @@ func TestLoadAndSave(t *testing.T) {
 	cfg := &Config{
 		Issues: IssuesConfig{
 			Path:        ".todo",
-			Prefix:      "test-",
-			IDLength:    6,
 			DefaultType: "bug",
 		},
 	}
@@ -228,12 +208,6 @@ func TestLoadAndSave(t *testing.T) {
 	}
 
 	// Verify values
-	if loaded.Issues.Prefix != "test-" {
-		t.Errorf("Prefix = %q, want \"test-\"", loaded.Issues.Prefix)
-	}
-	if loaded.Issues.IDLength != 6 {
-		t.Errorf("IDLength = %d, want 6", loaded.Issues.IDLength)
-	}
 	if loaded.Issues.DefaultType != "bug" {
 		t.Errorf("DefaultType = %q, want \"bug\"", loaded.Issues.DefaultType)
 	}
@@ -248,9 +222,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ConfigFileName)
 
-	// Write minimal config (missing id_length and default_type)
+	// Write minimal config (missing default_type)
 	minimalConfig := `issues:
-  prefix: "my-"
+  path: ".issues"
 `
 	if err := os.WriteFile(configPath, []byte(minimalConfig), 0644); err != nil {
 		t.Fatalf("WriteFile error = %v", err)
@@ -262,17 +236,13 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Verify defaults were applied
-	if cfg.Issues.IDLength != 4 {
-		t.Errorf("IDLength default not applied: got %d, want 4", cfg.Issues.IDLength)
-	}
 	// Statuses are hardcoded, always 5
 	if len(cfg.StatusNames()) != 5 {
 		t.Errorf("Hardcoded statuses: got %d, want 5", len(cfg.StatusNames()))
 	}
-	// DefaultStatus is always "todo"
-	if cfg.GetDefaultStatus() != "todo" {
-		t.Errorf("DefaultStatus: got %q, want \"todo\"", cfg.GetDefaultStatus())
+	// DefaultStatus is always "ready"
+	if cfg.GetDefaultStatus() != "ready" {
+		t.Errorf("DefaultStatus: got %q, want \"ready\"", cfg.GetDefaultStatus())
 	}
 	// DefaultType should be first type name when not specified
 	if cfg.Issues.DefaultType != "milestone" {
@@ -286,7 +256,7 @@ func TestStatusesAreHardcoded(t *testing.T) {
 	cfg := Default()
 
 	// All hardcoded statuses should be valid
-	hardcodedStatuses := []string{"draft", "todo", "in-progress", "completed", "scrapped"}
+	hardcodedStatuses := []string{"draft", "ready", "in-progress", "completed", "scrapped"}
 	for _, status := range hardcodedStatuses {
 		if !cfg.IsValidStatus(status) {
 			t.Errorf("IsValidStatus(%q) = false, want true", status)
@@ -300,8 +270,8 @@ func TestStatusesAreHardcoded(t *testing.T) {
 	if !cfg.IsArchiveStatus("scrapped") {
 		t.Error("IsArchiveStatus(\"scrapped\") = false, want true")
 	}
-	if cfg.IsArchiveStatus("todo") {
-		t.Error("IsArchiveStatus(\"todo\") = true, want false")
+	if cfg.IsArchiveStatus("ready") {
+		t.Error("IsArchiveStatus(\"ready\") = true, want false")
 	}
 }
 
@@ -386,8 +356,6 @@ func TestTypesAreHardcoded(t *testing.T) {
 	cfg := &Config{
 		Issues: IssuesConfig{
 			Path:        ".todo",
-			Prefix:      "test-",
-			IDLength:    4,
 			DefaultType: "task",
 		},
 	}
@@ -455,8 +423,8 @@ func TestTypeDescriptions(t *testing.T) {
 
 		// Config with custom types (should be ignored)
 		configYAML := `issues:
-  prefix: "test-"
-  id_length: 4
+  default_type: task
+
   default_status: open
 statuses:
   - name: open
@@ -493,7 +461,7 @@ func TestStatusDescriptions(t *testing.T) {
 
 		expectedDescriptions := map[string]string{
 			"draft":       "Needs refinement before it can be worked on",
-			"todo":        "Ready to be worked on",
+			"ready":       "Ready to be worked on",
 			"in-progress": "Currently being worked on",
 			"completed":   "Finished successfully",
 			"scrapped":    "Will not be done",
@@ -519,8 +487,8 @@ func TestStatusDescriptions(t *testing.T) {
 
 		// Config with custom statuses (should be ignored)
 		configYAML := `issues:
-  prefix: "test-"
-  id_length: 4
+  default_type: task
+
 statuses:
   - name: custom-status
     color: pink
@@ -541,8 +509,8 @@ statuses:
 		}
 
 		// Hardcoded statuses should still work
-		if !loaded.IsValidStatus("todo") {
-			t.Error("IsValidStatus(\"todo\") = false, want true")
+		if !loaded.IsValidStatus("ready") {
+			t.Error("IsValidStatus(\"ready\") = false, want true")
 		}
 	})
 }
@@ -551,7 +519,7 @@ func TestFindConfig(t *testing.T) {
 	t.Run("finds config in current directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("issues:\n  prefix: test-\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("issues:\n  path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -572,7 +540,7 @@ func TestFindConfig(t *testing.T) {
 		}
 
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("issues:\n  prefix: test-\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("issues:\n  path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -604,8 +572,6 @@ func TestLoadFromDirectory(t *testing.T) {
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
   path: custom-beans
-  prefix: test-
-  id_length: 6
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -617,12 +583,6 @@ func TestLoadFromDirectory(t *testing.T) {
 		}
 		if cfg.Issues.Path != "custom-beans" {
 			t.Errorf("Issues.Path = %q, want \"custom-beans\"", cfg.Issues.Path)
-		}
-		if cfg.Issues.Prefix != "test-" {
-			t.Errorf("Prefix = %q, want \"test-\"", cfg.Issues.Prefix)
-		}
-		if cfg.Issues.IDLength != 6 {
-			t.Errorf("IDLength = %d, want 6", cfg.Issues.IDLength)
 		}
 	})
 
@@ -821,7 +781,7 @@ func TestGetEditor(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
   editor: "vim"
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -842,7 +802,7 @@ func TestGetEditor(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -881,7 +841,7 @@ func TestGetDefaultSort(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
   default_sort: created
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -902,7 +862,7 @@ func TestGetDefaultSort(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -962,7 +922,7 @@ func TestExtensionConfig(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
 extensions:
   clickup:
     list_id: "456"
@@ -1008,7 +968,7 @@ extensions:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  prefix: "test-"
+  default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)

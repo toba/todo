@@ -194,15 +194,6 @@ func (r *mutationResolver) CreateIssue(ctx context.Context, input model.CreateIs
 		b.BlockedBy = normalizedBlockedBy
 	}
 
-	// Handle custom prefix - pre-generate ID if prefix is provided
-	if input.Prefix != nil && *input.Prefix != "" {
-		idLength := config.DefaultIDLength
-		if cfg := r.Core.Config(); cfg != nil && cfg.Issues.IDLength > 0 {
-			idLength = cfg.Issues.IDLength
-		}
-		b.ID = issue.NewID(*input.Prefix, idLength)
-	}
-
 	if err := r.Core.Create(b); err != nil {
 		return nil, err
 	}

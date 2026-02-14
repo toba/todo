@@ -276,47 +276,25 @@ func (c *Core) All() []*issue.Issue {
 }
 
 // Get finds an issue by exact ID match.
-// If a prefix is configured and the query doesn't include it, the prefix is automatically prepended.
-// For example, with prefix "beans-", Get("abc") will match "beans-abc" but Get("ab") will not.
 func (c *Core) Get(id string) (*issue.Issue, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Try exact match
 	if b, ok := c.beans[id]; ok {
 		return b, nil
-	}
-
-	// If not found and we have a configured prefix that isn't already in the query,
-	// try with the prefix prepended (allows short IDs like "abc" to match "beans-abc")
-	if c.config != nil && c.config.Issues.Prefix != "" && !strings.HasPrefix(id, c.config.Issues.Prefix) {
-		if b, ok := c.beans[c.config.Issues.Prefix+id]; ok {
-			return b, nil
-		}
 	}
 
 	return nil, ErrNotFound
 }
 
-// NormalizeID resolves a potentially short ID to its full form.
-// If a prefix is configured and the query doesn't include it, the prefix is automatically prepended.
-// Returns the full ID and true if found, or the original ID and false if not found.
+// NormalizeID checks if the given ID exists and returns it.
+// Returns the ID and true if found, or the original ID and false if not found.
 func (c *Core) NormalizeID(id string) (string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Try exact match
 	if _, ok := c.beans[id]; ok {
 		return id, true
-	}
-
-	// If not found and we have a configured prefix that isn't already in the query,
-	// try with the prefix prepended (allows short IDs like "abc" to match "beans-abc")
-	if c.config != nil && c.config.Issues.Prefix != "" && !strings.HasPrefix(id, c.config.Issues.Prefix) {
-		fullID := c.config.Issues.Prefix + id
-		if _, ok := c.beans[fullID]; ok {
-			return fullID, true
-		}
 	}
 
 	return id, false
@@ -329,13 +307,7 @@ func (c *Core) Create(b *issue.Issue) error {
 
 	// Generate ID if not provided
 	if b.ID == "" {
-		prefix := ""
-		length := config.DefaultIDLength
-		if c.config != nil {
-			prefix = c.config.Issues.Prefix
-			length = cmp.Or(c.config.Issues.IDLength, config.DefaultIDLength)
-		}
-		b.ID = issue.NewID(prefix, length)
+		b.ID = issue.NewID()
 	}
 
 	// Set timestamps
@@ -472,9 +444,9 @@ func (c *Core) saveToDisk(b *issue.Issue) error {
 	if b.Path != "" {
 		path = filepath.Join(c.root, b.Path)
 	} else {
-		filename := issue.BuildFilename(b.ID, b.Slug)
-		path = filepath.Join(c.root, filename)
-		b.Path = filename
+		relPath := issue.BuildPath(b.ID, b.Slug)
+		path = filepath.Join(c.root, relPath)
+		b.Path = relPath
 	}
 
 	// Ensure parent directory exists
@@ -497,25 +469,11 @@ func (c *Core) saveToDisk(b *issue.Issue) error {
 }
 
 // Delete removes an issue by exact ID match.
-// Supports short IDs (without prefix) if a prefix is configured.
 func (c *Core) Delete(id string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Find the issue by exact match
-	targetID := id
 	targetBean, ok := c.beans[id]
-
-	// If not found and we have a configured prefix, try with prefix prepended
-	if !ok && c.config != nil && c.config.Issues.Prefix != "" && !strings.HasPrefix(id, c.config.Issues.Prefix) {
-		fullID := c.config.Issues.Prefix + id
-		if b, found := c.beans[fullID]; found {
-			targetID = fullID
-			targetBean = b
-			ok = true
-		}
-	}
-
 	if !ok {
 		return ErrNotFound
 	}
@@ -527,12 +485,12 @@ func (c *Core) Delete(id string) error {
 	}
 
 	// Remove from in-memory map
-	delete(c.beans, targetID)
+	delete(c.beans, id)
 
 	// Update search index if active (best-effort, don't fail delete)
 	if c.searchIndex != nil {
-		if err := c.searchIndex.DeleteIssue(targetID); err != nil {
-			c.logWarn("failed to remove bean %s from search index: %v", targetID, err)
+		if err := c.searchIndex.DeleteIssue(id); err != nil {
+			c.logWarn("failed to remove bean %s from search index: %v", id, err)
 		}
 	}
 
@@ -540,7 +498,6 @@ func (c *Core) Delete(id string) error {
 }
 
 // Archive moves an issue to the archive directory.
-// Supports short IDs (without prefix) if a prefix is configured.
 func (c *Core) Archive(id string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -578,8 +535,7 @@ func (c *Core) Archive(id string) error {
 	return nil
 }
 
-// Unarchive moves an issue from the archive directory back to the main directory.
-// Supports short IDs (without prefix) if a prefix is configured.
+// Unarchive moves an issue from the archive directory back to the correct hash subfolder.
 func (c *Core) Unarchive(id string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -595,10 +551,15 @@ func (c *Core) Unarchive(id string) error {
 		return nil // Not archived, nothing to do
 	}
 
-	// Move the file back to main directory
+	// Move the file back to the hash subfolder
 	oldPath := filepath.Join(c.root, targetBean.Path)
-	newRelPath := filepath.Base(targetBean.Path)
+	newRelPath := issue.BuildPath(targetBean.ID, targetBean.Slug)
 	newPath := filepath.Join(c.root, newRelPath)
+
+	// Ensure the hash subfolder exists
+	if err := os.MkdirAll(filepath.Dir(newPath), 0755); err != nil {
+		return fmt.Errorf("creating directory: %w", err)
+	}
 
 	if err := os.Rename(oldPath, newPath); err != nil {
 		return fmt.Errorf("moving bean from archive: %w", err)
@@ -612,7 +573,6 @@ func (c *Core) Unarchive(id string) error {
 }
 
 // IsArchived returns true if the issue with the given ID is in the archive.
-// Supports short IDs (without prefix) if a prefix is configured.
 func (c *Core) IsArchived(id string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -631,29 +591,11 @@ func (c *Core) isArchivedPath(path string) bool {
 		strings.HasPrefix(path, ArchiveDir+"/")
 }
 
-// normalizeID returns the full ID with prefix if a prefix is configured
-// and the ID doesn't already have it.
-func (c *Core) normalizeID(id string) string {
-	if c.config != nil && c.config.Issues.Prefix != "" && !strings.HasPrefix(id, c.config.Issues.Prefix) {
-		return c.config.Issues.Prefix + id
-	}
-	return id
-}
-
-// findBeanLocked finds an issue by ID, supporting short IDs.
+// findBeanLocked finds an issue by exact ID match.
 // Must be called with lock held.
 func (c *Core) findBeanLocked(id string) (*issue.Issue, string, error) {
-	// Try exact match
 	if b, ok := c.beans[id]; ok {
 		return b, id, nil
-	}
-
-	// Try with prefix prepended
-	fullID := c.normalizeID(id)
-	if fullID != id {
-		if b, ok := c.beans[fullID]; ok {
-			return b, fullID, nil
-		}
 	}
 
 	return nil, "", ErrNotFound
@@ -663,8 +605,6 @@ func (c *Core) findBeanLocked(id string) (*issue.Issue, string, error) {
 // This is used when an issue isn't in the main loaded set but might be archived.
 // Returns nil, nil if the archive directory doesn't exist or bean not found.
 func (c *Core) GetFromArchive(id string) (*issue.Issue, error) {
-	fullID := c.normalizeID(id)
-
 	archiveDir := filepath.Join(c.root, ArchiveDir)
 	if _, err := os.Stat(archiveDir); os.IsNotExist(err) {
 		return nil, nil
@@ -682,7 +622,7 @@ func (c *Core) GetFromArchive(id string) (*issue.Issue, error) {
 		}
 
 		fileID, _ := issue.ParseFilename(entry.Name())
-		if fileID == fullID {
+		if fileID == id {
 			path := filepath.Join(archiveDir, entry.Name())
 			return c.loadBean(path)
 		}
@@ -708,10 +648,15 @@ func (c *Core) LoadAndUnarchive(id string) (*issue.Issue, error) {
 		return b, nil
 	}
 
-	// Move file from archive to main directory
+	// Move file from archive to hash subfolder
 	oldPath := filepath.Join(c.root, b.Path)
-	newRelPath := filepath.Base(b.Path)
+	newRelPath := issue.BuildPath(b.ID, b.Slug)
 	newPath := filepath.Join(c.root, newRelPath)
+
+	// Ensure the hash subfolder exists
+	if err := os.MkdirAll(filepath.Dir(newPath), 0755); err != nil {
+		return nil, fmt.Errorf("creating directory: %w", err)
+	}
 
 	if err := os.Rename(oldPath, newPath); err != nil {
 		return nil, fmt.Errorf("moving bean from archive: %w", err)

@@ -4328,7 +4328,7 @@ func (ec *executionContext) unmarshalInputCreateIssueInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"title", "type", "status", "priority", "tags", "body", "due", "parent", "blocking", "blockedBy", "prefix"}
+	fieldsInOrder := [...]string{"title", "type", "status", "priority", "tags", "body", "due", "parent", "blocking", "blockedBy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4405,13 +4405,6 @@ func (ec *executionContext) unmarshalInputCreateIssueInput(ctx context.Context, 
 				return it, err
 			}
 			it.BlockedBy = data
-		case "prefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Prefix = data
 		}
 	}
 

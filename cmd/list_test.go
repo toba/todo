@@ -77,14 +77,14 @@ func TestSortBeans(t *testing.T) {
 	t.Run("sort by status", func(t *testing.T) {
 		beans := []*issue.Issue{
 			{ID: "c1", Status: "completed"},
-			{ID: "t1", Status: "todo"},
+			{ID: "r1", Status: "ready"},
 			{ID: "i1", Status: "in-progress"},
-			{ID: "t2", Status: "todo"},
+			{ID: "r2", Status: "ready"},
 		}
 		sortBeans(beans, "status", testCfg)
 
-		// Should be ordered by status config order (in-progress, todo, draft, completed, scrapped), then by ID within same status
-		expected := []string{"i1", "t1", "t2", "c1"}
+		// Should be ordered by status config order (in-progress, ready, draft, completed, scrapped), then by ID within same status
+		expected := []string{"i1", "r1", "r2", "c1"}
 		for i, want := range expected {
 			if beans[i].ID != want {
 				t.Errorf("sort by status[%d]: got %q, want %q", i, beans[i].ID, want)
@@ -95,17 +95,17 @@ func TestSortBeans(t *testing.T) {
 	t.Run("default sort (archive status then type)", func(t *testing.T) {
 		beans := []*issue.Issue{
 			{ID: "completed-bug", Status: "completed", Type: "bug"},
-			{ID: "todo-feature", Status: "todo", Type: "feature"},
-			{ID: "todo-task", Status: "todo", Type: "task"},
+			{ID: "ready-feature", Status: "ready", Type: "feature"},
+			{ID: "ready-task", Status: "ready", Type: "task"},
 			{ID: "completed-task", Status: "completed", Type: "task"},
-			{ID: "todo-bug", Status: "todo", Type: "bug"},
+			{ID: "ready-bug", Status: "ready", Type: "bug"},
 		}
 		sortBeans(beans, "", testCfg)
 
 		// Should be: non-archive first (sorted by type order from DefaultTypes: milestone, epic, bug, feature, task),
 		// then archive (sorted by type)
 		// DefaultTypes order: milestone, epic, bug, feature, task
-		expected := []string{"todo-bug", "todo-feature", "todo-task", "completed-bug", "completed-task"}
+		expected := []string{"ready-bug", "ready-feature", "ready-task", "completed-bug", "completed-task"}
 		for i, want := range expected {
 			if beans[i].ID != want {
 				t.Errorf("default sort[%d]: got %q, want %q", i, beans[i].ID, want)
