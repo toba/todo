@@ -94,31 +94,40 @@ func Run(opts Options) (*Result, error) {
 		return nil, fmt.Errorf("target directory %s already contains bean files; aborting to avoid data loss", targetDir)
 	}
 
-	// Create target directories
-	beansSubdir := filepath.Join(targetDir, "beans")
-	archiveSubdir := filepath.Join(targetDir, "archive")
-	if err := os.MkdirAll(beansSubdir, 0755); err != nil {
-		return nil, fmt.Errorf("creating target directory: %w", err)
+	// Import ClickUp config from bean-me-up sources (before cleanup)
+	imported, err := ImportClickUpConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("importing ClickUp config: %w", err)
+	}
+	result.ClickUpImported = imported
+
+	// Rename the source directory to .issues (preserves git history)
+	if sourceDir != targetDir {
+		if err := os.Rename(sourceDir, targetDir); err != nil {
+			return nil, fmt.Errorf("renaming %s to %s: %w", sourceDir, targetDir, err)
+		}
 	}
 
-	// Migrate bean files (skip archive/)
-	activeConverted, err := migrateFiles(sourceDir, beansSubdir, "archive")
+	// Create beans/ subfolder within .issues and move active .md files into it
+	beansSubdir := filepath.Join(targetDir, "beans")
+	if err := os.MkdirAll(beansSubdir, 0755); err != nil {
+		return nil, fmt.Errorf("creating beans subdirectory: %w", err)
+	}
+
+	activeConverted, err := reorganizeFiles(targetDir, beansSubdir)
 	if err != nil {
-		return nil, fmt.Errorf("migrating active beans: %w", err)
+		return nil, fmt.Errorf("reorganizing active issues: %w", err)
 	}
 	result.ActiveCount = activeConverted.count
 	result.StatusConverted = activeConverted.statusConverted
 	result.SyncKeyRenamed = activeConverted.syncKeyRenamed
 
-	// Migrate archived beans
-	oldArchive := filepath.Join(sourceDir, "archive")
-	if info, err := os.Stat(oldArchive); err == nil && info.IsDir() {
-		if err := os.MkdirAll(archiveSubdir, 0755); err != nil {
-			return nil, fmt.Errorf("creating archive directory: %w", err)
-		}
-		archiveConverted, err := migrateFiles(oldArchive, archiveSubdir, "")
+	// Rewrite archived beans in place (status/extensions conversions)
+	archiveDir := filepath.Join(targetDir, "archive")
+	if info, err := os.Stat(archiveDir); err == nil && info.IsDir() {
+		archiveConverted, err := rewriteFilesInPlace(archiveDir)
 		if err != nil {
-			return nil, fmt.Errorf("migrating archived beans: %w", err)
+			return nil, fmt.Errorf("rewriting archived issues: %w", err)
 		}
 		result.ArchivedCount = archiveConverted.count
 		result.StatusConverted += archiveConverted.statusConverted
@@ -134,12 +143,9 @@ func Run(opts Options) (*Result, error) {
 	}
 	result.ConfigMigrated = migrated
 
-	// Import ClickUp config from bean-me-up sources
-	imported, err := ImportClickUpConfig(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("importing ClickUp config: %w", err)
-	}
-	result.ClickUpImported = imported
+	// Clean up old .beans.clickup.yml if present
+	oldClickupConfig := filepath.Join(filepath.Dir(configPath), ".beans.clickup.yml")
+	os.Remove(oldClickupConfig) // ignore error if not present
 
 	return result, nil
 }
@@ -180,51 +186,92 @@ type migrateResult struct {
 	syncKeyRenamed  int
 }
 
-// migrateFiles copies .md files from src to dst, rewriting status: todo → status: ready.
-// skipDir is a directory name to skip (e.g., "archive"). Pass "" to skip nothing.
-func migrateFiles(src, dst, skipDir string) (*migrateResult, error) {
+// reorganizeFiles moves .md files from dir into dst (a subdirectory of dir),
+// rewriting frontmatter as needed. Skips subdirectories (archive/, beans/, etc.).
+// Uses os.Rename to preserve git history.
+func reorganizeFiles(dir, dst string) (*migrateResult, error) {
 	result := &migrateResult{}
 
-	entries, err := os.ReadDir(src)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, entry := range entries {
-		// Skip directories (including archive)
 		if entry.IsDir() {
-			if skipDir != "" && entry.Name() == skipDir {
-				continue
-			}
-			// Recurse into subdirectories (for hash-prefixed layouts)
-			subResult, err := migrateFiles(filepath.Join(src, entry.Name()), dst, "")
-			if err != nil {
-				return nil, err
-			}
-			result.count += subResult.count
-			result.statusConverted += subResult.statusConverted
 			continue
 		}
 
-		// Only process .md files
 		if !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
 
-		content, err := os.ReadFile(filepath.Join(src, entry.Name()))
+		srcPath := filepath.Join(dir, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		content, err := os.ReadFile(srcPath)
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", entry.Name(), err)
 		}
 
-		// Rewrite status: todo → status: ready in frontmatter only
 		newContent, converted := rewriteStatus(content)
-
-		// Rewrite extensions: → sync: in frontmatter only
 		newContent, renamed := rewriteExtensionsKey(newContent)
 
-		dstPath := filepath.Join(dst, entry.Name())
-		if err := os.WriteFile(dstPath, newContent, 0644); err != nil {
-			return nil, fmt.Errorf("writing %s: %w", entry.Name(), err)
+		if !converted && !renamed {
+			// No content changes — move directly
+			if err := os.Rename(srcPath, dstPath); err != nil {
+				return nil, fmt.Errorf("moving %s: %w", entry.Name(), err)
+			}
+		} else {
+			// Content modified — write new content, remove old
+			if err := os.WriteFile(dstPath, newContent, 0644); err != nil {
+				return nil, fmt.Errorf("writing %s: %w", entry.Name(), err)
+			}
+			if err := os.Remove(srcPath); err != nil {
+				return nil, fmt.Errorf("removing old %s: %w", entry.Name(), err)
+			}
+		}
+
+		result.count++
+		if converted {
+			result.statusConverted++
+		}
+		if renamed {
+			result.syncKeyRenamed++
+		}
+	}
+
+	return result, nil
+}
+
+// rewriteFilesInPlace rewrites frontmatter in .md files within a directory
+// without moving them. Used for archive/ which is already in the right place.
+func rewriteFilesInPlace(dir string) (*migrateResult, error) {
+	result := &migrateResult{}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		filePath := filepath.Join(dir, entry.Name())
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", entry.Name(), err)
+		}
+
+		newContent, converted := rewriteStatus(content)
+		newContent, renamed := rewriteExtensionsKey(newContent)
+
+		if converted || renamed {
+			if err := os.WriteFile(filePath, newContent, 0644); err != nil {
+				return nil, fmt.Errorf("writing %s: %w", entry.Name(), err)
+			}
 		}
 
 		result.count++

@@ -395,6 +395,11 @@ This was completed.
 			t.Error("body content was lost during migration")
 		}
 
+		// Verify old source directory was removed
+		if _, err := os.Stat(beansDir); !os.IsNotExist(err) {
+			t.Error("old .beans directory still exists after migration")
+		}
+
 		// Verify config was rewritten
 		configContent := readFile(t, filepath.Join(dir, ".todo.yml"))
 		if strings.Contains(configContent, "beans:") {
