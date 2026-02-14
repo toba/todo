@@ -217,18 +217,13 @@ func reorganizeFiles(dir, dst string) (*migrateResult, error) {
 		newContent, converted := rewriteStatus(content)
 		newContent, renamed := rewriteExtensionsKey(newContent)
 
-		if !converted && !renamed {
-			// No content changes — move directly
-			if err := os.Rename(srcPath, dstPath); err != nil {
-				return nil, fmt.Errorf("moving %s: %w", entry.Name(), err)
-			}
-		} else {
-			// Content modified — write new content, remove old
+		// Always move first to preserve git history, then rewrite if needed
+		if err := os.Rename(srcPath, dstPath); err != nil {
+			return nil, fmt.Errorf("moving %s: %w", entry.Name(), err)
+		}
+		if converted || renamed {
 			if err := os.WriteFile(dstPath, newContent, 0644); err != nil {
-				return nil, fmt.Errorf("writing %s: %w", entry.Name(), err)
-			}
-			if err := os.Remove(srcPath); err != nil {
-				return nil, fmt.Errorf("removing old %s: %w", entry.Name(), err)
+				return nil, fmt.Errorf("rewriting %s: %w", entry.Name(), err)
 			}
 		}
 
