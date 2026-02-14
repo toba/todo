@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/integration/github"
 	"github.com/toba/todo/internal/issue"
+	"golang.org/x/sync/errgroup"
 )
 
 // gitHubIntegration implements Integration for GitHub Issues.
@@ -121,7 +124,7 @@ func (gh *gitHubIntegration) Link(ctx context.Context, issueID, externalID strin
 	// Check if already linked to this issue number
 	existingNumber := github.GetSyncString(b, github.SyncKeyIssueNumber)
 	if existingNumber == externalID {
-		return &LinkResult{Action: "already_linked", ExternalID: externalID}, nil
+		return &LinkResult{Action: ActionAlreadyLinked, ExternalID: externalID}, nil
 	}
 
 	// Try to verify the issue exists if we have a token
@@ -145,7 +148,7 @@ func (gh *gitHubIntegration) Link(ctx context.Context, issueID, externalID strin
 	if err := gh.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
-	return &LinkResult{Action: "linked", ExternalID: externalID}, nil
+	return &LinkResult{Action: ActionLinked, ExternalID: externalID}, nil
 }
 
 func (gh *gitHubIntegration) Unlink(ctx context.Context, issueID string) (*UnlinkResult, error) {
@@ -157,14 +160,14 @@ func (gh *gitHubIntegration) Unlink(ctx context.Context, issueID string) (*Unlin
 	// Check if linked
 	issueNumber := github.GetSyncString(b, github.SyncKeyIssueNumber)
 	if issueNumber == "" {
-		return &UnlinkResult{Action: "not_linked"}, nil
+		return &UnlinkResult{Action: ActionNotLinked}, nil
 	}
 
 	b.RemoveSync(github.SyncName)
 	if err := gh.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
-	return &UnlinkResult{Action: "unlinked", ExternalID: issueNumber}, nil
+	return &UnlinkResult{Action: ActionUnlinked, ExternalID: issueNumber}, nil
 }
 
 func (gh *gitHubIntegration) Check(ctx context.Context, opts CheckOptions) (*CheckReport, error) {
@@ -352,38 +355,48 @@ func (gh *gitHubIntegration) checkSyncState(ctx context.Context, opts CheckOptio
 		token, _ := gh.getToken()
 		if token != "" {
 			client := github.NewClient(token, gh.cfg.Owner, gh.cfg.Repo)
-			missingCount := 0
+			var missingCount atomic.Int64
+			var mu sync.Mutex
+
+			g, gctx := errgroup.WithContext(ctx)
+			g.SetLimit(10)
 
 			for _, b := range linkedIssues {
-				numberStr := github.GetSyncString(b, github.SyncKeyIssueNumber)
-				var number int
-				if _, err := fmt.Sscanf(numberStr, "%d", &number); err != nil {
-					continue
-				}
-				_, err := client.GetIssue(ctx, number)
-				if err != nil {
-					missingCount++
-					if missingCount <= 3 {
-						section.Checks = append(section.Checks, CheckResult{
-							Name:    "Issue exists",
-							Status:  CheckWarn,
-							Message: fmt.Sprintf("%s → #%d: not found", b.ID, number),
-						})
+				g.Go(func() error {
+					numberStr := github.GetSyncString(b, github.SyncKeyIssueNumber)
+					var number int
+					if _, err := fmt.Sscanf(numberStr, "%d", &number); err != nil {
+						return nil
 					}
-				}
+					_, err := client.GetIssue(gctx, number)
+					if err != nil {
+						cur := missingCount.Add(1)
+						if cur <= 3 {
+							mu.Lock()
+							section.Checks = append(section.Checks, CheckResult{
+								Name:    "Issue exists",
+								Status:  CheckWarn,
+								Message: fmt.Sprintf("%s → #%d: not found", b.ID, number),
+							})
+							mu.Unlock()
+						}
+					}
+					return nil
+				})
 			}
+			_ = g.Wait()
 
-			if missingCount == 0 {
+			if missingCount.Load() == 0 {
 				section.Checks = append(section.Checks, CheckResult{
 					Name:    "All linked issues exist",
 					Status:  CheckPass,
 					Message: fmt.Sprintf("Verified %d issues", linkedCount),
 				})
-			} else if missingCount > 3 {
+			} else if missingCount.Load() > 3 {
 				section.Checks = append(section.Checks, CheckResult{
 					Name:    "Missing issues",
 					Status:  CheckWarn,
-					Message: fmt.Sprintf("...and %d more", missingCount-3),
+					Message: fmt.Sprintf("...and %d more", missingCount.Load()-3),
 				})
 			}
 		}

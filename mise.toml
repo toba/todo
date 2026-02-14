@@ -1,6 +1,7 @@
 [tools]
 go = "latest"
 svu = "latest"
+"github:toba/todo" = "latest"
 
 [tasks.codegen]
 run = "go generate ./..."

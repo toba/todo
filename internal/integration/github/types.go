@@ -68,7 +68,7 @@ type SyncResult struct {
 	IssueTitle  string
 	ExternalID  string // GitHub issue number as string
 	ExternalURL string // GitHub issue HTML URL
-	Action      string // "created", "updated", "skipped", "error", "unchanged", "would create", "would update"
+	Action      string // Matches integration.Action* constants
 	Error       error
 }
 

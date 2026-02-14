@@ -5,10 +5,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/toba/todo/internal/issue"
-	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/config"
+	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/graph/model"
+	"github.com/toba/todo/internal/integration"
+	"github.com/toba/todo/internal/issue"
 )
 
 // ApplyFilter applies BeanFilter to a slice of beans and returns filtered results.
@@ -386,7 +387,7 @@ func isSyncStale(b *issue.Issue, name string) bool {
 	if !ok {
 		return true
 	}
-	syncedAtRaw, ok := data["synced_at"]
+	syncedAtRaw, ok := data[integration.SyncKeySyncedAt]
 	if !ok {
 		return true
 	}

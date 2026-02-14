@@ -17,7 +17,7 @@ type SyncResult struct {
 	IssueTitle string
 	TaskID     string
 	TaskURL    string
-	Action     string // "created", "updated", "skipped", "error", "unchanged", "would create", "would update"
+	Action     string // Matches integration.Action* constants
 	Error      error
 }
 
@@ -280,7 +280,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	if b.Due != nil {
 		millis := toLocalDateMillis(b.Due.Time)
 		createReq.DueDate = &millis
-		createReq.DueDatetime = ptrBool(false)
+		createReq.DueDatetime = new(false)
 	}
 
 	// Set parent task ID if issue has a parent that's already synced
@@ -444,7 +444,7 @@ func (s *Syncer) buildUpdateRequest(current *TaskInfo, b *issue.Issue, descripti
 	if !int64PtrEqual(currentDueMillis, newDueMillis) {
 		if newDueMillis != nil {
 			update.DueDate = newDueMillis
-			update.DueDatetime = ptrBool(false)
+			update.DueDatetime = new(false)
 		} else {
 			// Clear due date: ClickUp accepts null to remove it
 			zero := int64(0)
@@ -740,6 +740,8 @@ func int64PtrEqual(a, b *int64) bool {
 }
 
 // ptrBool returns a pointer to a bool value.
+//
+//go:fix inline
 func ptrBool(v bool) *bool {
-	return &v
+	return new(v)
 }

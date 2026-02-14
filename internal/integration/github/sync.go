@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/issue"
+	"golang.org/x/sync/errgroup"
 )
 
 // Syncer handles syncing issues to GitHub issues.
@@ -103,58 +105,52 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 
 	// Pass 1: Create/update parent issues in parallel
 	for _, b := range parents {
-		wg.Add(1)
-		go func(iss *issue.Issue) {
-			defer wg.Done()
-			result := s.syncIssue(ctx, iss)
-			idx := issueIndex[iss.ID]
+		wg.Go(func() {
+			result := s.syncIssue(ctx, b)
+			idx := issueIndex[b.ID]
 			results[idx] = result
 
 			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
 				mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
-					s.issueToGHNumber[iss.ID] = n
+					s.issueToGHNumber[b.ID] = n
 				}
 				mu.Unlock()
 			}
 			reportProgress(result)
-		}(b)
+		})
 	}
 	wg.Wait()
 
 	// Pass 2: Create/update child issues in parallel (parents now exist)
 	for _, b := range children {
-		wg.Add(1)
-		go func(iss *issue.Issue) {
-			defer wg.Done()
-			result := s.syncIssue(ctx, iss)
-			idx := issueIndex[iss.ID]
+		wg.Go(func() {
+			result := s.syncIssue(ctx, b)
+			idx := issueIndex[b.ID]
 			results[idx] = result
 
 			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
 				mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
-					s.issueToGHNumber[iss.ID] = n
+					s.issueToGHNumber[b.ID] = n
 				}
 				mu.Unlock()
 			}
 			reportProgress(result)
-		}(b)
+		})
 	}
 	wg.Wait()
 
 	// Pass 3: Update blocking references in issue bodies (if not disabled)
 	if !s.opts.NoRelationships && !s.opts.DryRun {
 		for _, b := range issues {
-			wg.Add(1)
-			go func(iss *issue.Issue) {
-				defer wg.Done()
-				if err := s.syncRelationships(ctx, iss); err != nil {
+			wg.Go(func() {
+				if err := s.syncRelationships(ctx, b); err != nil {
 					_ = err // Best-effort
 				}
-			}(b)
+			})
 		}
 		wg.Wait()
 	}
@@ -353,11 +349,16 @@ func (s *Syncer) ensureAllLabels(ctx context.Context, issues []*issue.Issue) {
 		}
 	}
 
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(5)
+
 	for label := range needed {
-		if err := s.client.EnsureLabel(ctx, label, "ededed"); err != nil {
-			_ = err // Best-effort
-		}
+		g.Go(func() error {
+			_ = s.client.EnsureLabel(gctx, label, "ededed") // Best-effort
+			return nil
+		})
 	}
+	_ = g.Wait()
 }
 
 // getAssignees returns the assignee list for issue creation.
@@ -398,7 +399,7 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state 
 	sortedNew := make([]string, len(labels))
 	copy(sortedNew, labels)
 	sort.Strings(sortedNew)
-	if !slicesEqual(currentLabels, sortedNew) {
+	if !slices.Equal(currentLabels, sortedNew) {
 		update.Labels = labels
 	}
 
@@ -485,17 +486,3 @@ func FilterIssuesNeedingSync(issues []*issue.Issue, store SyncStateProvider, for
 	return needSync
 }
 
-func slicesEqual(a, b []string) bool {
-	if len(a) == 0 && len(b) == 0 {
-		return true
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}

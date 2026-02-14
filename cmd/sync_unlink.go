@@ -51,9 +51,9 @@ Note: This does not delete or modify the external task itself.`,
 		}
 
 		switch result.Action {
-		case "not_linked":
+		case integration.ActionNotLinked:
 			fmt.Printf("Skipped: %s is not linked to an external task\n", issueID)
-		case "unlinked":
+		case integration.ActionUnlinked:
 			fmt.Printf("Unlinked: %s (was %s)\n", issueID, result.ExternalID)
 		}
 		return nil

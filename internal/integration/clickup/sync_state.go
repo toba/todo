@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/toba/todo/internal/core"
+	"github.com/toba/todo/internal/integration/syncutil"
 	"github.com/toba/todo/internal/issue"
 )
 
@@ -171,31 +172,11 @@ func (p *SyncStateStore) Flush() error {
 
 // GetSyncString returns a string value from an issue's clickup sync data.
 func GetSyncString(b *issue.Issue, key string) string {
-	if b.Sync == nil {
-		return ""
-	}
-	extData, ok := b.Sync[SyncName]
-	if !ok {
-		return ""
-	}
-	val, ok := extData[key]
-	if !ok {
-		return ""
-	}
-	s, _ := val.(string)
-	return s
+	return syncutil.GetSyncString(b, SyncName, key)
 }
 
 // GetSyncTime returns a time value from an issue's clickup sync data.
 // Expects the value to be an RFC3339 string. Returns nil if not found or unparseable.
 func GetSyncTime(b *issue.Issue, key string) *time.Time {
-	s := GetSyncString(b, key)
-	if s == "" {
-		return nil
-	}
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return nil
-	}
-	return &t
+	return syncutil.GetSyncTime(b, SyncName, key)
 }

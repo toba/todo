@@ -54,9 +54,9 @@ associate with an issue, or when syncing fails and you need to fix the link.`,
 		}
 
 		switch result.Action {
-		case "already_linked":
+		case integration.ActionAlreadyLinked:
 			fmt.Printf("Skipped: %s already linked to %s\n", issueID, externalID)
-		case "linked":
+		case integration.ActionLinked:
 			fmt.Printf("Linked: %s → %s\n", issueID, externalID)
 		}
 		return nil

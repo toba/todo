@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/integration/clickup"
 	"github.com/toba/todo/internal/issue"
+	"golang.org/x/sync/errgroup"
 )
 
 // clickUpIntegration implements Integration for ClickUp.
@@ -125,7 +128,7 @@ func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) 
 	// Check if already linked to this task
 	existingTaskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
 	if existingTaskID == taskID {
-		return &LinkResult{Action: "already_linked", ExternalID: taskID}, nil
+		return &LinkResult{Action: ActionAlreadyLinked, ExternalID: taskID}, nil
 	}
 
 	// Try to verify the task exists if we have a token
@@ -147,7 +150,7 @@ func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) 
 	if err := cu.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
-	return &LinkResult{Action: "linked", ExternalID: taskID}, nil
+	return &LinkResult{Action: ActionLinked, ExternalID: taskID}, nil
 }
 
 func (cu *clickUpIntegration) Unlink(ctx context.Context, issueID string) (*UnlinkResult, error) {
@@ -159,14 +162,14 @@ func (cu *clickUpIntegration) Unlink(ctx context.Context, issueID string) (*Unli
 	// Check if linked
 	taskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
 	if taskID == "" {
-		return &UnlinkResult{Action: "not_linked"}, nil
+		return &UnlinkResult{Action: ActionNotLinked}, nil
 	}
 
 	b.RemoveSync(clickup.SyncName)
 	if err := cu.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
-	return &UnlinkResult{Action: "unlinked", ExternalID: taskID}, nil
+	return &UnlinkResult{Action: ActionUnlinked, ExternalID: taskID}, nil
 }
 
 func (cu *clickUpIntegration) Check(ctx context.Context, opts CheckOptions) (*CheckReport, error) {
@@ -515,35 +518,45 @@ func (cu *clickUpIntegration) checkSyncState(ctx context.Context, opts CheckOpti
 		token, _ := cu.getToken()
 		if token != "" {
 			client := clickup.NewClient(token)
-			missingCount := 0
+			var missingCount atomic.Int64
+			var mu sync.Mutex
+
+			g, gctx := errgroup.WithContext(ctx)
+			g.SetLimit(5)
 
 			for _, b := range linkedIssues {
-				taskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
-				_, err := client.GetTask(ctx, taskID)
-				if err != nil {
-					missingCount++
-					// Only report first few missing for brevity
-					if missingCount <= 3 {
-						section.Checks = append(section.Checks, CheckResult{
-							Name:    "Task exists",
-							Status:  CheckWarn,
-							Message: fmt.Sprintf("%s \u2192 %s: not found", b.ID, taskID),
-						})
+				g.Go(func() error {
+					taskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
+					_, err := client.GetTask(gctx, taskID)
+					if err != nil {
+						cur := missingCount.Add(1)
+						// Only report first few missing for brevity
+						if cur <= 3 {
+							mu.Lock()
+							section.Checks = append(section.Checks, CheckResult{
+								Name:    "Task exists",
+								Status:  CheckWarn,
+								Message: fmt.Sprintf("%s \u2192 %s: not found", b.ID, taskID),
+							})
+							mu.Unlock()
+						}
 					}
-				}
+					return nil
+				})
 			}
+			_ = g.Wait()
 
-			if missingCount == 0 {
+			if missingCount.Load() == 0 {
 				section.Checks = append(section.Checks, CheckResult{
 					Name:    "All linked tasks exist",
 					Status:  CheckPass,
 					Message: fmt.Sprintf("Verified %d tasks", linkedCount),
 				})
-			} else if missingCount > 3 {
+			} else if missingCount.Load() > 3 {
 				section.Checks = append(section.Checks, CheckResult{
 					Name:    "Missing tasks",
 					Status:  CheckWarn,
-					Message: fmt.Sprintf("...and %d more", missingCount-3),
+					Message: fmt.Sprintf("...and %d more", missingCount.Load()-3),
 				})
 			}
 		}

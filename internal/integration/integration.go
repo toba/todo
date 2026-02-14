@@ -14,7 +14,7 @@ type SyncResult struct {
 	IssueTitle  string // local issue title
 	ExternalID  string // ClickUp task ID or GitHub issue number (as string)
 	ExternalURL string // URL to the external resource
-	Action      string // "created", "updated", "skipped", "error", "unchanged", "would create", "would update"
+	Action      string // One of the Action* constants
 	Error       error
 }
 
@@ -31,15 +31,37 @@ type SyncOptions struct {
 
 // LinkResult holds the result of a link operation.
 type LinkResult struct {
-	Action     string // "linked" or "already_linked"
+	Action     string // ActionLinked or ActionAlreadyLinked
 	ExternalID string
 }
 
 // UnlinkResult holds the result of an unlink operation.
 type UnlinkResult struct {
-	Action     string // "unlinked" or "not_linked"
+	Action     string // ActionUnlinked or ActionNotLinked
 	ExternalID string // previous ID if unlinked
 }
+
+// Sync action constants identify the outcome of syncing a single issue.
+const (
+	ActionCreated     = "created"
+	ActionUpdated     = "updated"
+	ActionSkipped     = "skipped"
+	ActionError       = "error"
+	ActionUnchanged   = "unchanged"
+	ActionWouldCreate = "would create"
+	ActionWouldUpdate = "would update"
+)
+
+// Link/unlink action constants.
+const (
+	ActionLinked        = "linked"
+	ActionAlreadyLinked = "already_linked"
+	ActionUnlinked      = "unlinked"
+	ActionNotLinked     = "not_linked"
+)
+
+// SyncKeySyncedAt is the common key used in sync metadata for the last sync timestamp.
+const SyncKeySyncedAt = "synced_at"
 
 // CheckStatus represents the result of a single check.
 type CheckStatus string

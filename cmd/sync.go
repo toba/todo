@@ -177,21 +177,21 @@ func outputSyncText(results []integration.SyncResult) error {
 
 	for _, r := range results {
 		switch r.Action {
-		case "created":
+		case integration.ActionCreated:
 			created++
 			fmt.Printf("  Created: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
-		case "updated":
+		case integration.ActionUpdated:
 			updated++
 			fmt.Printf("  Updated: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
-		case "unchanged":
+		case integration.ActionUnchanged:
 			unchanged++
-		case "skipped":
+		case integration.ActionSkipped:
 			skipped++
-		case "would create":
+		case integration.ActionWouldCreate:
 			fmt.Printf("  Would create: %s - %s\n", r.IssueID, r.IssueTitle)
-		case "would update":
+		case integration.ActionWouldUpdate:
 			fmt.Printf("  Would update: %s - %s\n", r.IssueID, r.IssueTitle)
-		case "error":
+		case integration.ActionError:
 			errors++
 			fmt.Printf("  Error: %s - %v\n", r.IssueID, r.Error)
 		}
