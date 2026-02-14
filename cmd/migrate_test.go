@@ -123,4 +123,64 @@ type: task
 			t.Error("config still has prefix")
 		}
 	})
+
+	t.Run("migration with clickup config", func(t *testing.T) {
+		dir := t.TempDir()
+
+		// Create old config
+		configPath := filepath.Join(dir, ".todo.yml")
+		os.WriteFile(configPath, []byte(`beans:
+  path: .beans
+  default_status: todo
+  prefix: beans
+  id_length: 4
+`), 0644)
+
+		// Create standalone ClickUp config
+		os.WriteFile(filepath.Join(dir, ".beans.clickup.yml"), []byte(`beans:
+  clickup:
+    list_id: "901234567890"
+    status_mapping:
+      todo: "to do"
+      in-progress: "in progress"
+      completed: "complete"
+`), 0644)
+
+		// Create old data directory
+		beansDir := filepath.Join(dir, ".beans")
+		os.MkdirAll(beansDir, 0755)
+		os.WriteFile(filepath.Join(beansDir, "beans-aaaa--task-one.md"), []byte(`---
+# beans-aaaa
+title: Task One
+status: todo
+type: task
+---
+
+Task body.
+`), 0644)
+
+		// Execute migrate command
+		rootCmd.SetArgs([]string{"migrate", "--config", configPath, "--json"})
+		err := rootCmd.Execute()
+		if err != nil {
+			t.Fatalf("migrate command failed: %v", err)
+		}
+
+		// Verify ClickUp config was imported
+		cfgData, _ := os.ReadFile(configPath)
+		cfgContent := string(cfgData)
+		if !strings.Contains(cfgContent, "clickup:") {
+			t.Error("config missing clickup section")
+		}
+		if !strings.Contains(cfgContent, `"901234567890"`) {
+			t.Error("config missing list_id")
+		}
+		// Status mapping key should be converted
+		if strings.Contains(cfgContent, "todo:") {
+			t.Error("status mapping still has 'todo' key after migration")
+		}
+		if !strings.Contains(cfgContent, "ready:") {
+			t.Error("status mapping missing 'ready' key after migration")
+		}
+	})
 }

@@ -507,6 +507,64 @@ type: task
 		}
 	})
 
+	t.Run("imports clickup config from bean-me-up", func(t *testing.T) {
+		dir := t.TempDir()
+
+		// Create old config (no extensions)
+		writeFile(t, filepath.Join(dir, ".todo.yml"), `beans:
+  path: .beans
+  default_status: todo
+  prefix: beans
+  id_length: 4
+`)
+
+		// Create standalone .beans.clickup.yml
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    list_id: "901234567890"
+    status_mapping:
+      todo: "to do"
+      in-progress: "in progress"
+      completed: "complete"
+`)
+
+		// Create old data directory with a bean
+		writeFile(t, filepath.Join(dir, ".beans", "beans-abcd--test.md"), `---
+# beans-abcd
+title: Test
+status: todo
+type: task
+---
+`)
+
+		result, err := Run(Options{
+			ConfigPath: filepath.Join(dir, ".todo.yml"),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !result.ClickUpImported {
+			t.Error("ClickUpImported = false, want true")
+		}
+
+		// Verify ClickUp config was merged into main config
+		content := readFile(t, filepath.Join(dir, ".todo.yml"))
+		if !strings.Contains(content, "clickup:") {
+			t.Error("config missing clickup section after migration")
+		}
+		if !strings.Contains(content, `"901234567890"`) {
+			t.Error("config missing list_id after migration")
+		}
+		// Status mapping key should be converted
+		if strings.Contains(content, "todo:") {
+			t.Error("status mapping still has 'todo' key")
+		}
+		if !strings.Contains(content, "ready:") {
+			t.Error("status mapping missing 'ready' key")
+		}
+	})
+
 	t.Run("archived todo bean gets converted", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, ".todo.yml"), `beans:
@@ -539,6 +597,279 @@ type: task
 		if !strings.Contains(content, "status: ready") {
 			t.Error("archived todo bean was not converted to ready")
 		}
+	})
+}
+
+func TestImportClickUpConfig(t *testing.T) {
+	t.Run("imports from standalone .beans.clickup.yml", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    list_id: "901234567890"
+    status_mapping:
+      todo: "to do"
+      in-progress: "in progress"
+      completed: "complete"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !imported {
+			t.Fatal("expected ClickUp config to be imported")
+		}
+
+		content := readFile(t, configPath)
+		if !strings.Contains(content, "clickup:") {
+			t.Error("config missing clickup section")
+		}
+		if !strings.Contains(content, "list_id:") {
+			t.Error("config missing list_id")
+		}
+		if !strings.Contains(content, `"901234567890"`) {
+			t.Error("config missing list_id value")
+		}
+	})
+
+	t.Run("imports from .beans.yml extensions.clickup", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		writeFile(t, filepath.Join(dir, ".beans.yml"), `beans:
+  path: .beans
+extensions:
+  clickup:
+    list_id: "555666777"
+    status_mapping:
+      todo: "open"
+      completed: "done"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !imported {
+			t.Fatal("expected ClickUp config to be imported")
+		}
+
+		content := readFile(t, configPath)
+		if !strings.Contains(content, "clickup:") {
+			t.Error("config missing clickup section")
+		}
+		if !strings.Contains(content, `"555666777"`) {
+			t.Error("config missing list_id value")
+		}
+	})
+
+	t.Run("skips when extensions.clickup already in main config", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+extensions:
+  clickup:
+    list_id: "existing"
+`)
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    list_id: "should-not-overwrite"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if imported {
+			t.Error("should not import when ClickUp config already exists")
+		}
+
+		content := readFile(t, configPath)
+		if strings.Contains(content, "should-not-overwrite") {
+			t.Error("existing ClickUp config was overwritten")
+		}
+	})
+
+	t.Run("skips when neither file exists", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if imported {
+			t.Error("should not import when no source files exist")
+		}
+	})
+
+	t.Run("skips when no list_id", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    status_mapping:
+      todo: "to do"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if imported {
+			t.Error("should not import when list_id is missing")
+		}
+	})
+
+	t.Run("prefers standalone over inline", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    list_id: "from-standalone"
+`)
+		writeFile(t, filepath.Join(dir, ".beans.yml"), `beans:
+  path: .beans
+extensions:
+  clickup:
+    list_id: "from-inline"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !imported {
+			t.Fatal("expected ClickUp config to be imported")
+		}
+
+		content := readFile(t, configPath)
+		if !strings.Contains(content, "from-standalone") {
+			t.Error("should prefer standalone .beans.clickup.yml")
+		}
+		if strings.Contains(content, "from-inline") {
+			t.Error("should not use inline config when standalone exists")
+		}
+	})
+
+	t.Run("converts todo to ready in status mapping keys", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".todo.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		writeFile(t, filepath.Join(dir, ".beans.clickup.yml"), `beans:
+  clickup:
+    list_id: "123"
+    status_mapping:
+      todo: "to do"
+      in-progress: "in progress"
+      completed: "complete"
+`)
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !imported {
+			t.Fatal("expected ClickUp config to be imported")
+		}
+
+		content := readFile(t, configPath)
+		// The key "todo" should be renamed to "ready"
+		if strings.Contains(content, "todo:") {
+			t.Error("status mapping still has 'todo' key")
+		}
+		if !strings.Contains(content, "ready:") {
+			t.Error("status mapping missing 'ready' key")
+		}
+		// The value "to do" should be preserved
+		if !strings.Contains(content, "to do") {
+			t.Error("status mapping value 'to do' was lost")
+		}
+	})
+
+	t.Run("skips .beans.yml when it is the same as configPath", func(t *testing.T) {
+		dir := t.TempDir()
+		configPath := filepath.Join(dir, ".beans.yml")
+		writeFile(t, configPath, `issues:
+  path: .issues
+`)
+		// No standalone file, and .beans.yml IS the config file
+		// so it should not try to read extensions from itself
+
+		imported, err := ImportClickUpConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if imported {
+			t.Error("should not import from self")
+		}
+	})
+}
+
+func TestConvertStatusMappingKeys(t *testing.T) {
+	t.Run("renames todo to ready", func(t *testing.T) {
+		section := map[string]any{
+			"list_id": "123",
+			"status_mapping": map[string]any{
+				"todo":        "to do",
+				"in-progress": "in progress",
+				"completed":   "complete",
+			},
+		}
+		convertStatusMappingKeys(section)
+		sm := section["status_mapping"].(map[string]any)
+		if _, ok := sm["todo"]; ok {
+			t.Error("todo key should be removed")
+		}
+		if val, ok := sm["ready"]; !ok || val != "to do" {
+			t.Errorf("ready key should have value 'to do', got %v", val)
+		}
+		if val := sm["in-progress"]; val != "in progress" {
+			t.Error("other keys should be preserved")
+		}
+	})
+
+	t.Run("preserves existing ready key", func(t *testing.T) {
+		section := map[string]any{
+			"status_mapping": map[string]any{
+				"todo":  "backlog",
+				"ready": "open",
+			},
+		}
+		convertStatusMappingKeys(section)
+		sm := section["status_mapping"].(map[string]any)
+		if _, ok := sm["todo"]; ok {
+			t.Error("todo key should be removed")
+		}
+		if val := sm["ready"]; val != "open" {
+			t.Errorf("existing ready value should be preserved, got %v", val)
+		}
+	})
+
+	t.Run("handles no status_mapping", func(t *testing.T) {
+		section := map[string]any{
+			"list_id": "123",
+		}
+		// Should not panic
+		convertStatusMappingKeys(section)
 	})
 }
 

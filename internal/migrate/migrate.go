@@ -19,6 +19,7 @@ type Result struct {
 	ArchivedCount   int    `json:"archived_count"`
 	StatusConverted int    `json:"status_converted"`
 	ConfigMigrated  bool   `json:"config_migrated"`
+	ClickUpImported bool   `json:"clickup_imported"`
 	NewDataDir      string `json:"new_data_dir"`
 }
 
@@ -115,6 +116,13 @@ func Run(opts Options) (*Result, error) {
 		return nil, fmt.Errorf("migrating config: %w", err)
 	}
 	result.ConfigMigrated = true
+
+	// Import ClickUp config from bean-me-up sources
+	imported, err := ImportClickUpConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("importing ClickUp config: %w", err)
+	}
+	result.ClickUpImported = imported
 
 	return result, nil
 }
@@ -313,6 +321,162 @@ func MigrateConfig(configPath string) error {
 	}
 
 	return os.WriteFile(configPath, out, 0644)
+}
+
+// ImportClickUpConfig detects and imports ClickUp configuration from
+// bean-me-up sources into the main config file. It checks two locations:
+//  1. .beans.clickup.yml (standalone file with beans.clickup.* structure)
+//  2. .beans.yml (inline config with extensions.clickup section)
+//
+// The standalone file takes priority if both exist. If the main config already
+// has extensions.clickup, this is a no-op. Returns true if config was imported.
+func ImportClickUpConfig(configPath string) (bool, error) {
+	// Read the main config to check if it already has extensions.clickup
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false, fmt.Errorf("parsing config: %w", err)
+	}
+
+	// Check if extensions.clickup already exists
+	if extRaw, ok := raw["extensions"]; ok {
+		if extMap, ok := extRaw.(map[string]any); ok {
+			if _, ok := extMap["clickup"]; ok {
+				return false, nil // Already has ClickUp config
+			}
+		}
+	}
+
+	configDir := filepath.Dir(configPath)
+	var clickupSection map[string]any
+
+	// Priority 1: standalone .beans.clickup.yml
+	standalonePath := filepath.Join(configDir, ".beans.clickup.yml")
+	if standaloneData, err := os.ReadFile(standalonePath); err == nil {
+		var standaloneRaw map[string]any
+		if err := yaml.Unmarshal(standaloneData, &standaloneRaw); err == nil {
+			clickupSection = extractClickUpFromStandalone(standaloneRaw)
+		}
+	}
+
+	// Priority 2: .beans.yml extensions.clickup (only if standalone not found,
+	// and only if .beans.yml is a different file than configPath)
+	if clickupSection == nil {
+		beansYmlPath := filepath.Join(configDir, ".beans.yml")
+		absBeansYml, _ := filepath.Abs(beansYmlPath)
+		absConfig, _ := filepath.Abs(configPath)
+		if absBeansYml != absConfig {
+			if beansData, err := os.ReadFile(beansYmlPath); err == nil {
+				var beansRaw map[string]any
+				if err := yaml.Unmarshal(beansData, &beansRaw); err == nil {
+					clickupSection = extractClickUpFromExtensions(beansRaw)
+				}
+			}
+		}
+	}
+
+	if clickupSection == nil {
+		return false, nil
+	}
+
+	// Require list_id to be present
+	if _, ok := clickupSection["list_id"]; !ok {
+		return false, nil
+	}
+
+	// Convert status mapping keys (todo → ready)
+	convertStatusMappingKeys(clickupSection)
+
+	// Merge into main config under extensions.clickup
+	extRaw, ok := raw["extensions"]
+	if !ok {
+		raw["extensions"] = map[string]any{"clickup": clickupSection}
+	} else if extMap, ok := extRaw.(map[string]any); ok {
+		extMap["clickup"] = clickupSection
+	} else {
+		raw["extensions"] = map[string]any{"clickup": clickupSection}
+	}
+
+	out, err := yaml.Marshal(raw)
+	if err != nil {
+		return false, fmt.Errorf("serializing config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, out, 0644); err != nil {
+		return false, fmt.Errorf("writing config: %w", err)
+	}
+
+	return true, nil
+}
+
+// extractClickUpFromStandalone extracts ClickUp config from the standalone
+// .beans.clickup.yml format (beans.clickup.* structure).
+func extractClickUpFromStandalone(raw map[string]any) map[string]any {
+	beansRaw, ok := raw["beans"]
+	if !ok {
+		return nil
+	}
+	beansMap, ok := beansRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	clickupRaw, ok := beansMap["clickup"]
+	if !ok {
+		return nil
+	}
+	clickupMap, ok := clickupRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return clickupMap
+}
+
+// extractClickUpFromExtensions extracts ClickUp config from the extensions.clickup
+// section of a .beans.yml file.
+func extractClickUpFromExtensions(raw map[string]any) map[string]any {
+	extRaw, ok := raw["extensions"]
+	if !ok {
+		return nil
+	}
+	extMap, ok := extRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	clickupRaw, ok := extMap["clickup"]
+	if !ok {
+		return nil
+	}
+	clickupMap, ok := clickupRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return clickupMap
+}
+
+// convertStatusMappingKeys renames "todo" → "ready" in status_mapping keys.
+// Only the keys (bean status names) are converted, not the values (ClickUp status names).
+func convertStatusMappingKeys(section map[string]any) {
+	smRaw, ok := section["status_mapping"]
+	if !ok {
+		return
+	}
+	sm, ok := smRaw.(map[string]any)
+	if !ok {
+		return
+	}
+	if val, ok := sm["todo"]; ok {
+		if _, hasReady := sm["ready"]; !hasReady {
+			sm["ready"] = val
+		}
+		delete(sm, "todo")
+	}
 }
 
 // hasExistingBeans checks if the target directory has any .md files

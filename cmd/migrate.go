@@ -39,10 +39,14 @@ Old IDs (beans-xxxx) are preserved. Cross-references remain valid.`,
 		}
 
 		if migrateJSON {
+			msg := fmt.Sprintf("Migrated %d active and %d archived beans (%d status conversions)",
+				result.ActiveCount, result.ArchivedCount, result.StatusConverted)
+			if result.ClickUpImported {
+				msg += "; ClickUp config imported"
+			}
 			return output.JSON(output.Response{
 				Success: true,
-				Message: fmt.Sprintf("Migrated %d active and %d archived beans (%d status conversions)",
-					result.ActiveCount, result.ArchivedCount, result.StatusConverted),
+				Message: msg,
 			})
 		}
 
@@ -52,6 +56,9 @@ Old IDs (beans-xxxx) are preserved. Cross-references remain valid.`,
 		fmt.Printf("  Status conversions:      %d (todo → ready)\n", result.StatusConverted)
 		if result.ConfigMigrated {
 			fmt.Printf("  Config rewritten:        yes\n")
+		}
+		if result.ClickUpImported {
+			fmt.Printf("  ClickUp config imported: yes\n")
 		}
 		fmt.Printf("  Data directory:          %s\n", result.NewDataDir)
 
