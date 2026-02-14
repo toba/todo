@@ -55,6 +55,16 @@ func Run(opts Options) (*Result, error) {
 		configPath = filepath.Join(cwd, ".todo.yml")
 	}
 
+	// If .todo.yml doesn't exist but .beans.yml does, rename it first
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		oldConfig := filepath.Join(filepath.Dir(configPath), ".beans.yml")
+		if _, err := os.Stat(oldConfig); err == nil {
+			if err := os.Rename(oldConfig, configPath); err != nil {
+				return nil, fmt.Errorf("renaming %s to %s: %w", oldConfig, configPath, err)
+			}
+		}
+	}
+
 	// Read and parse old config to find source directory
 	sourceDir := opts.SourceDir
 	if sourceDir == "" {
@@ -118,10 +128,11 @@ func Run(opts Options) (*Result, error) {
 	result.NewDataDir = targetDir
 
 	// Migrate config
-	if err := MigrateConfig(configPath); err != nil {
+	migrated, err := MigrateConfig(configPath)
+	if err != nil {
 		return nil, fmt.Errorf("migrating config: %w", err)
 	}
-	result.ConfigMigrated = true
+	result.ConfigMigrated = migrated
 
 	// Import ClickUp config from bean-me-up sources
 	imported, err := ImportClickUpConfig(configPath)
@@ -301,18 +312,19 @@ func rewriteExtensionsKey(content []byte) ([]byte, bool) {
 // - Renames beans: key → issues: key
 // - Removes prefix and id_length from the issues map
 // - Converts default_status: todo → default_status: ready
-func MigrateConfig(configPath string) error {
+// Returns true if the config was actually modified.
+func MigrateConfig(configPath string) (bool, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil // No config to migrate
+			return false, nil // No config to migrate
 		}
-		return err
+		return false, err
 	}
 
 	var raw map[string]any
 	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return fmt.Errorf("parsing config: %w", err)
+		return false, fmt.Errorf("parsing config: %w", err)
 	}
 
 	modified := false
@@ -367,15 +379,15 @@ func MigrateConfig(configPath string) error {
 	}
 
 	if !modified {
-		return nil
+		return false, nil
 	}
 
 	out, err := yaml.Marshal(raw)
 	if err != nil {
-		return fmt.Errorf("serializing config: %w", err)
+		return false, fmt.Errorf("serializing config: %w", err)
 	}
 
-	return os.WriteFile(configPath, out, 0644)
+	return true, os.WriteFile(configPath, out, 0644)
 }
 
 // ImportClickUpConfig detects and imports ClickUp configuration from

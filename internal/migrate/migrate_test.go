@@ -267,7 +267,7 @@ extensions:
 			configPath := filepath.Join(dir, ".todo.yml")
 			writeFile(t, configPath, tt.input)
 
-			if err := MigrateConfig(configPath); err != nil {
+			if _, err := MigrateConfig(configPath); err != nil {
 				t.Fatal(err)
 			}
 
@@ -619,6 +619,85 @@ type: task
 		}
 		if !strings.Contains(content, "ready:") {
 			t.Error("status mapping missing 'ready' key")
+		}
+	})
+
+	t.Run("renames .beans.yml to .todo.yml", func(t *testing.T) {
+		dir := t.TempDir()
+
+		// Create .beans.yml (no .todo.yml)
+		writeFile(t, filepath.Join(dir, ".beans.yml"), `beans:
+  path: .beans
+  default_status: todo
+  prefix: bup-
+  id_length: 4
+extensions:
+  clickup:
+    list_id: "123"
+`)
+
+		// Create old data directory
+		writeFile(t, filepath.Join(dir, ".beans", "bup-xxxx--test.md"), `---
+# bup-xxxx
+title: Test
+status: todo
+type: task
+extensions:
+  clickup:
+    task_id: "abc"
+---
+`)
+
+		result, err := Run(Options{
+			ConfigPath: filepath.Join(dir, ".todo.yml"),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// .beans.yml should no longer exist
+		if _, err := os.Stat(filepath.Join(dir, ".beans.yml")); err == nil {
+			t.Error(".beans.yml still exists after migration")
+		}
+
+		// .todo.yml should exist with migrated content
+		configContent := readFile(t, filepath.Join(dir, ".todo.yml"))
+		if strings.Contains(configContent, "beans:") {
+			t.Error("config still contains 'beans:' key")
+		}
+		if !strings.Contains(configContent, "issues:") {
+			t.Error("config missing 'issues:' key")
+		}
+		if strings.Contains(configContent, "prefix:") {
+			t.Error("config still contains 'prefix'")
+		}
+		if strings.Contains(configContent, "id_length:") {
+			t.Error("config still contains 'id_length'")
+		}
+		if !strings.Contains(configContent, "default_status: ready") {
+			t.Error("default_status not converted to ready")
+		}
+		if !strings.Contains(configContent, "sync:") {
+			t.Error("config missing 'sync:' key")
+		}
+		if strings.Contains(configContent, "\nextensions:") || strings.HasPrefix(configContent, "extensions:") {
+			t.Error("config still contains 'extensions:' key")
+		}
+
+		if result.ActiveCount != 1 {
+			t.Errorf("ActiveCount = %d, want 1", result.ActiveCount)
+		}
+		if !result.ConfigMigrated {
+			t.Error("ConfigMigrated = false, want true")
+		}
+
+		// Verify bean was migrated with conversions
+		content := readFile(t, filepath.Join(dir, ".issues", "beans", "bup-xxxx--test.md"))
+		if !strings.Contains(content, "status: ready") {
+			t.Error("bean status not converted")
+		}
+		if !strings.Contains(content, "sync:") {
+			t.Error("bean extensions: not renamed to sync:")
 		}
 	})
 
