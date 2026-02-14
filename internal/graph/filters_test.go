@@ -7,43 +7,43 @@ import (
 	"github.com/toba/todo/internal/issue"
 )
 
-func TestFilterByHasExtension(t *testing.T) {
+func TestFilterByHasSync(t *testing.T) {
 	beans := []*issue.Issue{
-		{ID: "a", Extensions: map[string]map[string]any{"clickup": {"id": "1"}}},
-		{ID: "b", Extensions: map[string]map[string]any{"jira": {"key": "X"}}},
+		{ID: "a", Sync: map[string]map[string]any{"clickup": {"id": "1"}}},
+		{ID: "b", Sync: map[string]map[string]any{"jira": {"key": "X"}}},
 		{ID: "c"},
 	}
 
-	got := filterByHasExtension(beans, "clickup")
+	got := filterByHasSync(beans, "clickup")
 	if len(got) != 1 {
-		t.Fatalf("filterByHasExtension(clickup) count = %d, want 1", len(got))
+		t.Fatalf("filterByHasSync(clickup) count = %d, want 1", len(got))
 	}
 	if got[0].ID != "a" {
-		t.Errorf("filterByHasExtension(clickup)[0].ID = %q, want 'a'", got[0].ID)
+		t.Errorf("filterByHasSync(clickup)[0].ID = %q, want 'a'", got[0].ID)
 	}
 }
 
-func TestFilterByNoExtension(t *testing.T) {
+func TestFilterByNoSync(t *testing.T) {
 	beans := []*issue.Issue{
-		{ID: "a", Extensions: map[string]map[string]any{"clickup": {"id": "1"}}},
-		{ID: "b", Extensions: map[string]map[string]any{"jira": {"key": "X"}}},
+		{ID: "a", Sync: map[string]map[string]any{"clickup": {"id": "1"}}},
+		{ID: "b", Sync: map[string]map[string]any{"jira": {"key": "X"}}},
 		{ID: "c"},
 	}
 
-	got := filterByNoExtension(beans, "clickup")
+	got := filterByNoSync(beans, "clickup")
 	if len(got) != 2 {
-		t.Fatalf("filterByNoExtension(clickup) count = %d, want 2", len(got))
+		t.Fatalf("filterByNoSync(clickup) count = %d, want 2", len(got))
 	}
 	ids := map[string]bool{}
 	for _, b := range got {
 		ids[b.ID] = true
 	}
 	if !ids["b"] || !ids["c"] {
-		t.Errorf("filterByNoExtension(clickup) = %v, want b and c", ids)
+		t.Errorf("filterByNoSync(clickup) = %v, want b and c", ids)
 	}
 }
 
-func TestFilterByExtensionStale(t *testing.T) {
+func TestFilterBySyncStale(t *testing.T) {
 	now := time.Now().UTC()
 	earlier := now.Add(-1 * time.Hour)
 	later := now.Add(1 * time.Hour)
@@ -53,7 +53,7 @@ func TestFilterByExtensionStale(t *testing.T) {
 		{
 			ID:        "stale",
 			UpdatedAt: &now,
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"synced_at": earlier.Format(time.RFC3339)},
 			},
 		},
@@ -61,20 +61,20 @@ func TestFilterByExtensionStale(t *testing.T) {
 		{
 			ID:        "fresh",
 			UpdatedAt: &now,
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"synced_at": later.Format(time.RFC3339)},
 			},
 		},
-		// No extension data (treated as stale)
+		// No sync data (treated as stale)
 		{
 			ID:        "no-ext",
 			UpdatedAt: &now,
 		},
-		// Has extension but no synced_at (treated as stale)
+		// Has sync but no synced_at (treated as stale)
 		{
 			ID:        "no-synced",
 			UpdatedAt: &now,
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"task_id": "abc"},
 			},
 		},
@@ -82,17 +82,17 @@ func TestFilterByExtensionStale(t *testing.T) {
 		{
 			ID: "no-updated",
 		},
-		// Has different extension (stale for clickup since no clickup data)
+		// Has different sync (stale for clickup since no clickup data)
 		{
 			ID:        "other-ext",
 			UpdatedAt: &now,
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"jira": {"synced_at": later.Format(time.RFC3339)},
 			},
 		},
 	}
 
-	got := filterByExtensionStale(beans, "clickup")
+	got := filterBySyncStale(beans, "clickup")
 	ids := map[string]bool{}
 	for _, b := range got {
 		ids[b.ID] = true

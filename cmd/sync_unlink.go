@@ -15,7 +15,7 @@ var syncUnlinkJSON bool
 var syncUnlinkCmd = &cobra.Command{
 	Use:   "unlink <issue-id>",
 	Short: "Remove the link between an issue and its external task",
-	Long: `Removes the sync metadata from an issue's extension data,
+	Long: `Removes the sync metadata from an issue's sync data,
 unlinking it from its associated external task.
 
 Note: This does not delete or modify the external task itself.`,
@@ -25,7 +25,7 @@ Note: This does not delete or modify the external task itself.`,
 		ctx := context.Background()
 
 		// Detect integration
-		integ, err := integration.Detect(cfg.Extensions, store)
+		integ, err := integration.Detect(cfg.Sync, store)
 		if err != nil {
 			return fmt.Errorf("detecting integration: %w", err)
 		}

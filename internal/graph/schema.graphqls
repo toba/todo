@@ -57,14 +57,14 @@ type Mutation {
   removeBlockedBy(id: ID!, targetId: ID!, ifMatch: String): Issue!
 
   """
-  Set extension data for a named extension (full replacement of extension entry)
+  Set sync data for a named integration (full replacement of sync entry)
   """
-  setExtensionData(id: ID!, name: String!, data: Map!, ifMatch: String): Issue!
+  setSyncData(id: ID!, name: String!, data: Map!, ifMatch: String): Issue!
 
   """
-  Remove extension data for a named extension
+  Remove sync data for a named integration
   """
-  removeExtensionData(id: ID!, name: String!, ifMatch: String): Issue!
+  removeSyncData(id: ID!, name: String!, ifMatch: String): Issue!
 }
 
 """
@@ -192,8 +192,8 @@ type Issue {
   "Content hash for optimistic concurrency control"
   etag: String!
 
-  "Extension metadata (keyed by extension name)"
-  extensions: [ExtensionEntry!]!
+  "Sync integration metadata (keyed by integration name)"
+  sync: [SyncEntry!]!
 
   # Direct link fields
   "Parent issue ID (optional, type-restricted)"
@@ -215,12 +215,12 @@ type Issue {
 }
 
 """
-Extension metadata entry for a single extension
+Sync metadata entry for a single integration
 """
-type ExtensionEntry {
-  "Extension name (e.g., 'clickup', 'jira')"
+type SyncEntry {
+  "Integration name (e.g., 'clickup', 'github')"
   name: String!
-  "Extension-specific data (arbitrary key-value pairs)"
+  "Integration-specific data (arbitrary key-value pairs)"
   data: Map!
 }
 
@@ -280,12 +280,12 @@ input IssueFilter {
   noBlocking: Boolean
   "Exclude issues that have explicit blocked-by entries"
   noBlockedBy: Boolean
-  "Include only issues with extension data for this extension name"
-  hasExtension: String
-  "Include only issues without extension data for this extension name"
-  noExtension: String
-  "Include only issues where updatedAt > extension's synced_at (stale sync detection)"
-  extensionStale: String
+  "Include only issues with sync data for this integration name"
+  hasSync: String
+  "Include only issues without sync data for this integration name"
+  noSync: String
+  "Include only issues where updatedAt > integration's synced_at (stale sync detection)"
+  syncStale: String
   "Include only issues updated at or after this timestamp"
   changedSince: Time
 }

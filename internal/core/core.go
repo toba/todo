@@ -372,11 +372,11 @@ func (c *Core) Update(b *issue.Issue, ifMatch *string) error {
 	return nil
 }
 
-// SaveExtensionOnly persists an issue whose only changes are to extension metadata.
+// SaveSyncOnly persists an issue whose only changes are to sync metadata.
 // Unlike Update, it does NOT bump updated_at, so that consumers comparing
 // updated_at against a sync timestamp are not tricked into thinking
 // the issue's content has changed.
-func (c *Core) SaveExtensionOnly(b *issue.Issue, ifMatch *string) error {
+func (c *Core) SaveSyncOnly(b *issue.Issue, ifMatch *string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

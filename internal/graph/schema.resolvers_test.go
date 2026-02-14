@@ -1860,30 +1860,30 @@ func TestUpdateIssueWithBodyMod(t *testing.T) {
 	})
 }
 
-func TestExtensionsResolver(t *testing.T) {
+func TestSyncResolver(t *testing.T) {
 	resolver, c := setupTestResolver(t)
 	ctx := context.Background()
 
-	t.Run("empty extensions returns empty list", func(t *testing.T) {
-		b := &issue.Issue{ID: "ext-empty", Title: "No Extensions", Status: "todo"}
+	t.Run("empty sync returns empty list", func(t *testing.T) {
+		b := &issue.Issue{ID: "ext-empty", Title: "No Sync", Status: "todo"}
 		c.Create(b)
 
 		br := resolver.Issue()
-		got, err := br.Extensions(ctx, b)
+		got, err := br.Sync(ctx, b)
 		if err != nil {
-			t.Fatalf("Extensions() error = %v", err)
+			t.Fatalf("Sync() error = %v", err)
 		}
 		if len(got) != 0 {
-			t.Errorf("Extensions() count = %d, want 0", len(got))
+			t.Errorf("Sync() count = %d, want 0", len(got))
 		}
 	})
 
 	t.Run("returns sorted entries", func(t *testing.T) {
 		b := &issue.Issue{
 			ID:     "ext-sorted",
-			Title:  "With Extensions",
+			Title:  "With Sync",
 			Status: "todo",
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"jira":    {"issue_key": "PROJ-123"},
 				"clickup": {"task_id": "abc"},
 			},
@@ -1891,54 +1891,54 @@ func TestExtensionsResolver(t *testing.T) {
 		c.Create(b)
 
 		br := resolver.Issue()
-		got, err := br.Extensions(ctx, b)
+		got, err := br.Sync(ctx, b)
 		if err != nil {
-			t.Fatalf("Extensions() error = %v", err)
+			t.Fatalf("Sync() error = %v", err)
 		}
 		if len(got) != 2 {
-			t.Fatalf("Extensions() count = %d, want 2", len(got))
+			t.Fatalf("Sync() count = %d, want 2", len(got))
 		}
 		// Should be sorted alphabetically
 		if got[0].Name != "clickup" {
-			t.Errorf("Extensions()[0].Name = %q, want 'clickup'", got[0].Name)
+			t.Errorf("Sync()[0].Name = %q, want 'clickup'", got[0].Name)
 		}
 		if got[1].Name != "jira" {
-			t.Errorf("Extensions()[1].Name = %q, want 'jira'", got[1].Name)
+			t.Errorf("Sync()[1].Name = %q, want 'jira'", got[1].Name)
 		}
 		if got[0].Data["task_id"] != "abc" {
-			t.Errorf("Extensions()[0].Data = %v, want task_id=abc", got[0].Data)
+			t.Errorf("Sync()[0].Data = %v, want task_id=abc", got[0].Data)
 		}
 	})
 }
 
-func TestMutationSetExtensionData(t *testing.T) {
+func TestMutationSetSyncData(t *testing.T) {
 	resolver, c := setupTestResolver(t)
 	ctx := context.Background()
 
-	t.Run("set extension data", func(t *testing.T) {
+	t.Run("set sync data", func(t *testing.T) {
 		b := &issue.Issue{ID: "set-ext-1", Title: "Test", Status: "todo"}
 		c.Create(b)
 
 		mr := resolver.Mutation()
 		data := map[string]any{"task_id": "abc123", "synced_at": "2026-01-01T00:00:00Z"}
-		got, err := mr.SetExtensionData(ctx, "set-ext-1", "clickup", data, nil)
+		got, err := mr.SetSyncData(ctx, "set-ext-1", "clickup", data, nil)
 		if err != nil {
-			t.Fatalf("SetExtensionData() error = %v", err)
+			t.Fatalf("SetSyncData() error = %v", err)
 		}
-		if !got.HasExtension("clickup") {
-			t.Error("SetExtensionData() didn't set extension data")
+		if !got.HasSync("clickup") {
+			t.Error("SetSyncData() didn't set sync data")
 		}
-		if got.Extensions["clickup"]["task_id"] != "abc123" {
-			t.Errorf("Extensions[clickup][task_id] = %v, want abc123", got.Extensions["clickup"]["task_id"])
+		if got.Sync["clickup"]["task_id"] != "abc123" {
+			t.Errorf("Sync[clickup][task_id] = %v, want abc123", got.Sync["clickup"]["task_id"])
 		}
 	})
 
-	t.Run("replace existing extension data", func(t *testing.T) {
+	t.Run("replace existing sync data", func(t *testing.T) {
 		b := &issue.Issue{
 			ID:     "set-ext-2",
 			Title:  "Test",
 			Status: "todo",
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"task_id": "old"},
 			},
 		}
@@ -1946,15 +1946,15 @@ func TestMutationSetExtensionData(t *testing.T) {
 
 		mr := resolver.Mutation()
 		data := map[string]any{"task_id": "new", "extra": "field"}
-		got, err := mr.SetExtensionData(ctx, "set-ext-2", "clickup", data, nil)
+		got, err := mr.SetSyncData(ctx, "set-ext-2", "clickup", data, nil)
 		if err != nil {
-			t.Fatalf("SetExtensionData() error = %v", err)
+			t.Fatalf("SetSyncData() error = %v", err)
 		}
-		if got.Extensions["clickup"]["task_id"] != "new" {
-			t.Errorf("Extensions[clickup][task_id] = %v, want new", got.Extensions["clickup"]["task_id"])
+		if got.Sync["clickup"]["task_id"] != "new" {
+			t.Errorf("Sync[clickup][task_id] = %v, want new", got.Sync["clickup"]["task_id"])
 		}
-		if got.Extensions["clickup"]["extra"] != "field" {
-			t.Errorf("Extensions[clickup][extra] = %v, want field", got.Extensions["clickup"]["extra"])
+		if got.Sync["clickup"]["extra"] != "field" {
+			t.Errorf("Sync[clickup][extra] = %v, want field", got.Sync["clickup"]["extra"])
 		}
 	})
 
@@ -1963,17 +1963,17 @@ func TestMutationSetExtensionData(t *testing.T) {
 		c.Create(b)
 
 		mr := resolver.Mutation()
-		_, err := mr.SetExtensionData(ctx, "set-ext-3", "", map[string]any{"key": "val"}, nil)
+		_, err := mr.SetSyncData(ctx, "set-ext-3", "", map[string]any{"key": "val"}, nil)
 		if err == nil {
-			t.Error("SetExtensionData() should fail with empty name")
+			t.Error("SetSyncData() should fail with empty name")
 		}
 	})
 
 	t.Run("nonexistent bean fails", func(t *testing.T) {
 		mr := resolver.Mutation()
-		_, err := mr.SetExtensionData(ctx, "nonexistent", "clickup", map[string]any{"key": "val"}, nil)
+		_, err := mr.SetSyncData(ctx, "nonexistent", "clickup", map[string]any{"key": "val"}, nil)
 		if err == nil {
-			t.Error("SetExtensionData() should fail for nonexistent bean")
+			t.Error("SetSyncData() should fail for nonexistent bean")
 		}
 	})
 
@@ -1983,9 +1983,9 @@ func TestMutationSetExtensionData(t *testing.T) {
 
 		mr := resolver.Mutation()
 		data := map[string]any{"task_id": "persist-test"}
-		_, err := mr.SetExtensionData(ctx, "set-ext-disk", "clickup", data, nil)
+		_, err := mr.SetSyncData(ctx, "set-ext-disk", "clickup", data, nil)
 		if err != nil {
-			t.Fatalf("SetExtensionData() error = %v", err)
+			t.Fatalf("SetSyncData() error = %v", err)
 		}
 
 		// Re-read from disk
@@ -1993,22 +1993,22 @@ func TestMutationSetExtensionData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Get() error = %v", err)
 		}
-		if !reloaded.HasExtension("clickup") {
-			t.Error("Extension data not persisted to disk")
+		if !reloaded.HasSync("clickup") {
+			t.Error("Sync data not persisted to disk")
 		}
 	})
 }
 
-func TestMutationRemoveExtensionData(t *testing.T) {
+func TestMutationRemoveSyncData(t *testing.T) {
 	resolver, c := setupTestResolver(t)
 	ctx := context.Background()
 
-	t.Run("remove existing extension data", func(t *testing.T) {
+	t.Run("remove existing sync data", func(t *testing.T) {
 		b := &issue.Issue{
 			ID:     "rm-ext-1",
 			Title:  "Test",
 			Status: "todo",
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"task_id": "abc"},
 				"jira":    {"issue_key": "PROJ-123"},
 			},
@@ -2016,37 +2016,37 @@ func TestMutationRemoveExtensionData(t *testing.T) {
 		c.Create(b)
 
 		mr := resolver.Mutation()
-		got, err := mr.RemoveExtensionData(ctx, "rm-ext-1", "clickup", nil)
+		got, err := mr.RemoveSyncData(ctx, "rm-ext-1", "clickup", nil)
 		if err != nil {
-			t.Fatalf("RemoveExtensionData() error = %v", err)
+			t.Fatalf("RemoveSyncData() error = %v", err)
 		}
-		if got.HasExtension("clickup") {
-			t.Error("RemoveExtensionData() didn't remove clickup data")
+		if got.HasSync("clickup") {
+			t.Error("RemoveSyncData() didn't remove clickup data")
 		}
-		if !got.HasExtension("jira") {
-			t.Error("RemoveExtensionData() removed wrong extension")
+		if !got.HasSync("jira") {
+			t.Error("RemoveSyncData() removed wrong sync entry")
 		}
 	})
 
-	t.Run("remove nonexistent extension is no-op", func(t *testing.T) {
+	t.Run("remove nonexistent sync is no-op", func(t *testing.T) {
 		b := &issue.Issue{ID: "rm-ext-2", Title: "Test", Status: "todo"}
 		c.Create(b)
 
 		mr := resolver.Mutation()
-		got, err := mr.RemoveExtensionData(ctx, "rm-ext-2", "clickup", nil)
+		got, err := mr.RemoveSyncData(ctx, "rm-ext-2", "clickup", nil)
 		if err != nil {
-			t.Fatalf("RemoveExtensionData() error = %v", err)
+			t.Fatalf("RemoveSyncData() error = %v", err)
 		}
-		if got.Extensions != nil {
-			t.Errorf("Extensions should be nil, got %v", got.Extensions)
+		if got.Sync != nil {
+			t.Errorf("Sync should be nil, got %v", got.Sync)
 		}
 	})
 
 	t.Run("nonexistent bean fails", func(t *testing.T) {
 		mr := resolver.Mutation()
-		_, err := mr.RemoveExtensionData(ctx, "nonexistent", "clickup", nil)
+		_, err := mr.RemoveSyncData(ctx, "nonexistent", "clickup", nil)
 		if err == nil {
-			t.Error("RemoveExtensionData() should fail for nonexistent bean")
+			t.Error("RemoveSyncData() should fail for nonexistent bean")
 		}
 	})
 }
@@ -2497,7 +2497,7 @@ func TestUpdateIssueWithRelationships(t *testing.T) {
 	})
 }
 
-func TestQueryBeansWithExtensionFilters(t *testing.T) {
+func TestQueryBeansWithSyncFilters(t *testing.T) {
 	resolver, c := setupTestResolver(t)
 	ctx := context.Background()
 
@@ -2505,37 +2505,37 @@ func TestQueryBeansWithExtensionFilters(t *testing.T) {
 	earlier := now.Add(-1 * time.Hour)
 	later := now.Add(1 * time.Hour)
 
-	// Bean with clickup extension data, synced before updatedAt (stale)
+	// Bean with clickup sync data, synced before updatedAt (stale)
 	b1 := &issue.Issue{
 		ID:     "ext-filter-1",
 		Title:  "With ClickUp (stale)",
 		Status: "todo",
-		Extensions: map[string]map[string]any{
+		Sync: map[string]map[string]any{
 			"clickup": {"task_id": "abc", "synced_at": earlier.Format(time.RFC3339)},
 		},
 	}
-	// Bean with clickup extension data, synced after updatedAt (fresh)
+	// Bean with clickup sync data, synced after updatedAt (fresh)
 	b2 := &issue.Issue{
 		ID:     "ext-filter-2",
 		Title:  "With ClickUp (fresh)",
 		Status: "todo",
-		Extensions: map[string]map[string]any{
+		Sync: map[string]map[string]any{
 			"clickup": {"task_id": "def", "synced_at": later.Format(time.RFC3339)},
 		},
 	}
-	// Bean with jira extension data
+	// Bean with jira sync data
 	b3 := &issue.Issue{
 		ID:     "ext-filter-3",
 		Title:  "With Jira",
 		Status: "todo",
-		Extensions: map[string]map[string]any{
+		Sync: map[string]map[string]any{
 			"jira": {"issue_key": "PROJ-123"},
 		},
 	}
-	// Bean with no extension data
+	// Bean with no sync data
 	b4 := &issue.Issue{
 		ID:     "ext-filter-4",
-		Title:  "No Extensions",
+		Title:  "No Sync",
 		Status: "todo",
 	}
 
@@ -2547,27 +2547,27 @@ func TestQueryBeansWithExtensionFilters(t *testing.T) {
 
 	qr := resolver.Query()
 
-	t.Run("hasExtension filter", func(t *testing.T) {
+	t.Run("hasSync filter", func(t *testing.T) {
 		name := "clickup"
-		filter := &model.IssueFilter{HasExtension: &name}
+		filter := &model.IssueFilter{HasSync: &name}
 		got, err := qr.Issues(ctx, filter)
 		if err != nil {
 			t.Fatalf("Beans() error = %v", err)
 		}
 		if len(got) != 2 {
-			t.Errorf("Beans(hasExtension=clickup) count = %d, want 2", len(got))
+			t.Errorf("Beans(hasSync=clickup) count = %d, want 2", len(got))
 		}
 	})
 
-	t.Run("noExtension filter", func(t *testing.T) {
+	t.Run("noSync filter", func(t *testing.T) {
 		name := "clickup"
-		filter := &model.IssueFilter{NoExtension: &name}
+		filter := &model.IssueFilter{NoSync: &name}
 		got, err := qr.Issues(ctx, filter)
 		if err != nil {
 			t.Fatalf("Beans() error = %v", err)
 		}
 		if len(got) != 2 {
-			t.Errorf("Beans(noExtension=clickup) count = %d, want 2", len(got))
+			t.Errorf("Beans(noSync=clickup) count = %d, want 2", len(got))
 		}
 		ids := make(map[string]bool)
 		for _, b := range got {
@@ -2578,14 +2578,14 @@ func TestQueryBeansWithExtensionFilters(t *testing.T) {
 		}
 	})
 
-	t.Run("extensionStale filter", func(t *testing.T) {
+	t.Run("syncStale filter", func(t *testing.T) {
 		name := "clickup"
-		filter := &model.IssueFilter{ExtensionStale: &name}
+		filter := &model.IssueFilter{SyncStale: &name}
 		got, err := qr.Issues(ctx, filter)
 		if err != nil {
 			t.Fatalf("Beans() error = %v", err)
 		}
-		// b1 is stale (updatedAt > synced_at), b3 is stale (no clickup data), b4 is stale (no extension data)
+		// b1 is stale (updatedAt > synced_at), b3 is stale (no clickup data), b4 is stale (no sync data)
 		// b2 is fresh (synced_at > updatedAt)
 		ids := make(map[string]bool)
 		for _, b := range got {

@@ -51,8 +51,8 @@ func (cu *clickUpIntegration) Sync(ctx context.Context, issues []*issue.Issue, o
 
 	client := clickup.NewClient(token)
 
-	// Create sync state provider from issue extension metadata
-	syncProvider := clickup.NewExtensionSyncProvider(cu.core, issues)
+	// Create sync state provider from issue sync metadata
+	syncProvider := clickup.NewSyncStateStore(cu.core, issues)
 
 	// Filter issues based on sync filter config
 	filtered := clickup.FilterIssuesForSync(issues, cu.cfg.SyncFilter)
@@ -94,7 +94,7 @@ func (cu *clickUpIntegration) Sync(ctx context.Context, issues []*issue.Issue, o
 		results[i] = convertClickUpResult(r)
 	}
 
-	// Flush sync state to issue extension metadata
+	// Flush sync state to issue sync metadata
 	if !opts.DryRun {
 		if flushErr := syncProvider.Flush(); flushErr != nil {
 			return results, fmt.Errorf("saving sync state: %w", flushErr)
@@ -123,7 +123,7 @@ func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) 
 	}
 
 	// Check if already linked to this task
-	existingTaskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
+	existingTaskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
 	if existingTaskID == taskID {
 		return &LinkResult{Action: "already_linked", ExternalID: taskID}, nil
 	}
@@ -140,11 +140,11 @@ func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) 
 
 	// Set extension data on the issue
 	data := map[string]any{
-		clickup.ExtKeyTaskID:   taskID,
-		clickup.ExtKeySyncedAt: time.Now().UTC().Format(time.RFC3339),
+		clickup.SyncKeyTaskID:   taskID,
+		clickup.SyncKeySyncedAt: time.Now().UTC().Format(time.RFC3339),
 	}
-	b.SetExtension(clickup.ExtensionName, data)
-	if err := cu.core.SaveExtensionOnly(b, nil); err != nil {
+	b.SetSync(clickup.SyncName, data)
+	if err := cu.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
 	return &LinkResult{Action: "linked", ExternalID: taskID}, nil
@@ -157,13 +157,13 @@ func (cu *clickUpIntegration) Unlink(ctx context.Context, issueID string) (*Unli
 	}
 
 	// Check if linked
-	taskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
+	taskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
 	if taskID == "" {
 		return &UnlinkResult{Action: "not_linked"}, nil
 	}
 
-	b.RemoveExtension(clickup.ExtensionName)
-	if err := cu.core.SaveExtensionOnly(b, nil); err != nil {
+	b.RemoveSync(clickup.SyncName)
+	if err := cu.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
 	return &UnlinkResult{Action: "unlinked", ExternalID: taskID}, nil
@@ -469,14 +469,14 @@ func (cu *clickUpIntegration) checkSyncState(ctx context.Context, opts CheckOpti
 		Checks: make([]CheckResult, 0),
 	}
 
-	// Load all issues and check extension metadata
+	// Load all issues and check sync metadata
 	allIssues := cu.core.All()
 
 	// Count linked issues
 	linkedCount := 0
 	var linkedIssues []*issue.Issue
 	for _, b := range allIssues {
-		if clickup.GetExtensionString(b, clickup.ExtKeyTaskID) != "" {
+		if clickup.GetSyncString(b, clickup.SyncKeyTaskID) != "" {
 			linkedCount++
 			linkedIssues = append(linkedIssues, b)
 		}
@@ -496,7 +496,7 @@ func (cu *clickUpIntegration) checkSyncState(ctx context.Context, opts CheckOpti
 	staleThreshold := time.Now().AddDate(0, 0, -7)
 	staleCount := 0
 	for _, b := range linkedIssues {
-		syncedAt := clickup.GetExtensionTime(b, clickup.ExtKeySyncedAt)
+		syncedAt := clickup.GetSyncTime(b, clickup.SyncKeySyncedAt)
 		if syncedAt != nil && syncedAt.Before(staleThreshold) {
 			staleCount++
 		}
@@ -518,7 +518,7 @@ func (cu *clickUpIntegration) checkSyncState(ctx context.Context, opts CheckOpti
 			missingCount := 0
 
 			for _, b := range linkedIssues {
-				taskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
+				taskID := clickup.GetSyncString(b, clickup.SyncKeyTaskID)
 				_, err := client.GetTask(ctx, taskID)
 				if err != nil {
 					missingCount++

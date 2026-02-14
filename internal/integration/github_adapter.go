@@ -51,8 +51,8 @@ func (gh *gitHubIntegration) Sync(ctx context.Context, issues []*issue.Issue, op
 
 	client := github.NewClient(token, gh.cfg.Owner, gh.cfg.Repo)
 
-	// Create sync state provider from issue extension metadata
-	syncProvider := github.NewExtensionSyncProvider(gh.core, issues)
+	// Create sync state provider from issue sync metadata
+	syncProvider := github.NewSyncStateStore(gh.core, issues)
 
 	// Pre-filter to issues that actually need syncing
 	toSync := github.FilterIssuesNeedingSync(issues, syncProvider, opts.Force)
@@ -90,7 +90,7 @@ func (gh *gitHubIntegration) Sync(ctx context.Context, issues []*issue.Issue, op
 		results[i] = convertGitHubResult(r)
 	}
 
-	// Flush sync state to issue extension metadata
+	// Flush sync state to issue sync metadata
 	if !opts.DryRun {
 		if flushErr := syncProvider.Flush(); flushErr != nil {
 			return results, fmt.Errorf("saving sync state: %w", flushErr)
@@ -119,7 +119,7 @@ func (gh *gitHubIntegration) Link(ctx context.Context, issueID, externalID strin
 	}
 
 	// Check if already linked to this issue number
-	existingNumber := github.GetExtensionString(b, github.ExtKeyIssueNumber)
+	existingNumber := github.GetSyncString(b, github.SyncKeyIssueNumber)
 	if existingNumber == externalID {
 		return &LinkResult{Action: "already_linked", ExternalID: externalID}, nil
 	}
@@ -138,11 +138,11 @@ func (gh *gitHubIntegration) Link(ctx context.Context, issueID, externalID strin
 
 	// Set extension data on the issue
 	data := map[string]any{
-		github.ExtKeyIssueNumber: externalID,
-		github.ExtKeySyncedAt:    time.Now().UTC().Format(time.RFC3339),
+		github.SyncKeyIssueNumber: externalID,
+		github.SyncKeySyncedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
-	b.SetExtension(github.ExtensionName, data)
-	if err := gh.core.SaveExtensionOnly(b, nil); err != nil {
+	b.SetSync(github.SyncName, data)
+	if err := gh.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
 	return &LinkResult{Action: "linked", ExternalID: externalID}, nil
@@ -155,13 +155,13 @@ func (gh *gitHubIntegration) Unlink(ctx context.Context, issueID string) (*Unlin
 	}
 
 	// Check if linked
-	issueNumber := github.GetExtensionString(b, github.ExtKeyIssueNumber)
+	issueNumber := github.GetSyncString(b, github.SyncKeyIssueNumber)
 	if issueNumber == "" {
 		return &UnlinkResult{Action: "not_linked"}, nil
 	}
 
-	b.RemoveExtension(github.ExtensionName)
-	if err := gh.core.SaveExtensionOnly(b, nil); err != nil {
+	b.RemoveSync(github.SyncName)
+	if err := gh.core.SaveSyncOnly(b, nil); err != nil {
 		return nil, err
 	}
 	return &UnlinkResult{Action: "unlinked", ExternalID: issueNumber}, nil
@@ -306,14 +306,14 @@ func (gh *gitHubIntegration) checkSyncState(ctx context.Context, opts CheckOptio
 		Checks: make([]CheckResult, 0),
 	}
 
-	// Load all issues and check extension metadata
+	// Load all issues and check sync metadata
 	allIssues := gh.core.All()
 
 	// Count linked issues
 	linkedCount := 0
 	var linkedIssues []*issue.Issue
 	for _, b := range allIssues {
-		if github.GetExtensionString(b, github.ExtKeyIssueNumber) != "" {
+		if github.GetSyncString(b, github.SyncKeyIssueNumber) != "" {
 			linkedCount++
 			linkedIssues = append(linkedIssues, b)
 		}
@@ -333,7 +333,7 @@ func (gh *gitHubIntegration) checkSyncState(ctx context.Context, opts CheckOptio
 	staleThreshold := time.Now().AddDate(0, 0, -7)
 	staleCount := 0
 	for _, b := range linkedIssues {
-		syncedAt := github.GetExtensionTime(b, github.ExtKeySyncedAt)
+		syncedAt := github.GetSyncTime(b, github.SyncKeySyncedAt)
 		if syncedAt != nil && syncedAt.Before(staleThreshold) {
 			staleCount++
 		}
@@ -355,7 +355,7 @@ func (gh *gitHubIntegration) checkSyncState(ctx context.Context, opts CheckOptio
 			missingCount := 0
 
 			for _, b := range linkedIssues {
-				numberStr := github.GetExtensionString(b, github.ExtKeyIssueNumber)
+				numberStr := github.GetSyncString(b, github.SyncKeyIssueNumber)
 				var number int
 				if _, err := fmt.Sscanf(numberStr, "%d", &number); err != nil {
 					continue

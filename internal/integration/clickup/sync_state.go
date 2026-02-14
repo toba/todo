@@ -30,25 +30,25 @@ type pendingOp struct {
 	isSet   bool // true = set, false = remove
 }
 
-// ExtensionSyncProvider implements SyncStateProvider using issue extension metadata.
-// Instead of batch GraphQL mutations via subprocess, it writes directly via core.SaveExtensionOnly().
-type ExtensionSyncProvider struct {
+// SyncStateStore implements SyncStateProvider using issue sync metadata.
+// Instead of batch GraphQL mutations via subprocess, it writes directly via core.SaveSyncOnly().
+type SyncStateStore struct {
 	store *core.Core
 	mu    sync.RWMutex
 	cache map[string]*extensionCache
 	ops   []pendingOp
 }
 
-// NewExtensionSyncProvider creates a provider pre-populated from an issue list.
-func NewExtensionSyncProvider(store *core.Core, issues []*issue.Issue) *ExtensionSyncProvider {
-	p := &ExtensionSyncProvider{
+// NewSyncStateStore creates a provider pre-populated from an issue list.
+func NewSyncStateStore(store *core.Core, issues []*issue.Issue) *SyncStateStore {
+	p := &SyncStateStore{
 		store: store,
 		cache: make(map[string]*extensionCache, len(issues)),
 	}
 
 	for _, b := range issues {
-		taskID := GetExtensionString(b, ExtKeyTaskID)
-		syncedAt := GetExtensionTime(b, ExtKeySyncedAt)
+		taskID := GetSyncString(b, SyncKeyTaskID)
+		syncedAt := GetSyncTime(b, SyncKeySyncedAt)
 
 		if taskID != "" || syncedAt != nil {
 			p.cache[b.ID] = &extensionCache{
@@ -61,7 +61,7 @@ func NewExtensionSyncProvider(store *core.Core, issues []*issue.Issue) *Extensio
 	return p
 }
 
-func (p *ExtensionSyncProvider) GetTaskID(issueID string) *string {
+func (p *SyncStateStore) GetTaskID(issueID string) *string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
@@ -72,7 +72,7 @@ func (p *ExtensionSyncProvider) GetTaskID(issueID string) *string {
 	return &c.taskID
 }
 
-func (p *ExtensionSyncProvider) GetSyncedAt(issueID string) *time.Time {
+func (p *SyncStateStore) GetSyncedAt(issueID string) *time.Time {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
@@ -83,7 +83,7 @@ func (p *ExtensionSyncProvider) GetSyncedAt(issueID string) *time.Time {
 	return c.syncedAt
 }
 
-func (p *ExtensionSyncProvider) SetTaskID(issueID, taskID string) {
+func (p *SyncStateStore) SetTaskID(issueID, taskID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -94,7 +94,7 @@ func (p *ExtensionSyncProvider) SetTaskID(issueID, taskID string) {
 	p.ops = append(p.ops, pendingOp{issueID: issueID, isSet: true})
 }
 
-func (p *ExtensionSyncProvider) SetSyncedAt(issueID string, t time.Time) {
+func (p *SyncStateStore) SetSyncedAt(issueID string, t time.Time) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (p *ExtensionSyncProvider) SetSyncedAt(issueID string, t time.Time) {
 	p.ops = append(p.ops, pendingOp{issueID: issueID, isSet: true})
 }
 
-func (p *ExtensionSyncProvider) Clear(issueID string) {
+func (p *SyncStateStore) Clear(issueID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -114,8 +114,8 @@ func (p *ExtensionSyncProvider) Clear(issueID string) {
 	p.ops = append(p.ops, pendingOp{issueID: issueID, isSet: false})
 }
 
-// Flush writes all pending operations directly via core.SaveExtensionOnly().
-func (p *ExtensionSyncProvider) Flush() error {
+// Flush writes all pending operations directly via core.SaveSyncOnly().
+func (p *SyncStateStore) Flush() error {
 	p.mu.Lock()
 	ops := p.ops
 	p.ops = nil
@@ -150,18 +150,18 @@ func (p *ExtensionSyncProvider) Flush() error {
 			}
 
 			data := map[string]any{
-				ExtKeyTaskID: c.taskID,
+				SyncKeyTaskID: c.taskID,
 			}
 			if c.syncedAt != nil {
-				data[ExtKeySyncedAt] = c.syncedAt.Format(time.RFC3339)
+				data[SyncKeySyncedAt] = c.syncedAt.Format(time.RFC3339)
 			}
 
-			b.SetExtension(ExtensionName, data)
+			b.SetSync(SyncName, data)
 		} else {
-			b.RemoveExtension(ExtensionName)
+			b.RemoveSync(SyncName)
 		}
 
-		if err := p.store.SaveExtensionOnly(b, nil); err != nil {
+		if err := p.store.SaveSyncOnly(b, nil); err != nil {
 			return err
 		}
 	}
@@ -169,12 +169,12 @@ func (p *ExtensionSyncProvider) Flush() error {
 	return nil
 }
 
-// GetExtensionString returns a string value from an issue's clickup extension data.
-func GetExtensionString(b *issue.Issue, key string) string {
-	if b.Extensions == nil {
+// GetSyncString returns a string value from an issue's clickup sync data.
+func GetSyncString(b *issue.Issue, key string) string {
+	if b.Sync == nil {
 		return ""
 	}
-	extData, ok := b.Extensions[ExtensionName]
+	extData, ok := b.Sync[SyncName]
 	if !ok {
 		return ""
 	}
@@ -186,10 +186,10 @@ func GetExtensionString(b *issue.Issue, key string) string {
 	return s
 }
 
-// GetExtensionTime returns a time value from an issue's clickup extension data.
+// GetSyncTime returns a time value from an issue's clickup sync data.
 // Expects the value to be an RFC3339 string. Returns nil if not found or unparseable.
-func GetExtensionTime(b *issue.Issue, key string) *time.Time {
-	s := GetExtensionString(b, key)
+func GetSyncTime(b *issue.Issue, key string) *time.Time {
+	s := GetSyncString(b, key)
 	if s == "" {
 		return nil
 	}

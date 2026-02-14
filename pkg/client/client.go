@@ -8,7 +8,7 @@
 // Usage:
 //
 //	c := client.New(client.WithDataPath("/path/to/.todo"))
-//	err := c.SetExtensionData("todo-abc", "myext", map[string]any{"key": "val"})
+//	err := c.SetSyncData("todo-abc", "myext", map[string]any{"key": "val"})
 package client
 
 import (
@@ -36,12 +36,12 @@ type Issue struct {
 	Parent     string                    `json:"parent,omitempty"`
 	Blocking   []string                  `json:"blocking,omitempty"`
 	BlockedBy  []string                  `json:"blocked_by,omitempty"`
-	Extensions map[string]map[string]any `json:"extensions,omitempty"`
+	Sync map[string]map[string]any `json:"sync,omitempty"`
 	ETag       string                    `json:"etag"`
 }
 
-// ExtensionDataOp represents a single set-extension-data operation for batch updates.
-type ExtensionDataOp struct {
+// SyncDataOp represents a single set-sync-data operation for batch updates.
+type SyncDataOp struct {
 	ID   string
 	Name string
 	Data map[string]any
@@ -117,11 +117,11 @@ func (c *Client) Query(query string, variables map[string]any) ([]byte, error) {
 	return out, nil
 }
 
-// SetExtensionData sets extension data for an issue. The data map fully
-// replaces any existing extension data for the given name.
-func (c *Client) SetExtensionData(id, name string, data map[string]any) error {
+// SetSyncData sets sync data for an issue. The data map fully
+// replaces any existing sync data for the given name.
+func (c *Client) SetSyncData(id, name string, data map[string]any) error {
 	const query = `mutation ($id: ID!, $name: String!, $data: Map!) {
-  setExtensionData(id: $id, name: $name, data: $data) { id }
+  setSyncData(id: $id, name: $name, data: $data) { id }
 }`
 	_, err := c.Query(query, map[string]any{
 		"id":   id,
@@ -131,9 +131,9 @@ func (c *Client) SetExtensionData(id, name string, data map[string]any) error {
 	return err
 }
 
-// SetExtensionDataBatch sets extension data for multiple issues in a single
+// SetSyncDataBatch sets sync data for multiple issues in a single
 // GraphQL request using aliased mutations and numbered variables.
-func (c *Client) SetExtensionDataBatch(ops []ExtensionDataOp) error {
+func (c *Client) SetSyncDataBatch(ops []SyncDataOp) error {
 	if len(ops) == 0 {
 		return nil
 	}
@@ -149,7 +149,7 @@ func (c *Client) SetExtensionDataBatch(ops []ExtensionDataOp) error {
 			fmt.Sprintf("$data%d: Map!", i),
 		)
 		fields = append(fields, fmt.Sprintf(
-			"op%d: setExtensionData(id: $id%d, name: $name%d, data: $data%d) { id }",
+			"op%d: setSyncData(id: $id%d, name: $name%d, data: $data%d) { id }",
 			i, i, i, i,
 		))
 		vars[fmt.Sprintf("id%d", i)] = op.ID
@@ -166,10 +166,10 @@ func (c *Client) SetExtensionDataBatch(ops []ExtensionDataOp) error {
 	return err
 }
 
-// RemoveExtensionData removes extension data for a named extension from an issue.
-func (c *Client) RemoveExtensionData(id, name string) error {
+// RemoveSyncData removes sync data for a named extension from an issue.
+func (c *Client) RemoveSyncData(id, name string) error {
 	const query = `mutation ($id: ID!, $name: String!) {
-  removeExtensionData(id: $id, name: $name) { id }
+  removeSyncData(id: $id, name: $name) { id }
 }`
 	_, err := c.Query(query, map[string]any{
 		"id":   id,

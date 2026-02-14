@@ -99,7 +99,7 @@ type PriorityConfig struct {
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
 	Issues     IssuesConfig              `yaml:"issues"`
-	Extensions map[string]map[string]any `yaml:"extensions,omitempty"`
+	Sync map[string]map[string]any `yaml:"sync,omitempty"`
 
 	// configDir is the directory containing the config file (not serialized)
 	// Used to resolve relative paths
@@ -413,13 +413,13 @@ func (c *Config) IsValidPriority(priority string) bool {
 	return false
 }
 
-// ExtensionConfig returns the configuration data for a named extension,
-// or nil if the extension has no configuration.
-func (c *Config) ExtensionConfig(name string) map[string]any {
-	if c.Extensions == nil {
+// SyncConfig returns the configuration data for a named sync integration,
+// or nil if the integration has no configuration.
+func (c *Config) SyncConfig(name string) map[string]any {
+	if c.Sync == nil {
 		return nil
 	}
-	return c.Extensions[name]
+	return c.Sync[name]
 }
 
 // PriorityList returns a comma-separated list of valid priorities.

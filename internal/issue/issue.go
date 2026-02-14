@@ -100,31 +100,31 @@ func (b *Issue) RemoveBlockedBy(id string) {
 	b.BlockedBy = slices.DeleteFunc(b.BlockedBy, func(s string) bool { return s == id })
 }
 
-// HasExtension returns true if the bean has extension data for the given name.
-func (b *Issue) HasExtension(name string) bool {
-	if b.Extensions == nil {
+// HasSync returns true if the bean has sync data for the given name.
+func (b *Issue) HasSync(name string) bool {
+	if b.Sync == nil {
 		return false
 	}
-	_, ok := b.Extensions[name]
+	_, ok := b.Sync[name]
 	return ok
 }
 
-// SetExtension sets the extension data for a name (full replacement).
-func (b *Issue) SetExtension(name string, data map[string]any) {
-	if b.Extensions == nil {
-		b.Extensions = make(map[string]map[string]any)
+// SetSync sets the sync data for a name (full replacement).
+func (b *Issue) SetSync(name string, data map[string]any) {
+	if b.Sync == nil {
+		b.Sync = make(map[string]map[string]any)
 	}
-	b.Extensions[name] = data
+	b.Sync[name] = data
 }
 
-// RemoveExtension removes the extension data for a name.
-func (b *Issue) RemoveExtension(name string) {
-	if b.Extensions == nil {
+// RemoveSync removes the sync data for a name.
+func (b *Issue) RemoveSync(name string) {
+	if b.Sync == nil {
 		return
 	}
-	delete(b.Extensions, name)
-	if len(b.Extensions) == 0 {
-		b.Extensions = nil
+	delete(b.Sync, name)
+	if len(b.Sync) == 0 {
+		b.Sync = nil
 	}
 }
 
@@ -225,8 +225,8 @@ type Issue struct {
 	// BlockedBy is a list of bean IDs that are blocking this bean.
 	BlockedBy []string `yaml:"blocked_by,omitempty" json:"blocked_by,omitempty"`
 
-	// Extensions holds extension-specific metadata keyed by extension name.
-	Extensions map[string]map[string]any `yaml:"extensions,omitempty" json:"extensions,omitempty"`
+	// Sync holds sync integration metadata keyed by integration name.
+	Sync map[string]map[string]any `yaml:"sync,omitempty" json:"sync,omitempty"`
 }
 
 // frontMatter is the subset of Issue that gets serialized to YAML front matter.
@@ -242,7 +242,7 @@ type frontMatter struct {
 	Parent     string                    `yaml:"parent,omitempty"`
 	Blocking   []string                  `yaml:"blocking,omitempty"`
 	BlockedBy  []string                  `yaml:"blocked_by,omitempty"`
-	Extensions map[string]map[string]any `yaml:"extensions,omitempty"`
+	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
 // Parse reads a bean from a reader (markdown with YAML front matter).
@@ -269,7 +269,7 @@ func Parse(r io.Reader) (*Issue, error) {
 		Parent:     fm.Parent,
 		Blocking:   fm.Blocking,
 		BlockedBy:  fm.BlockedBy,
-		Extensions: fm.Extensions,
+		Sync: fm.Sync,
 	}, nil
 }
 
@@ -286,24 +286,24 @@ type renderFrontMatter struct {
 	Parent     string                    `yaml:"parent,omitempty"`
 	Blocking   []string                  `yaml:"blocking,omitempty"`
 	BlockedBy  []string                  `yaml:"blocked_by,omitempty"`
-	Extensions map[string]map[string]any `yaml:"extensions,omitempty"`
+	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
 // Render serializes the bean back to markdown with YAML front matter.
 func (b *Issue) Render() ([]byte, error) {
 	fm := renderFrontMatter{
-		Title:      b.Title,
-		Status:     b.Status,
-		Type:       b.Type,
-		Priority:   b.Priority,
-		Tags:       b.Tags,
-		CreatedAt:  b.CreatedAt,
-		UpdatedAt:  b.UpdatedAt,
-		Due:        b.Due,
-		Parent:     b.Parent,
-		Blocking:   b.Blocking,
-		BlockedBy:  b.BlockedBy,
-		Extensions: b.Extensions,
+		Title:     b.Title,
+		Status:    b.Status,
+		Type:      b.Type,
+		Priority:  b.Priority,
+		Tags:      b.Tags,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+		Due:       b.Due,
+		Parent:    b.Parent,
+		Blocking:  b.Blocking,
+		BlockedBy: b.BlockedBy,
+		Sync:      b.Sync,
 	}
 
 	fmBytes, err := yaml.Marshal(&fm)

@@ -92,15 +92,15 @@ func ApplyFilter(beans []*issue.Issue, filter *model.IssueFilter, core *core.Cor
 		result = filterByNoBlockedBy(result)
 	}
 
-	// Extension filters
-	if filter.HasExtension != nil && *filter.HasExtension != "" {
-		result = filterByHasExtension(result, *filter.HasExtension)
+	// Sync filters
+	if filter.HasSync != nil && *filter.HasSync != "" {
+		result = filterByHasSync(result, *filter.HasSync)
 	}
-	if filter.NoExtension != nil && *filter.NoExtension != "" {
-		result = filterByNoExtension(result, *filter.NoExtension)
+	if filter.NoSync != nil && *filter.NoSync != "" {
+		result = filterByNoSync(result, *filter.NoSync)
 	}
-	if filter.ExtensionStale != nil && *filter.ExtensionStale != "" {
-		result = filterByExtensionStale(result, *filter.ExtensionStale)
+	if filter.SyncStale != nil && *filter.SyncStale != "" {
+		result = filterBySyncStale(result, *filter.SyncStale)
 	}
 	if filter.ChangedSince != nil {
 		result = filterByChangedSince(result, *filter.ChangedSince)
@@ -339,50 +339,50 @@ func filterByNoBlockedBy(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByHasExtension filters beans to include only those with extension data for the given name.
-func filterByHasExtension(beans []*issue.Issue, name string) []*issue.Issue {
+// filterByHasSync filters beans to include only those with sync data for the given name.
+func filterByHasSync(beans []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
 	for _, b := range beans {
-		if b.HasExtension(name) {
+		if b.HasSync(name) {
 			result = append(result, b)
 		}
 	}
 	return result
 }
 
-// filterByNoExtension filters beans to include only those without extension data for the given name.
-func filterByNoExtension(beans []*issue.Issue, name string) []*issue.Issue {
+// filterByNoSync filters beans to include only those without sync data for the given name.
+func filterByNoSync(beans []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
 	for _, b := range beans {
-		if !b.HasExtension(name) {
+		if !b.HasSync(name) {
 			result = append(result, b)
 		}
 	}
 	return result
 }
 
-// filterByExtensionStale filters beans where updatedAt > extensions[name]["synced_at"].
+// filterBySyncStale filters beans where updatedAt > sync[name]["synced_at"].
 // If no synced_at or unparseable, the issue is treated as stale (conservative).
-func filterByExtensionStale(beans []*issue.Issue, name string) []*issue.Issue {
+func filterBySyncStale(beans []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
 	for _, b := range beans {
-		if isExtensionStale(b, name) {
+		if isSyncStale(b, name) {
 			result = append(result, b)
 		}
 	}
 	return result
 }
 
-// isExtensionStale returns true if the issue's updatedAt is after the extension's synced_at.
-func isExtensionStale(b *issue.Issue, name string) bool {
+// isSyncStale returns true if the issue's updatedAt is after the sync integration's synced_at.
+func isSyncStale(b *issue.Issue, name string) bool {
 	if b.UpdatedAt == nil {
 		return false
 	}
 
-	if b.Extensions == nil {
+	if b.Sync == nil {
 		return true
 	}
-	data, ok := b.Extensions[name]
+	data, ok := b.Sync[name]
 	if !ok {
 		return true
 	}

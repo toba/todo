@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// Extension metadata constants for GitHub.
+// Sync metadata constants for GitHub.
 const (
-	ExtensionName    = "github"
-	ExtKeyIssueNumber = "issue_number"
-	ExtKeySyncedAt    = "synced_at"
+	SyncName          = "github"
+	SyncKeyIssueNumber = "issue_number"
+	SyncKeySyncedAt    = "synced_at"
 )
 
 // Config holds GitHub integration configuration.
@@ -51,7 +51,7 @@ var DefaultTypeMapping = map[string]string{
 	"task":      "type:task",
 }
 
-// ParseConfig parses GitHub config from an extensions map.
+// ParseConfig parses GitHub config from a sync config map.
 // Returns nil, nil if the config has no repo set.
 func ParseConfig(cfgMap map[string]any) (*Config, error) {
 	if cfgMap == nil {

@@ -4,14 +4,14 @@ import (
 	"fmt"
 )
 
-// Extension metadata constants
+// Sync metadata constants
 const (
-	ExtensionName  = "clickup"
-	ExtKeyTaskID   = "task_id"
-	ExtKeySyncedAt = "synced_at"
+	SyncName       = "clickup"
+	SyncKeyTaskID  = "task_id"
+	SyncKeySyncedAt = "synced_at"
 )
 
-// Config holds ClickUp-specific settings parsed from cfg.ExtensionConfig("clickup").
+// Config holds ClickUp-specific settings parsed from cfg.SyncConfig("clickup").
 type Config struct {
 	ListID          string
 	Assignee        *int
@@ -53,7 +53,7 @@ var DefaultPriorityMapping = map[string]int{
 	"deferred": 4,
 }
 
-// ParseConfig parses ClickUp configuration from a map[string]any (from cfg.ExtensionConfig("clickup")).
+// ParseConfig parses ClickUp configuration from a map[string]any (from cfg.SyncConfig("clickup")).
 // Returns nil if the map is nil or has no list_id.
 func ParseConfig(m map[string]any) (*Config, error) {
 	if m == nil {

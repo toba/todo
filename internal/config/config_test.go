@@ -879,28 +879,28 @@ func TestGetDefaultSort(t *testing.T) {
 	})
 }
 
-func TestExtensionConfig(t *testing.T) {
+func TestSyncConfig(t *testing.T) {
 	t.Run("returns nil for default config", func(t *testing.T) {
 		cfg := Default()
-		if got := cfg.ExtensionConfig("clickup"); got != nil {
-			t.Errorf("ExtensionConfig(\"clickup\") = %v, want nil", got)
+		if got := cfg.SyncConfig("clickup"); got != nil {
+			t.Errorf("SyncConfig(\"clickup\") = %v, want nil", got)
 		}
 	})
 
 	t.Run("returns nil for unknown extension", func(t *testing.T) {
 		cfg := &Config{
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"list_id": "123"},
 			},
 		}
-		if got := cfg.ExtensionConfig("jira"); got != nil {
-			t.Errorf("ExtensionConfig(\"jira\") = %v, want nil", got)
+		if got := cfg.SyncConfig("jira"); got != nil {
+			t.Errorf("SyncConfig(\"jira\") = %v, want nil", got)
 		}
 	})
 
 	t.Run("returns extension config data", func(t *testing.T) {
 		cfg := &Config{
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {
 					"list_id": "123",
 					"status_mapping": map[string]any{
@@ -909,12 +909,12 @@ func TestExtensionConfig(t *testing.T) {
 				},
 			},
 		}
-		got := cfg.ExtensionConfig("clickup")
+		got := cfg.SyncConfig("clickup")
 		if got == nil {
-			t.Fatal("ExtensionConfig(\"clickup\") = nil, want non-nil")
+			t.Fatal("SyncConfig(\"clickup\") = nil, want non-nil")
 		}
 		if got["list_id"] != "123" {
-			t.Errorf("ExtensionConfig(\"clickup\")[\"list_id\"] = %v, want \"123\"", got["list_id"])
+			t.Errorf("SyncConfig(\"clickup\")[\"list_id\"] = %v, want \"123\"", got["list_id"])
 		}
 	})
 
@@ -923,7 +923,7 @@ func TestExtensionConfig(t *testing.T) {
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
   default_type: task
-extensions:
+sync:
   clickup:
     list_id: "456"
     workspace: "my-workspace"
@@ -939,9 +939,9 @@ extensions:
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		clickup := cfg.ExtensionConfig("clickup")
+		clickup := cfg.SyncConfig("clickup")
 		if clickup == nil {
-			t.Fatal("ExtensionConfig(\"clickup\") = nil, want non-nil")
+			t.Fatal("SyncConfig(\"clickup\") = nil, want non-nil")
 		}
 		if clickup["list_id"] != "456" {
 			t.Errorf("clickup[\"list_id\"] = %v, want \"456\"", clickup["list_id"])
@@ -950,21 +950,21 @@ extensions:
 			t.Errorf("clickup[\"workspace\"] = %v, want \"my-workspace\"", clickup["workspace"])
 		}
 
-		jira := cfg.ExtensionConfig("jira")
+		jira := cfg.SyncConfig("jira")
 		if jira == nil {
-			t.Fatal("ExtensionConfig(\"jira\") = nil, want non-nil")
+			t.Fatal("SyncConfig(\"jira\") = nil, want non-nil")
 		}
 		if jira["project_key"] != "PROJ" {
 			t.Errorf("jira[\"project_key\"] = %v, want \"PROJ\"", jira["project_key"])
 		}
 
 		// Unknown extension returns nil
-		if got := cfg.ExtensionConfig("unknown"); got != nil {
-			t.Errorf("ExtensionConfig(\"unknown\") = %v, want nil", got)
+		if got := cfg.SyncConfig("unknown"); got != nil {
+			t.Errorf("SyncConfig(\"unknown\") = %v, want nil", got)
 		}
 	})
 
-	t.Run("no extensions section in YAML", func(t *testing.T) {
+	t.Run("no sync section in YAML", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
@@ -979,8 +979,8 @@ extensions:
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		if got := cfg.ExtensionConfig("clickup"); got != nil {
-			t.Errorf("ExtensionConfig(\"clickup\") = %v, want nil", got)
+		if got := cfg.SyncConfig("clickup"); got != nil {
+			t.Errorf("SyncConfig(\"clickup\") = %v, want nil", got)
 		}
 	})
 }

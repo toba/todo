@@ -47,7 +47,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	// Detect integration from config
-	integ, err := integration.Detect(cfg.Extensions, store)
+	integ, err := integration.Detect(cfg.Sync, store)
 	if err != nil {
 		return fmt.Errorf("detecting integration: %w", err)
 	}
@@ -55,7 +55,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 		if syncJSON {
 			return outputSyncJSON(nil)
 		}
-		fmt.Println("No integration configured. Add an extensions section (clickup or github) to .todo.yml.")
+		fmt.Println("No integration configured. Add a sync section (clickup or github) to .todo.yml.")
 		return nil
 	}
 

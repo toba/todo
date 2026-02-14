@@ -36,7 +36,7 @@ Use --skip-api to perform offline validation only.`,
 		defer cancel()
 
 		// Detect integration
-		integ, err := integration.Detect(cfg.Extensions, store)
+		integ, err := integration.Detect(cfg.Sync, store)
 		if err != nil {
 			return fmt.Errorf("detecting integration: %w", err)
 		}
@@ -46,7 +46,7 @@ Use --skip-api to perform offline validation only.`,
 				enc.SetIndent("", "  ")
 				return enc.Encode(map[string]string{"error": "no integration configured"})
 			}
-			fmt.Println("No integration configured. Add an extensions section (clickup or github) to .todo.yml.")
+			fmt.Println("No integration configured. Add a sync section (clickup or github) to .todo.yml.")
 			return nil
 		}
 

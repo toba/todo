@@ -16,7 +16,7 @@ var syncLinkCmd = &cobra.Command{
 	Use:   "link <issue-id> <external-id>",
 	Short: "Link an issue to an existing external task",
 	Long: `Manually links an issue to an existing external task (e.g., ClickUp task or GitHub issue)
-by storing the external ID in the issue's extension metadata.
+by storing the external ID in the issue's sync metadata.
 
 This is useful when you have an existing task that you want to
 associate with an issue, or when syncing fails and you need to fix the link.`,
@@ -28,7 +28,7 @@ associate with an issue, or when syncing fails and you need to fix the link.`,
 		ctx := context.Background()
 
 		// Detect integration
-		integ, err := integration.Detect(cfg.Extensions, store)
+		integ, err := integration.Detect(cfg.Sync, store)
 		if err != nil {
 			return fmt.Errorf("detecting integration: %w", err)
 		}

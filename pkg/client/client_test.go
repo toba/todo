@@ -153,12 +153,12 @@ func TestQuery_ErrorHandling(t *testing.T) {
 	}
 }
 
-func TestSetExtensionData(t *testing.T) {
-	fn, calls := mockCmd(`{"setExtensionData":{"id":"beans-abc"}}`)
+func TestSetSyncData(t *testing.T) {
+	fn, calls := mockCmd(`{"setSyncData":{"id":"beans-abc"}}`)
 	c := New()
 	c.newCmd = fn
 
-	err := c.SetExtensionData("beans-abc", "myext", map[string]any{"key": "val"})
+	err := c.SetSyncData("beans-abc", "myext", map[string]any{"key": "val"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,8 +167,8 @@ func TestSetExtensionData(t *testing.T) {
 
 	// Last arg should be the mutation query
 	query := args[len(args)-1]
-	if !strings.Contains(query, "setExtensionData") {
-		t.Errorf("query should contain setExtensionData: %s", query)
+	if !strings.Contains(query, "setSyncData") {
+		t.Errorf("query should contain setSyncData: %s", query)
 	}
 	if !strings.Contains(query, "$id") || !strings.Contains(query, "$name") || !strings.Contains(query, "$data") {
 		t.Errorf("query should use GraphQL variables ($id, $name, $data): %s", query)
@@ -191,23 +191,23 @@ func TestSetExtensionData(t *testing.T) {
 	}
 }
 
-func TestSetExtensionDataBatch_Empty(t *testing.T) {
-	err := New().SetExtensionDataBatch(nil)
+func TestSetSyncDataBatch_Empty(t *testing.T) {
+	err := New().SetSyncDataBatch(nil)
 	if err != nil {
 		t.Errorf("empty batch should return nil, got: %v", err)
 	}
 }
 
-func TestSetExtensionDataBatch(t *testing.T) {
+func TestSetSyncDataBatch(t *testing.T) {
 	fn, calls := mockCmd(`{"op0":{"id":"a"},"op1":{"id":"b"}}`)
 	c := New()
 	c.newCmd = fn
 
-	ops := []ExtensionDataOp{
+	ops := []SyncDataOp{
 		{ID: "a", Name: "ext1", Data: map[string]any{"k1": "v1"}},
 		{ID: "b", Name: "ext2", Data: map[string]any{"k2": "v2"}},
 	}
-	err := c.SetExtensionDataBatch(ops)
+	err := c.SetSyncDataBatch(ops)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,10 +216,10 @@ func TestSetExtensionDataBatch(t *testing.T) {
 	query := args[len(args)-1]
 
 	// Should have aliased operations
-	if !strings.Contains(query, "op0: setExtensionData") {
+	if !strings.Contains(query, "op0: setSyncData") {
 		t.Errorf("query missing op0 alias: %s", query)
 	}
-	if !strings.Contains(query, "op1: setExtensionData") {
+	if !strings.Contains(query, "op1: setSyncData") {
 		t.Errorf("query missing op1 alias: %s", query)
 	}
 	// Should use numbered variables
@@ -240,12 +240,12 @@ func TestSetExtensionDataBatch(t *testing.T) {
 	}
 }
 
-func TestRemoveExtensionData(t *testing.T) {
-	fn, calls := mockCmd(`{"removeExtensionData":{"id":"beans-abc"}}`)
+func TestRemoveSyncData(t *testing.T) {
+	fn, calls := mockCmd(`{"removeSyncData":{"id":"beans-abc"}}`)
 	c := New()
 	c.newCmd = fn
 
-	err := c.RemoveExtensionData("beans-abc", "myext")
+	err := c.RemoveSyncData("beans-abc", "myext")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,15 +253,15 @@ func TestRemoveExtensionData(t *testing.T) {
 	args := (*calls)[0]
 	query := args[len(args)-1]
 
-	if !strings.Contains(query, "removeExtensionData") {
-		t.Errorf("query should contain removeExtensionData: %s", query)
+	if !strings.Contains(query, "removeSyncData") {
+		t.Errorf("query should contain removeSyncData: %s", query)
 	}
 	if !strings.Contains(query, "$id") || !strings.Contains(query, "$name") {
 		t.Errorf("query should use GraphQL variables: %s", query)
 	}
 	// Should NOT reference $data
 	if strings.Contains(query, "$data") {
-		t.Errorf("removeExtensionData query should not reference $data: %s", query)
+		t.Errorf("removeSyncData query should not reference $data: %s", query)
 	}
 
 	vars := extractVars(t, args)
@@ -289,7 +289,7 @@ func TestBean_JSONRoundtrip(t *testing.T) {
 		"body": "Some body content",
 		"parent": "beans-xyz",
 		"blocked_by": ["beans-123"],
-		"extensions": {"myext": {"key": "val"}},
+		"sync": {"myext": {"key": "val"}},
 		"etag": "abcdef1234567890"
 	}`
 
@@ -316,8 +316,8 @@ func TestBean_JSONRoundtrip(t *testing.T) {
 	if len(b.BlockedBy) != 1 || b.BlockedBy[0] != "beans-123" {
 		t.Errorf("BlockedBy = %v", b.BlockedBy)
 	}
-	if b.Extensions["myext"]["key"] != "val" {
-		t.Errorf("Extensions = %v", b.Extensions)
+	if b.Sync["myext"]["key"] != "val" {
+		t.Errorf("Sync = %v", b.Sync)
 	}
 	if b.ETag != "abcdef1234567890" {
 		t.Errorf("ETag = %q", b.ETag)

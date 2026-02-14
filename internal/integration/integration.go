@@ -90,15 +90,15 @@ type Integration interface {
 	Check(ctx context.Context, opts CheckOptions) (*CheckReport, error)
 }
 
-// Detect checks cfg.Extensions for known integration keys and returns the appropriate integration.
+// Detect checks cfg.Sync for known integration keys and returns the appropriate integration.
 // Returns nil, nil if no integration is configured.
-func Detect(extensions map[string]map[string]any, c *core.Core) (Integration, error) {
-	if extensions == nil {
+func Detect(syncCfg map[string]map[string]any, c *core.Core) (Integration, error) {
+	if syncCfg == nil {
 		return nil, nil
 	}
 
 	// Check for ClickUp configuration
-	if clickupCfg, ok := extensions["clickup"]; ok {
+	if clickupCfg, ok := syncCfg["clickup"]; ok {
 		integ, err := detectClickUp(clickupCfg, c)
 		if err != nil {
 			return nil, err
@@ -109,7 +109,7 @@ func Detect(extensions map[string]map[string]any, c *core.Core) (Integration, er
 	}
 
 	// Check for GitHub configuration
-	if githubCfg, ok := extensions["github"]; ok {
+	if githubCfg, ok := syncCfg["github"]; ok {
 		integ, err := detectGitHub(githubCfg, c)
 		if err != nil {
 			return nil, err

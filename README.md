@@ -50,7 +50,7 @@ issues:
   path: .issues
   editor: "code --wait"
 
-extensions:
+sync:
   # ClickUp integration (requires CLICKUP_TOKEN env var)
   clickup:
     list_id: "123456789"
@@ -124,7 +124,7 @@ Please inspect this project's issues and reorganize them into epics and mileston
 
 ## Syncing with External Trackers
 
-todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `extensions`, then run:
+todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `sync`, then run:
 
 ```bash
 todo sync                  # Sync all issues
@@ -138,7 +138,7 @@ todo sync --force          # Force update even if unchanged
 Requires `CLICKUP_TOKEN` environment variable. Syncs statuses, priorities, types, and blocking relationships as ClickUp task dependencies.
 
 ```yaml
-extensions:
+sync:
   clickup:
     list_id: "123456789"           # Required
     assignee: 42                    # Optional: default assignee
@@ -168,20 +168,20 @@ extensions:
 Requires `GITHUB_TOKEN` environment variable. Maps statuses, priorities, and types to GitHub labels (e.g., `status:in-progress`, `priority:high`, `type:bug`). Blocking relationships are rendered as text in the issue body.
 
 ```yaml
-extensions:
+sync:
   github:
     repo: "owner/repo"   # Required
 ```
 
-## Extensions
+## Sync
 
-todo supports extensions for syncing with external systems. Per-issue sync state is stored in frontmatter:
+todo supports sync integrations for syncing with external systems. Per-issue sync state is stored in frontmatter:
 
 ```yaml
 ---
 title: Fix login bug
 status: ready
-extensions:
+sync:
   clickup:
     task_id: "868h4hd05"
     synced_at: "2026-01-18T00:07:02Z"
@@ -191,28 +191,28 @@ extensions:
 ---
 ```
 
-Extension data is readable and writable via the GraphQL API:
+Sync data is readable and writable via the GraphQL API:
 
 ```graphql
-# Read extension data
-{ bean(id: "abc-def") { extensions { name data } } }
+# Read sync data
+{ bean(id: "abc-def") { sync { name data } } }
 
-# Write extension data
-mutation { setExtensionData(id: "abc-def", name: "clickup", data: { task_id: "xyz" }) { id } }
+# Write sync data
+mutation { setSyncData(id: "abc-def", name: "clickup", data: { task_id: "xyz" }) { id } }
 
-# Filter by extension
-{ beans(filter: { hasExtension: "clickup" }) { id title } }
-{ beans(filter: { extensionStale: "clickup" }) { id title } }
+# Filter by sync
+{ beans(filter: { hasSync: "clickup" }) { id title } }
+{ beans(filter: { syncStale: "clickup" }) { id title } }
 ```
 
-### Building an Extension
+### Building a Sync Integration
 
-Extensions are standalone programs that shell out to the `todo` CLI or use the GraphQL API directly. A typical extension:
+Sync integrations are standalone programs that shell out to the `todo` CLI or use the GraphQL API directly. A typical integration:
 
-1. Reads its config from `.todo.yml` (under `extensions.<name>`)
-2. Queries issues via `todo query --json '{ beans(filter: { extensionStale: "myext" }) { ... } }'`
+1. Reads its config from `.todo.yml` (under `sync.<name>`)
+2. Queries issues via `todo query --json '{ beans(filter: { syncStale: "myext" }) { ... } }'`
 3. Syncs data with the external system
-4. Writes back via `todo query 'mutation { setExtensionData(...) { id } }'`
+4. Writes back via `todo query 'mutation { setSyncData(...) { id } }'`
 
 ## License
 

@@ -26,24 +26,24 @@ func (r *issueResolver) Due(ctx context.Context, obj *issue.Issue) (*string, err
 	return &s, nil
 }
 
-// Extensions is the resolver for the extensions field.
-func (r *issueResolver) Extensions(ctx context.Context, obj *issue.Issue) ([]*model.ExtensionEntry, error) {
-	if len(obj.Extensions) == 0 {
-		return []*model.ExtensionEntry{}, nil
+// Sync is the resolver for the sync field.
+func (r *issueResolver) Sync(ctx context.Context, obj *issue.Issue) ([]*model.SyncEntry, error) {
+	if len(obj.Sync) == 0 {
+		return []*model.SyncEntry{}, nil
 	}
 
-	// Collect extension names and sort for deterministic output
-	names := make([]string, 0, len(obj.Extensions))
-	for name := range obj.Extensions {
+	// Collect sync names and sort for deterministic output
+	names := make([]string, 0, len(obj.Sync))
+	for name := range obj.Sync {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	entries := make([]*model.ExtensionEntry, 0, len(obj.Extensions))
+	entries := make([]*model.SyncEntry, 0, len(obj.Sync))
 	for _, name := range names {
-		entries = append(entries, &model.ExtensionEntry{
+		entries = append(entries, &model.SyncEntry{
 			Name: name,
-			Data: obj.Extensions[name],
+			Data: obj.Sync[name],
 		})
 	}
 	return entries, nil
@@ -496,10 +496,10 @@ func (r *mutationResolver) RemoveBlockedBy(ctx context.Context, id string, targe
 	return b, nil
 }
 
-// SetExtensionData is the resolver for the setExtensionData field.
-func (r *mutationResolver) SetExtensionData(ctx context.Context, id string, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
+// SetSyncData is the resolver for the setSyncData field.
+func (r *mutationResolver) SetSyncData(ctx context.Context, id string, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
 	if name == "" {
-		return nil, fmt.Errorf("extension name cannot be empty")
+		return nil, fmt.Errorf("sync name cannot be empty")
 	}
 
 	b, err := r.Core.Get(id)
@@ -507,24 +507,24 @@ func (r *mutationResolver) SetExtensionData(ctx context.Context, id string, name
 		return nil, err
 	}
 
-	b.SetExtension(name, data)
+	b.SetSync(name, data)
 
-	if err := r.Core.SaveExtensionOnly(b, ifMatch); err != nil {
+	if err := r.Core.SaveSyncOnly(b, ifMatch); err != nil {
 		return nil, err
 	}
 	return b, nil
 }
 
-// RemoveExtensionData is the resolver for the removeExtensionData field.
-func (r *mutationResolver) RemoveExtensionData(ctx context.Context, id string, name string, ifMatch *string) (*issue.Issue, error) {
+// RemoveSyncData is the resolver for the removeSyncData field.
+func (r *mutationResolver) RemoveSyncData(ctx context.Context, id string, name string, ifMatch *string) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
 	if err != nil {
 		return nil, err
 	}
 
-	b.RemoveExtension(name)
+	b.RemoveSync(name)
 
-	if err := r.Core.SaveExtensionOnly(b, ifMatch); err != nil {
+	if err := r.Core.SaveSyncOnly(b, ifMatch); err != nil {
 		return nil, err
 	}
 	return b, nil

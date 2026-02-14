@@ -42,14 +42,6 @@ type CreateIssueInput struct {
 	BlockedBy []string `json:"blockedBy,omitempty"`
 }
 
-// Extension metadata entry for a single extension
-type ExtensionEntry struct {
-	// Extension name (e.g., 'clickup', 'jira')
-	Name string `json:"name"`
-	// Extension-specific data (arbitrary key-value pairs)
-	Data map[string]any `json:"data"`
-}
-
 // Filter options for querying issues
 type IssueFilter struct {
 	// Full-text search across slug, title, and body using Bleve query syntax.
@@ -102,12 +94,12 @@ type IssueFilter struct {
 	NoBlocking *bool `json:"noBlocking,omitempty"`
 	// Exclude issues that have explicit blocked-by entries
 	NoBlockedBy *bool `json:"noBlockedBy,omitempty"`
-	// Include only issues with extension data for this extension name
-	HasExtension *string `json:"hasExtension,omitempty"`
-	// Include only issues without extension data for this extension name
-	NoExtension *string `json:"noExtension,omitempty"`
-	// Include only issues where updatedAt > extension's synced_at (stale sync detection)
-	ExtensionStale *string `json:"extensionStale,omitempty"`
+	// Include only issues with sync data for this integration name
+	HasSync *string `json:"hasSync,omitempty"`
+	// Include only issues without sync data for this integration name
+	NoSync *string `json:"noSync,omitempty"`
+	// Include only issues where updatedAt > integration's synced_at (stale sync detection)
+	SyncStale *string `json:"syncStale,omitempty"`
 	// Include only issues updated at or after this timestamp
 	ChangedSince *time.Time `json:"changedSince,omitempty"`
 }
@@ -124,6 +116,14 @@ type ReplaceOperation struct {
 	Old string `json:"old"`
 	// Replacement text (can be empty to delete the matched text)
 	New string `json:"new"`
+}
+
+// Sync metadata entry for a single integration
+type SyncEntry struct {
+	// Integration name (e.g., 'clickup', 'github')
+	Name string `json:"name"`
+	// Integration-specific data (arbitrary key-value pairs)
+	Data map[string]any `json:"data"`
 }
 
 // Input for updating an existing issue

@@ -18,6 +18,7 @@ type Result struct {
 	ActiveCount     int    `json:"active_count"`
 	ArchivedCount   int    `json:"archived_count"`
 	StatusConverted int    `json:"status_converted"`
+	SyncKeyRenamed  int    `json:"sync_key_renamed"`
 	ConfigMigrated  bool   `json:"config_migrated"`
 	ClickUpImported bool   `json:"clickup_imported"`
 	NewDataDir      string `json:"new_data_dir"`
@@ -36,6 +37,9 @@ type Options struct {
 // statusFrontmatterRe matches "status: todo" in YAML frontmatter.
 // It handles optional quoting and varying whitespace.
 var statusFrontmatterRe = regexp.MustCompile(`(?m)^(status:\s*)(?:"todo"|'todo'|todo)[ \t]*$`)
+
+// extensionsKeyRe matches the "extensions:" key at the start of a line in YAML frontmatter.
+var extensionsKeyRe = regexp.MustCompile(`(?m)^extensions:[ \t]*$`)
 
 // Run performs the migration from old beans format to new issues format.
 func Run(opts Options) (*Result, error) {
@@ -94,6 +98,7 @@ func Run(opts Options) (*Result, error) {
 	}
 	result.ActiveCount = activeConverted.count
 	result.StatusConverted = activeConverted.statusConverted
+	result.SyncKeyRenamed = activeConverted.syncKeyRenamed
 
 	// Migrate archived beans
 	oldArchive := filepath.Join(sourceDir, "archive")
@@ -107,6 +112,7 @@ func Run(opts Options) (*Result, error) {
 		}
 		result.ArchivedCount = archiveConverted.count
 		result.StatusConverted += archiveConverted.statusConverted
+		result.SyncKeyRenamed += archiveConverted.syncKeyRenamed
 	}
 
 	result.NewDataDir = targetDir
@@ -160,6 +166,7 @@ func detectSourceDir(configPath string) (string, error) {
 type migrateResult struct {
 	count           int
 	statusConverted int
+	syncKeyRenamed  int
 }
 
 // migrateFiles copies .md files from src to dst, rewriting status: todo → status: ready.
@@ -201,6 +208,9 @@ func migrateFiles(src, dst, skipDir string) (*migrateResult, error) {
 		// Rewrite status: todo → status: ready in frontmatter only
 		newContent, converted := rewriteStatus(content)
 
+		// Rewrite extensions: → sync: in frontmatter only
+		newContent, renamed := rewriteExtensionsKey(newContent)
+
 		dstPath := filepath.Join(dst, entry.Name())
 		if err := os.WriteFile(dstPath, newContent, 0644); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", entry.Name(), err)
@@ -209,6 +219,9 @@ func migrateFiles(src, dst, skipDir string) (*migrateResult, error) {
 		result.count++
 		if converted {
 			result.statusConverted++
+		}
+		if renamed {
+			result.syncKeyRenamed++
 		}
 	}
 
@@ -251,6 +264,39 @@ func rewriteStatus(content []byte) ([]byte, bool) {
 	return []byte(s[:fmStart] + newFM + s[fmEnd:]), true
 }
 
+// rewriteExtensionsKey replaces "extensions:" with "sync:" in YAML frontmatter.
+// Only rewrites within the frontmatter section (between --- delimiters).
+// Returns the (possibly modified) content and whether a rename was made.
+func rewriteExtensionsKey(content []byte) ([]byte, bool) {
+	s := string(content)
+
+	// Find frontmatter boundaries
+	if !strings.HasPrefix(s, "---\n") {
+		return content, false
+	}
+
+	// Search for closing --- after the opening one
+	endIdx := strings.Index(s[4:], "\n---\n")
+	if endIdx < 0 {
+		if strings.HasSuffix(s, "\n---") {
+			endIdx = len(s) - 4 - 4
+		} else {
+			return content, false
+		}
+	}
+
+	fmStart := 4
+	fmEnd := fmStart + endIdx + 1
+	frontmatter := s[fmStart:fmEnd]
+
+	newFM := extensionsKeyRe.ReplaceAllString(frontmatter, "sync:")
+	if newFM == frontmatter {
+		return content, false
+	}
+
+	return []byte(s[:fmStart] + newFM + s[fmEnd:]), true
+}
+
 // MigrateConfig rewrites a .todo.yml config file:
 // - Renames beans: key → issues: key
 // - Removes prefix and id_length from the issues map
@@ -277,6 +323,15 @@ func MigrateConfig(configPath string) error {
 			raw["issues"] = beansRaw
 		}
 		delete(raw, "beans")
+		modified = true
+	}
+
+	// Move extensions: → sync:
+	if extRaw, ok := raw["extensions"]; ok {
+		if _, hasSync := raw["sync"]; !hasSync {
+			raw["sync"] = extRaw
+		}
+		delete(raw, "extensions")
 		modified = true
 	}
 
@@ -329,9 +384,9 @@ func MigrateConfig(configPath string) error {
 //  2. .beans.yml (inline config with extensions.clickup section)
 //
 // The standalone file takes priority if both exist. If the main config already
-// has extensions.clickup, this is a no-op. Returns true if config was imported.
+// has sync.clickup, this is a no-op. Returns true if config was imported.
 func ImportClickUpConfig(configPath string) (bool, error) {
-	// Read the main config to check if it already has extensions.clickup
+	// Read the main config to check if it already has sync.clickup
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -345,10 +400,10 @@ func ImportClickUpConfig(configPath string) (bool, error) {
 		return false, fmt.Errorf("parsing config: %w", err)
 	}
 
-	// Check if extensions.clickup already exists
-	if extRaw, ok := raw["extensions"]; ok {
-		if extMap, ok := extRaw.(map[string]any); ok {
-			if _, ok := extMap["clickup"]; ok {
+	// Check if sync.clickup already exists
+	if syncRaw, ok := raw["sync"]; ok {
+		if syncMap, ok := syncRaw.(map[string]any); ok {
+			if _, ok := syncMap["clickup"]; ok {
 				return false, nil // Already has ClickUp config
 			}
 		}
@@ -394,14 +449,14 @@ func ImportClickUpConfig(configPath string) (bool, error) {
 	// Convert status mapping keys (todo → ready)
 	convertStatusMappingKeys(clickupSection)
 
-	// Merge into main config under extensions.clickup
-	extRaw, ok := raw["extensions"]
+	// Merge into main config under sync.clickup
+	syncRaw, ok := raw["sync"]
 	if !ok {
-		raw["extensions"] = map[string]any{"clickup": clickupSection}
-	} else if extMap, ok := extRaw.(map[string]any); ok {
-		extMap["clickup"] = clickupSection
+		raw["sync"] = map[string]any{"clickup": clickupSection}
+	} else if syncMap, ok := syncRaw.(map[string]any); ok {
+		syncMap["clickup"] = clickupSection
 	} else {
-		raw["extensions"] = map[string]any{"clickup": clickupSection}
+		raw["sync"] = map[string]any{"clickup": clickupSection}
 	}
 
 	out, err := yaml.Marshal(raw)

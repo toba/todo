@@ -1677,23 +1677,23 @@ func TestMarshalJSONIncludesETag(t *testing.T) {
 	}
 }
 
-func TestParseWithExtensions(t *testing.T) {
+func TestParseWithSync(t *testing.T) {
 	tests := []struct {
-		name               string
-		input              string
-		expectedExtensions map[string]map[string]any
+		name         string
+		input        string
+		expectedSync map[string]map[string]any
 	}{
 		{
-			name: "with extension data",
+			name: "with sync data",
 			input: `---
 title: Test
 status: todo
-extensions:
+sync:
   clickup:
     task_id: "868h4hd05"
     synced_at: "2026-01-18T00:07:02Z"
 ---`,
-			expectedExtensions: map[string]map[string]any{
+			expectedSync: map[string]map[string]any{
 				"clickup": {
 					"task_id":   "868h4hd05",
 					"synced_at": "2026-01-18T00:07:02Z",
@@ -1701,28 +1701,28 @@ extensions:
 			},
 		},
 		{
-			name: "with multiple extensions",
+			name: "with multiple sync entries",
 			input: `---
 title: Test
 status: todo
-extensions:
+sync:
   clickup:
     task_id: "abc"
   jira:
     issue_key: "PROJ-123"
 ---`,
-			expectedExtensions: map[string]map[string]any{
+			expectedSync: map[string]map[string]any{
 				"clickup": {"task_id": "abc"},
 				"jira":    {"issue_key": "PROJ-123"},
 			},
 		},
 		{
-			name: "no extension data",
+			name: "no sync data",
 			input: `---
 title: Test
 status: todo
 ---`,
-			expectedExtensions: nil,
+			expectedSync: nil,
 		},
 	}
 
@@ -1733,27 +1733,27 @@ status: todo
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if tt.expectedExtensions == nil {
-				if bean.Extensions != nil {
-					t.Errorf("Extensions = %v, want nil", bean.Extensions)
+			if tt.expectedSync == nil {
+				if bean.Sync != nil {
+					t.Errorf("Sync = %v, want nil", bean.Sync)
 				}
 				return
 			}
 
-			for name, expectedData := range tt.expectedExtensions {
-				data, ok := bean.Extensions[name]
+			for name, expectedData := range tt.expectedSync {
+				data, ok := bean.Sync[name]
 				if !ok {
-					t.Errorf("Extensions[%q] missing", name)
+					t.Errorf("Sync[%q] missing", name)
 					continue
 				}
 				for key, expectedVal := range expectedData {
 					val, ok := data[key]
 					if !ok {
-						t.Errorf("Extensions[%q][%q] missing", name, key)
+						t.Errorf("Sync[%q][%q] missing", name, key)
 						continue
 					}
 					if fmt.Sprint(val) != fmt.Sprint(expectedVal) {
-						t.Errorf("Extensions[%q][%q] = %v, want %v", name, key, val, expectedVal)
+						t.Errorf("Sync[%q][%q] = %v, want %v", name, key, val, expectedVal)
 					}
 				}
 			}
@@ -1761,7 +1761,7 @@ status: todo
 	}
 }
 
-func TestRenderWithExtensions(t *testing.T) {
+func TestRenderWithSync(t *testing.T) {
 	tests := []struct {
 		name        string
 		bean        *Issue
@@ -1769,11 +1769,11 @@ func TestRenderWithExtensions(t *testing.T) {
 		notContains []string
 	}{
 		{
-			name: "with extension data",
+			name: "with sync data",
 			bean: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
-				Extensions: map[string]map[string]any{
+				Sync: map[string]map[string]any{
 					"clickup": {
 						"task_id":   "868h4hd05",
 						"synced_at": "2026-01-18T00:07:02Z",
@@ -1781,27 +1781,27 @@ func TestRenderWithExtensions(t *testing.T) {
 				},
 			},
 			contains: []string{
-				"extensions:",
+				"sync:",
 				"clickup:",
 				"task_id: 868h4hd05",
 			},
 		},
 		{
-			name: "without extension data",
+			name: "without sync data",
 			bean: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
-			notContains: []string{"extensions:"},
+			notContains: []string{"sync:"},
 		},
 		{
-			name: "with nil extensions",
+			name: "with nil sync",
 			bean: &Issue{
-				Title:      "Test Issue",
-				Status:     "todo",
-				Extensions: nil,
+				Title:  "Test Issue",
+				Status: "todo",
+				Sync:   nil,
 			},
-			notContains: []string{"extensions:"},
+			notContains: []string{"sync:"},
 		},
 	}
 
@@ -1827,11 +1827,11 @@ func TestRenderWithExtensions(t *testing.T) {
 	}
 }
 
-func TestExtensionsRoundtrip(t *testing.T) {
+func TestSyncRoundtrip(t *testing.T) {
 	original := &Issue{
 		Title:  "Test",
 		Status: "todo",
-		Extensions: map[string]map[string]any{
+		Sync: map[string]map[string]any{
 			"clickup": {
 				"task_id":   "868h4hd05",
 				"synced_at": "2026-01-18T00:07:02Z",
@@ -1852,120 +1852,120 @@ func TestExtensionsRoundtrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if len(parsed.Extensions) != len(original.Extensions) {
-		t.Errorf("Extensions count: got %d, want %d", len(parsed.Extensions), len(original.Extensions))
+	if len(parsed.Sync) != len(original.Sync) {
+		t.Errorf("Sync count: got %d, want %d", len(parsed.Sync), len(original.Sync))
 		return
 	}
 
-	for name, origData := range original.Extensions {
-		parsedData, ok := parsed.Extensions[name]
+	for name, origData := range original.Sync {
+		parsedData, ok := parsed.Sync[name]
 		if !ok {
-			t.Errorf("Extensions[%q] missing after roundtrip", name)
+			t.Errorf("Sync[%q] missing after roundtrip", name)
 			continue
 		}
 		for key, origVal := range origData {
 			parsedVal, ok := parsedData[key]
 			if !ok {
-				t.Errorf("Extensions[%q][%q] missing after roundtrip", name, key)
+				t.Errorf("Sync[%q][%q] missing after roundtrip", name, key)
 				continue
 			}
 			if fmt.Sprint(parsedVal) != fmt.Sprint(origVal) {
-				t.Errorf("Extensions[%q][%q] = %v, want %v", name, key, parsedVal, origVal)
+				t.Errorf("Sync[%q][%q] = %v, want %v", name, key, parsedVal, origVal)
 			}
 		}
 	}
 }
 
-func TestExtensionHelperMethods(t *testing.T) {
-	t.Run("HasExtension", func(t *testing.T) {
+func TestSyncHelperMethods(t *testing.T) {
+	t.Run("HasSync", func(t *testing.T) {
 		b := &Issue{
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"task_id": "abc"},
 			},
 		}
-		if !b.HasExtension("clickup") {
-			t.Error("expected HasExtension('clickup') = true")
+		if !b.HasSync("clickup") {
+			t.Error("expected HasSync('clickup') = true")
 		}
-		if b.HasExtension("jira") {
-			t.Error("expected HasExtension('jira') = false")
+		if b.HasSync("jira") {
+			t.Error("expected HasSync('jira') = false")
 		}
 
 		empty := &Issue{}
-		if empty.HasExtension("clickup") {
-			t.Error("expected HasExtension('clickup') = false for nil Extensions")
+		if empty.HasSync("clickup") {
+			t.Error("expected HasSync('clickup') = false for nil Sync")
 		}
 	})
 
-	t.Run("SetExtension", func(t *testing.T) {
+	t.Run("SetSync", func(t *testing.T) {
 		b := &Issue{}
-		b.SetExtension("clickup", map[string]any{"task_id": "abc"})
-		if !b.HasExtension("clickup") {
-			t.Error("SetExtension didn't set data")
+		b.SetSync("clickup", map[string]any{"task_id": "abc"})
+		if !b.HasSync("clickup") {
+			t.Error("SetSync didn't set data")
 		}
-		if b.Extensions["clickup"]["task_id"] != "abc" {
-			t.Errorf("SetExtension data = %v, want task_id=abc", b.Extensions["clickup"])
+		if b.Sync["clickup"]["task_id"] != "abc" {
+			t.Errorf("SetSync data = %v, want task_id=abc", b.Sync["clickup"])
 		}
 
 		// Overwrite existing
-		b.SetExtension("clickup", map[string]any{"task_id": "def"})
-		if b.Extensions["clickup"]["task_id"] != "def" {
-			t.Errorf("SetExtension overwrite = %v, want task_id=def", b.Extensions["clickup"])
+		b.SetSync("clickup", map[string]any{"task_id": "def"})
+		if b.Sync["clickup"]["task_id"] != "def" {
+			t.Errorf("SetSync overwrite = %v, want task_id=def", b.Sync["clickup"])
 		}
 	})
 
-	t.Run("RemoveExtension", func(t *testing.T) {
+	t.Run("RemoveSync", func(t *testing.T) {
 		b := &Issue{
-			Extensions: map[string]map[string]any{
+			Sync: map[string]map[string]any{
 				"clickup": {"task_id": "abc"},
 				"jira":    {"issue_key": "PROJ-123"},
 			},
 		}
-		b.RemoveExtension("clickup")
-		if b.HasExtension("clickup") {
-			t.Error("RemoveExtension didn't remove data")
+		b.RemoveSync("clickup")
+		if b.HasSync("clickup") {
+			t.Error("RemoveSync didn't remove data")
 		}
-		if !b.HasExtension("jira") {
-			t.Error("RemoveExtension removed wrong extension")
-		}
-
-		// Remove last extension should nil out map
-		b.RemoveExtension("jira")
-		if b.Extensions != nil {
-			t.Errorf("Extensions should be nil after removing all extensions, got %v", b.Extensions)
+		if !b.HasSync("jira") {
+			t.Error("RemoveSync removed wrong sync entry")
 		}
 
-		// Remove from nil Extensions should not panic
+		// Remove last sync entry should nil out map
+		b.RemoveSync("jira")
+		if b.Sync != nil {
+			t.Errorf("Sync should be nil after removing all sync entries, got %v", b.Sync)
+		}
+
+		// Remove from nil Sync should not panic
 		empty := &Issue{}
-		empty.RemoveExtension("clickup") // should not panic
+		empty.RemoveSync("clickup") // should not panic
 	})
 }
 
-func TestETagChangesWithExtensions(t *testing.T) {
+func TestETagChangesWithSync(t *testing.T) {
 	b := &Issue{
 		Title:  "Test",
 		Status: "todo",
 	}
 	etagWithout := b.ETag()
 
-	b.SetExtension("clickup", map[string]any{"task_id": "abc"})
+	b.SetSync("clickup", map[string]any{"task_id": "abc"})
 	etagWith := b.ETag()
 
 	if etagWithout == etagWith {
-		t.Error("ETag should change when extension data is added")
+		t.Error("ETag should change when sync data is added")
 	}
 
-	b.SetExtension("clickup", map[string]any{"task_id": "def"})
+	b.SetSync("clickup", map[string]any{"task_id": "def"})
 	etagModified := b.ETag()
 
 	if etagWith == etagModified {
-		t.Error("ETag should change when extension data is modified")
+		t.Error("ETag should change when sync data is modified")
 	}
 
-	b.RemoveExtension("clickup")
+	b.RemoveSync("clickup")
 	etagRemoved := b.ETag()
 
 	if etagRemoved != etagWithout {
-		t.Error("ETag should return to original when extension data is removed")
+		t.Error("ETag should return to original when sync data is removed")
 	}
 }
 

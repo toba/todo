@@ -225,7 +225,17 @@ extensions:
 				},
 				func(t *testing.T, c string) {
 					if !strings.Contains(c, "clickup:") {
-						t.Error("extensions section was lost")
+						t.Error("sync section was lost")
+					}
+				},
+				func(t *testing.T, c string) {
+					if strings.Contains(c, "\nextensions:") || strings.HasPrefix(c, "extensions:") {
+						t.Error("config still contains 'extensions:' key")
+					}
+				},
+				func(t *testing.T, c string) {
+					if !strings.Contains(c, "sync:") {
+						t.Error("config missing 'sync:' key")
 					}
 				},
 				func(t *testing.T, c string) {
@@ -507,6 +517,53 @@ type: task
 		}
 	})
 
+	t.Run("renames extensions to sync in frontmatter", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, ".todo.yml"), `beans:
+  path: .beans
+`)
+
+		writeFile(t, filepath.Join(dir, ".beans", "beans-xxxx--linked.md"), `---
+# beans-xxxx
+title: Linked task
+status: todo
+type: task
+extensions:
+  clickup:
+    task_id: "abc123"
+    synced_at: "2025-01-15T10:00:00Z"
+---
+
+Linked body.
+`)
+
+		result, err := Run(Options{
+			ConfigPath: filepath.Join(dir, ".todo.yml"),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result.SyncKeyRenamed != 1 {
+			t.Errorf("SyncKeyRenamed = %d, want 1", result.SyncKeyRenamed)
+		}
+
+		content := readFile(t, filepath.Join(dir, ".issues", "beans", "beans-xxxx--linked.md"))
+		if strings.Contains(content, "extensions:") {
+			t.Error("migrated bean still has extensions: key")
+		}
+		if !strings.Contains(content, "sync:") {
+			t.Error("migrated bean missing sync: key")
+		}
+		// Verify the nested data is preserved
+		if !strings.Contains(content, "clickup:") {
+			t.Error("clickup section lost during migration")
+		}
+		if !strings.Contains(content, "task_id:") {
+			t.Error("task_id lost during migration")
+		}
+	})
+
 	t.Run("imports clickup config from bean-me-up", func(t *testing.T) {
 		dir := t.TempDir()
 
@@ -669,12 +726,12 @@ extensions:
 		}
 	})
 
-	t.Run("skips when extensions.clickup already in main config", func(t *testing.T) {
+	t.Run("skips when sync.clickup already in main config", func(t *testing.T) {
 		dir := t.TempDir()
 		configPath := filepath.Join(dir, ".todo.yml")
 		writeFile(t, configPath, `issues:
   path: .issues
-extensions:
+sync:
   clickup:
     list_id: "existing"
 `)
@@ -822,6 +879,94 @@ extensions:
 			t.Error("should not import from self")
 		}
 	})
+}
+
+func TestRewriteExtensionsKey(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		renamed bool
+	}{
+		{
+			name: "renames extensions to sync",
+			input: `---
+title: Test bean
+status: in-progress
+extensions:
+  clickup:
+    task_id: "abc123"
+---
+
+Body content.
+`,
+			want: `---
+title: Test bean
+status: in-progress
+sync:
+  clickup:
+    task_id: "abc123"
+---
+
+Body content.
+`,
+			renamed: true,
+		},
+		{
+			name: "no extensions key",
+			input: `---
+title: Test bean
+status: in-progress
+---
+
+Body content.
+`,
+			want: `---
+title: Test bean
+status: in-progress
+---
+
+Body content.
+`,
+			renamed: false,
+		},
+		{
+			name: "extensions in body not affected",
+			input: `---
+title: Test bean
+status: ready
+---
+
+The extensions: key should not change here.
+`,
+			want: `---
+title: Test bean
+status: ready
+---
+
+The extensions: key should not change here.
+`,
+			renamed: false,
+		},
+		{
+			name: "no frontmatter",
+			input:   "Just some text with extensions: mentioned",
+			want:    "Just some text with extensions: mentioned",
+			renamed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, renamed := rewriteExtensionsKey([]byte(tt.input))
+			if string(got) != tt.want {
+				t.Errorf("content mismatch:\ngot:  %q\nwant: %q", string(got), tt.want)
+			}
+			if renamed != tt.renamed {
+				t.Errorf("renamed = %v, want %v", renamed, tt.renamed)
+			}
+		})
+	}
 }
 
 func TestConvertStatusMappingKeys(t *testing.T) {
