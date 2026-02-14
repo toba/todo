@@ -1,6 +1,6 @@
 # Toba TODO
 
-**todo is an issue tracker for you, your team, and your coding agents.** Instead of tracking tasks in a separate application, todo stores them right alongside your code as plain Markdown files. You can use the `beans` CLI to interact with your tasks, but more importantly, so can your favorite coding agent.
+**todo is an issue tracker for you, your team, and your coding agents.** Instead of tracking tasks in a separate application, todo stores them right alongside your code as plain Markdown files. You can use the `todo` CLI to interact with your tasks, but more importantly, so can your favorite coding agent.
 
 This gives your robot friends a juicy upgrade: now they get a complete view of your project, make suggestions for what to work on next, track their progress, create bug issues for problems they find, and more.
 
@@ -10,11 +10,11 @@ This gives your robot friends a juicy upgrade: now they get a complete view of y
 
 - **Track tasks, bugs, features**, and more right alongside your code.
 - **Plain old Markdown files** stored in a `.issues` directory in your project. Easy to version control, readable and editable by humans and machines alike.
-- Use the `beans` CLI to create, list, view, update, and archive beans; or **let your coding agent do it for you**.
+- Use the `todo` CLI to create, list, view, update, and archive issues; or **let your coding agent do it for you**.
 - **Built-in GraphQL query engine** lets your agent get exactly the information it needs, keeping token use to a minimum.
-- **Project memory** — completed beans are archived and serve as project memory that your coding agent can query for context about past work.
-- **Sync to external trackers** — two-way sync with **ClickUp** and **GitHub Issues** via `beans sync`.
-- **Interactive TUI** for browsing and managing beans from the terminal, with substring filtering (`/`), deep search (`//`), and sort picker (`o`).
+- **Project memory** — completed issues are archived and serve as project memory that your coding agent can query for context about past work.
+- **Sync to external trackers** — two-way sync with **ClickUp** and **GitHub Issues** via `todo sync`.
+- **Interactive TUI** for browsing and managing issues from the terminal, with substring filtering (`/`), deep search (`//`), and sort picker (`o`).
 - **Configurable editor** — set `editor` in `.todo.yml` to use a custom editor (supports multi-word commands like `code --wait`).
 - **Markdown roadmap** — generate a roadmap document from your milestones and epics.
 
@@ -37,7 +37,7 @@ go install github.com/toba/todo@latest
 Inside the root directory of your project, run:
 
 ```bash
-beans init
+todo init
 ```
 
 This creates a `.issues/` directory and a `.todo.yml` configuration file at the project root. Both are meant to be tracked in version control.
@@ -71,7 +71,7 @@ extensions:
 The most basic way to teach your agent about todo is to add the following instruction to your `AGENTS.md`, `CLAUDE.md`, or equivalent file:
 
 ```
-**IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
+**IMPORTANT**: before you do anything else, run the `todo prime` command and heed its output.
 ```
 
 ### Claude Code
@@ -82,10 +82,10 @@ Add the following hooks to your project's `.claude/settings.json` file:
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "beans prime" }] }
+      { "hooks": [{ "type": "command", "command": "todo prime" }] }
     ],
     "PreCompact": [
-      { "hooks": [{ "type": "command", "command": "beans prime" }] }
+      { "hooks": [{ "type": "command", "command": "todo prime" }] }
     ]
   }
 }
@@ -94,12 +94,12 @@ Add the following hooks to your project's `.claude/settings.json` file:
 ## Usage
 
 ```bash
-beans help          # List all commands
-beans tui           # Interactive terminal UI
-beans list          # List all beans
-beans create "Fix login bug" -t bug -s ready
-beans show abc-def  # View a bean
-beans sync          # Sync to ClickUp or GitHub Issues
+todo help          # List all commands
+todo tui           # Interactive terminal UI
+todo list          # List all issues
+todo create "Fix login bug" -t bug -s ready
+todo show abc-def  # View an issue
+todo sync          # Sync to ClickUp or GitHub Issues
 ```
 
 ### Agent Workflows
@@ -107,7 +107,7 @@ beans sync          # Sync to ClickUp or GitHub Issues
 The real power of todo comes from letting your coding agent manage tasks. Assuming you have integrated todo into your agent, you can use natural language:
 
 ```
-Are there any tasks we should be tracking for this project? If so, please create beans for them.
+Are there any tasks we should be tracking for this project? If so, please create issues for them.
 ```
 
 ```
@@ -119,7 +119,7 @@ It's time to tackle abc-def.
 ```
 
 ```
-Please inspect this project's beans and reorganize them into epics and milestones.
+Please inspect this project's issues and reorganize them into epics and milestones.
 ```
 
 ## Syncing with External Trackers
@@ -127,10 +127,10 @@ Please inspect this project's beans and reorganize them into epics and milestone
 todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `extensions`, then run:
 
 ```bash
-beans sync                  # Sync all issues
-beans sync abc-def xyz-123  # Sync specific issues
-beans sync --dry-run        # Preview changes without applying
-beans sync --force          # Force update even if unchanged
+todo sync                  # Sync all issues
+todo sync abc-def xyz-123  # Sync specific issues
+todo sync --dry-run        # Preview changes without applying
+todo sync --force          # Force update even if unchanged
 ```
 
 ### ClickUp
@@ -175,7 +175,7 @@ extensions:
 
 ## Extensions
 
-todo supports extensions for syncing with external systems. Per-bean sync state is stored in frontmatter:
+todo supports extensions for syncing with external systems. Per-issue sync state is stored in frontmatter:
 
 ```yaml
 ---
@@ -207,12 +207,12 @@ mutation { setExtensionData(id: "abc-def", name: "clickup", data: { task_id: "xy
 
 ### Building an Extension
 
-Extensions are standalone programs that shell out to the `beans` CLI or use the GraphQL API directly. A typical extension:
+Extensions are standalone programs that shell out to the `todo` CLI or use the GraphQL API directly. A typical extension:
 
 1. Reads its config from `.todo.yml` (under `extensions.<name>`)
-2. Queries beans via `beans query --json '{ beans(filter: { extensionStale: "myext" }) { ... } }'`
+2. Queries issues via `todo query --json '{ beans(filter: { extensionStale: "myext" }) { ... } }'`
 3. Syncs data with the external system
-4. Writes back via `beans query 'mutation { setExtensionData(...) { id } }'`
+4. Writes back via `todo query 'mutation { setExtensionData(...) { id } }'`
 
 ## License
 
