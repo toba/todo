@@ -350,10 +350,28 @@ func rewriteExtensionsKey(content []byte) ([]byte, bool) {
 	return []byte(s[:fmStart] + newFM + s[fmEnd:]), true
 }
 
-// MigrateConfig rewrites a .todo.yml config file:
+// configReplacements defines line-level string replacements for config migration.
+// Each pair is (old, new). Applied in order via strings.Replace on the full file.
+var configReplacements = []struct{ old, new string }{
+	{"beans:", "issues:"},
+	{"extensions:", "sync:"},
+	{"path: .beans", "path: .issues"},
+	{"default_status: todo", "default_status: ready"},
+}
+
+// configLineRemovals defines regex patterns for lines to remove entirely.
+var configLineRemovals = []*regexp.Regexp{
+	regexp.MustCompile(`(?m)^\s+prefix:.*\n`),
+	regexp.MustCompile(`(?m)^\s+id_length:.*\n`),
+}
+
+// MigrateConfig rewrites a .todo.yml config file using string replacements
+// to preserve original formatting (important for git rename detection).
 // - Renames beans: key → issues: key
-// - Removes prefix and id_length from the issues map
+// - Renames extensions: key → sync: key
+// - Removes prefix and id_length lines
 // - Converts default_status: todo → default_status: ready
+// - Updates path: .beans → path: .issues
 // Returns true if the config was actually modified.
 func MigrateConfig(configPath string) (bool, error) {
 	data, err := os.ReadFile(configPath)
@@ -364,59 +382,22 @@ func MigrateConfig(configPath string) (bool, error) {
 		return false, err
 	}
 
-	var raw map[string]any
-	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return false, fmt.Errorf("parsing config: %w", err)
-	}
-
+	content := string(data)
 	modified := false
 
-	// Move beans: → issues:
-	if beansRaw, ok := raw["beans"]; ok {
-		if _, hasIssues := raw["issues"]; !hasIssues {
-			raw["issues"] = beansRaw
+	// Apply string replacements
+	for _, r := range configReplacements {
+		if strings.Contains(content, r.old) {
+			content = strings.Replace(content, r.old, r.new, 1)
+			modified = true
 		}
-		delete(raw, "beans")
-		modified = true
 	}
 
-	// Move extensions: → sync:
-	if extRaw, ok := raw["extensions"]; ok {
-		if _, hasSync := raw["sync"]; !hasSync {
-			raw["sync"] = extRaw
-		}
-		delete(raw, "extensions")
-		modified = true
-	}
-
-	// Process the issues section
-	if issuesRaw, ok := raw["issues"]; ok {
-		if issuesMap, ok := issuesRaw.(map[string]any); ok {
-			// Remove prefix and id_length
-			if _, ok := issuesMap["prefix"]; ok {
-				delete(issuesMap, "prefix")
-				modified = true
-			}
-			if _, ok := issuesMap["id_length"]; ok {
-				delete(issuesMap, "id_length")
-				modified = true
-			}
-
-			// Convert default_status: todo → ready
-			if status, ok := issuesMap["default_status"]; ok {
-				if statusStr, ok := status.(string); ok && statusStr == "todo" {
-					issuesMap["default_status"] = "ready"
-					modified = true
-				}
-			}
-
-			// Update path from .beans to .issues if it was the default
-			if path, ok := issuesMap["path"]; ok {
-				if pathStr, ok := path.(string); ok && pathStr == ".beans" {
-					issuesMap["path"] = ".issues"
-					modified = true
-				}
-			}
+	// Remove lines matching patterns
+	for _, re := range configLineRemovals {
+		if re.MatchString(content) {
+			content = re.ReplaceAllString(content, "")
+			modified = true
 		}
 	}
 
@@ -424,12 +405,7 @@ func MigrateConfig(configPath string) (bool, error) {
 		return false, nil
 	}
 
-	out, err := yaml.Marshal(raw)
-	if err != nil {
-		return false, fmt.Errorf("serializing config: %w", err)
-	}
-
-	return true, os.WriteFile(configPath, out, 0644)
+	return true, os.WriteFile(configPath, []byte(content), 0644)
 }
 
 // ImportClickUpConfig detects and imports ClickUp configuration from
