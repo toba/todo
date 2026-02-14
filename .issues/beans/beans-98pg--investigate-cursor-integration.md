@@ -1,7 +1,7 @@
 ---
 # beans-98pg
 title: Investigate Cursor integration
-status: todo
+status: ready
 type: task
 tags:
     - integrations

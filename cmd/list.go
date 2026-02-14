@@ -112,7 +112,7 @@ Search Syntax (--search/-S):
 		resolver := &graph.Resolver{Core: store}
 		beans, err := resolver.Query().Issues(context.Background(), filter)
 		if err != nil {
-			return fmt.Errorf("querying beans: %w", err)
+			return fmt.Errorf("querying issues: %w", err)
 		}
 
 		// Sort beans

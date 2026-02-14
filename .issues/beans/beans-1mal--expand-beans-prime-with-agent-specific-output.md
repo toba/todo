@@ -1,7 +1,7 @@
 ---
 # beans-1mal
 title: Expand beans prime with agent-specific output
-status: todo
+status: ready
 type: feature
 created_at: 2025-12-20T15:53:29Z
 updated_at: 2025-12-20T15:53:29Z

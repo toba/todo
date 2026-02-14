@@ -77,7 +77,7 @@ warned and those references will be removed after confirmation. Use -f to skip a
 		// Output results
 		if deleteJSON {
 			if len(deleted) == 1 {
-				return output.Success(deleted[0], "Bean deleted")
+				return output.Success(deleted[0], "Issue deleted")
 			}
 			return output.JSON(output.Response{
 				Success: true,

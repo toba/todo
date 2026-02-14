@@ -1,6 +1,6 @@
 ---
 title: Research Claude Code plugin/marketplace
-status: todo
+status: ready
 type: task
 priority: normal
 created_at: 2025-12-13T01:53:55Z

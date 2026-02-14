@@ -1,7 +1,7 @@
 ---
 # beans-us37
 title: Investigate Zed integration
-status: todo
+status: ready
 type: task
 tags:
     - integrations

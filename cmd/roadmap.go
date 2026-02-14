@@ -64,7 +64,7 @@ var roadmapCmd = &cobra.Command{
 		resolver := &graph.Resolver{Core: store}
 		allBeans, err := resolver.Query().Issues(context.Background(), nil)
 		if err != nil {
-			return fmt.Errorf("querying beans: %w", err)
+			return fmt.Errorf("querying issues: %w", err)
 		}
 
 		// Build the roadmap

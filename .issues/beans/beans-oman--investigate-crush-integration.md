@@ -1,7 +1,7 @@
 ---
 # beans-oman
 title: Investigate Crush integration
-status: todo
+status: ready
 type: task
 tags:
     - integrations

@@ -64,7 +64,7 @@ var showCmd = &cobra.Command{
 				}
 				content, err := b.Render()
 				if err != nil {
-					return fmt.Errorf("failed to render bean: %w", err)
+					return fmt.Errorf("failed to render issue: %w", err)
 				}
 				fmt.Print(string(content))
 			}

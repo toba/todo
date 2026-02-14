@@ -1,6 +1,6 @@
 ---
 title: Support custom properties on beans
-status: todo
+status: ready
 type: feature
 priority: normal
 created_at: 2025-12-13T00:52:24Z

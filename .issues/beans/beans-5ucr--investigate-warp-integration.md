@@ -1,7 +1,7 @@
 ---
 # beans-5ucr
 title: Investigate Warp integration
-status: todo
+status: ready
 type: task
 tags:
     - integrations

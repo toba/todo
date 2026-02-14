@@ -27,7 +27,7 @@ type createModalModel struct {
 
 func newCreateModalModel(width, height int) createModalModel {
 	ti := textinput.New()
-	ti.Placeholder = "Enter bean title..."
+	ti.Placeholder = "Enter issue title..."
 	ti.CharLimit = 200
 	ti.Width = 50
 	ti.Focus()
@@ -88,7 +88,7 @@ func (m createModalModel) View() string {
 	modalWidth := max(40, min(60, m.width*50/100))
 
 	// Header
-	header := lipgloss.NewStyle().Bold(true).Render("Create New Bean")
+	header := lipgloss.NewStyle().Bold(true).Render("Create New Issue")
 
 	// Input field
 	inputBox := lipgloss.NewStyle().

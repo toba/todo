@@ -1,0 +1,4 @@
+issues:
+    default_status: ready
+    default_type: task
+    path: .issues

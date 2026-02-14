@@ -1,7 +1,7 @@
 ---
 # beans-zyfk
 title: Investigate Codex integration
-status: todo
+status: ready
 type: task
 tags:
     - integrations

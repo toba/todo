@@ -1,7 +1,7 @@
 ---
 # beans-18db
 title: beans milestones command
-status: todo
+status: ready
 type: task
 created_at: 2025-12-27T21:44:05Z
 updated_at: 2025-12-27T21:44:05Z

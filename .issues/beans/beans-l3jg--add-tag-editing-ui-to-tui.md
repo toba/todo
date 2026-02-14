@@ -1,6 +1,6 @@
 ---
 title: Add tag editing UI to TUI
-status: todo
+status: ready
 type: feature
 priority: normal
 created_at: 2025-12-12T22:58:14Z

@@ -163,7 +163,7 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 	delegate := itemDelegate{cfg: cfg, selectedBeans: &selectedBeans}
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.Title = "Beans"
+	l.Title = "Issues"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.SetShowHelp(false)
@@ -374,7 +374,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return m, func() tea.Msg {
 						return openParentPickerMsg{
 							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected beans", len(ids)),
+							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
 							beanTypes: types,
 						}
 					}
@@ -399,7 +399,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return m, func() tea.Msg {
 						return openStatusPickerMsg{
 							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected beans", len(ids)),
+							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
 				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
@@ -422,7 +422,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return m, func() tea.Msg {
 						return openTypePickerMsg{
 							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected beans", len(ids)),
+							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
 				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
@@ -445,7 +445,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return m, func() tea.Msg {
 						return openPriorityPickerMsg{
 							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected beans", len(ids)),
+							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
 				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
@@ -557,9 +557,9 @@ func (m listModel) View() string {
 
 	// Update title based on active filter
 	if m.tagFilter != "" {
-		m.list.Title = fmt.Sprintf("Beans [tag: %s]", m.tagFilter)
+		m.list.Title = fmt.Sprintf("Issues [tag: %s]", m.tagFilter)
 	} else {
-		m.list.Title = "Beans"
+		m.list.Title = "Issues"
 	}
 
 	// Simple bordered container

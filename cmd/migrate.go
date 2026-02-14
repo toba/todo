@@ -19,8 +19,8 @@ to the new issues format (.issues/ directory).
 
 This command:
   - Rewrites .todo.yml: beans: key → issues: key, removes prefix/id_length
-  - Copies bean files from old data dir into .issues/beans/ subfolder
-  - Copies archived beans into .issues/archive/
+  - Copies issue files from old data dir into .issues/beans/ subfolder
+  - Copies archived issues into .issues/archive/
   - Converts status: todo → status: ready in all frontmatter
 
 Old IDs (beans-xxxx) are preserved. Cross-references remain valid.`,
@@ -39,7 +39,7 @@ Old IDs (beans-xxxx) are preserved. Cross-references remain valid.`,
 		}
 
 		if migrateJSON {
-			msg := fmt.Sprintf("Migrated %d active and %d archived beans (%d status conversions, %d sync key renames)",
+			msg := fmt.Sprintf("Migrated %d active and %d archived issues (%d status conversions, %d sync key renames)",
 				result.ActiveCount, result.ArchivedCount, result.StatusConverted, result.SyncKeyRenamed)
 			if result.ClickUpImported {
 				msg += "; ClickUp config imported"
@@ -51,8 +51,8 @@ Old IDs (beans-xxxx) are preserved. Cross-references remain valid.`,
 		}
 
 		fmt.Printf("Migration complete:\n")
-		fmt.Printf("  Active beans migrated:   %d\n", result.ActiveCount)
-		fmt.Printf("  Archived beans migrated: %d\n", result.ArchivedCount)
+		fmt.Printf("  Active issues migrated:  %d\n", result.ActiveCount)
+		fmt.Printf("  Archived issues migrated:%d\n", result.ArchivedCount)
 		fmt.Printf("  Status conversions:      %d (todo → ready)\n", result.StatusConverted)
 		if result.SyncKeyRenamed > 0 {
 			fmt.Printf("  Sync key renames:        %d (extensions → sync)\n", result.SyncKeyRenamed)

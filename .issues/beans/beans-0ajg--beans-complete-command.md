@@ -1,7 +1,7 @@
 ---
 # beans-0ajg
 title: beans complete command
-status: todo
+status: ready
 type: task
 created_at: 2025-12-27T21:44:04Z
 updated_at: 2025-12-27T21:44:04Z

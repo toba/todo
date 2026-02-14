@@ -105,10 +105,10 @@ Note: Cycles cannot be auto-fixed and require manual intervention.`,
 			}
 		}
 
-		// === Bean link checks ===
+		// === Issue link checks ===
 		if !checkJSON {
 			fmt.Println()
-			fmt.Println(ui.Bold.Render("Bean Links"))
+			fmt.Println(ui.Bold.Render("Issue Links"))
 		}
 
 		linkResult := store.CheckAllLinks()

@@ -104,7 +104,7 @@ var createCmd = &cobra.Command{
 		}
 
 		if createJSON {
-			return output.Success(b, "Bean created")
+			return output.Success(b, "Issue created")
 		}
 
 		fmt.Println(ui.Success.Render("Created ") + ui.ID.Render(b.ID) + " " + ui.Muted.Render(b.Path))

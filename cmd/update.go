@@ -107,9 +107,9 @@ var updateCmd = &cobra.Command{
 
 		// Output result
 		if updateJSON {
-			msg := "Bean updated"
+			msg := "Issue updated"
 			if wasArchived {
-				msg = "Bean unarchived and updated"
+				msg = "Issue unarchived and updated"
 			}
 			return output.Success(b, msg)
 		}
