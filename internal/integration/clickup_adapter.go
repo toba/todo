@@ -21,6 +21,18 @@ func newClickUpIntegration(cfg *clickup.Config, c *core.Core) *clickUpIntegratio
 	return &clickUpIntegration{cfg: cfg, core: c}
 }
 
+// detectClickUp checks if ClickUp config is valid and returns the integration.
+func detectClickUp(cfgMap map[string]any, c *core.Core) (Integration, error) {
+	cfg, err := clickup.ParseConfig(cfgMap)
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
+		return newClickUpIntegration(cfg, c), nil
+	}
+	return nil, nil
+}
+
 func (cu *clickUpIntegration) Name() string { return "clickup" }
 
 func (cu *clickUpIntegration) getToken() (string, error) {
@@ -51,21 +63,35 @@ func (cu *clickUpIntegration) Sync(ctx context.Context, issues []*issue.Issue, o
 		return nil, nil
 	}
 
+	// Convert integration progress callback to clickup progress callback
+	var clickupProgress clickup.ProgressFunc
+	if opts.OnProgress != nil {
+		clickupProgress = func(result clickup.SyncResult, completed, total int) {
+			opts.OnProgress(convertClickUpResult(result), completed, total)
+		}
+	}
+
 	// Create syncer
 	syncOpts := clickup.SyncOptions{
 		DryRun:          opts.DryRun,
 		Force:           opts.Force,
 		NoRelationships: opts.NoRelationships,
 		ListID:          cu.cfg.ListID,
-		OnProgress:      opts.OnProgress,
+		OnProgress:      clickupProgress,
 	}
 
 	syncer := clickup.NewSyncer(client, cu.cfg, syncOpts, cu.core, syncProvider)
 
 	// Run sync
-	results, err := syncer.SyncIssues(ctx, toSync)
+	clickupResults, err := syncer.SyncIssues(ctx, toSync)
 	if err != nil {
 		return nil, fmt.Errorf("sync failed: %w", err)
+	}
+
+	// Convert results
+	results := make([]SyncResult, len(clickupResults))
+	for i, r := range clickupResults {
+		results[i] = convertClickUpResult(r)
 	}
 
 	// Flush sync state to issue extension metadata
@@ -78,16 +104,28 @@ func (cu *clickUpIntegration) Sync(ctx context.Context, issues []*issue.Issue, o
 	return results, nil
 }
 
-func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) error {
+// convertClickUpResult converts a clickup.SyncResult to an integration.SyncResult.
+func convertClickUpResult(r clickup.SyncResult) SyncResult {
+	return SyncResult{
+		IssueID:     r.IssueID,
+		IssueTitle:  r.IssueTitle,
+		ExternalID:  r.TaskID,
+		ExternalURL: r.TaskURL,
+		Action:      r.Action,
+		Error:       r.Error,
+	}
+}
+
+func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) (*LinkResult, error) {
 	b, err := cu.core.Get(issueID)
 	if err != nil {
-		return fmt.Errorf("issue not found: %s", issueID)
+		return nil, fmt.Errorf("issue not found: %s", issueID)
 	}
 
 	// Check if already linked to this task
 	existingTaskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
 	if existingTaskID == taskID {
-		return nil // Already linked
+		return &LinkResult{Action: "already_linked", ExternalID: taskID}, nil
 	}
 
 	// Try to verify the task exists if we have a token
@@ -106,23 +144,29 @@ func (cu *clickUpIntegration) Link(ctx context.Context, issueID, taskID string) 
 		clickup.ExtKeySyncedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	b.SetExtension(clickup.ExtensionName, data)
-	return cu.core.SaveExtensionOnly(b, nil)
+	if err := cu.core.SaveExtensionOnly(b, nil); err != nil {
+		return nil, err
+	}
+	return &LinkResult{Action: "linked", ExternalID: taskID}, nil
 }
 
-func (cu *clickUpIntegration) Unlink(ctx context.Context, issueID string) error {
+func (cu *clickUpIntegration) Unlink(ctx context.Context, issueID string) (*UnlinkResult, error) {
 	b, err := cu.core.Get(issueID)
 	if err != nil {
-		return fmt.Errorf("issue not found: %s", issueID)
+		return nil, fmt.Errorf("issue not found: %s", issueID)
 	}
 
 	// Check if linked
 	taskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
 	if taskID == "" {
-		return nil // Not linked
+		return &UnlinkResult{Action: "not_linked"}, nil
 	}
 
 	b.RemoveExtension(clickup.ExtensionName)
-	return cu.core.SaveExtensionOnly(b, nil)
+	if err := cu.core.SaveExtensionOnly(b, nil); err != nil {
+		return nil, err
+	}
+	return &UnlinkResult{Action: "unlinked", ExternalID: taskID}, nil
 }
 
 func (cu *clickUpIntegration) Check(ctx context.Context, opts CheckOptions) (*CheckReport, error) {

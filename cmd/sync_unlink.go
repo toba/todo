@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toba/todo/internal/integration"
-	"github.com/toba/todo/internal/integration/clickup"
 )
 
 var syncUnlinkJSON bool
@@ -34,32 +33,29 @@ Note: This does not delete or modify the external task itself.`,
 			return fmt.Errorf("no integration configured")
 		}
 
-		// Get the issue to check current state
-		b, err := store.Get(issueID)
-		if err != nil {
-			return fmt.Errorf("issue not found: %s", issueID)
-		}
-
-		// Check if linked
-		taskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
-		if taskID == "" {
-			if syncUnlinkJSON {
-				return outputUnlinkJSON(b.ID, b.Title, "", "not_linked")
-			}
-			fmt.Printf("Skipped: %s is not linked to an external task\n", b.ID)
-			return nil
-		}
-
 		// Unlink it
-		if err := integ.Unlink(ctx, issueID); err != nil {
+		result, err := integ.Unlink(ctx, issueID)
+		if err != nil {
 			return err
 		}
 
-		if syncUnlinkJSON {
-			return outputUnlinkJSON(b.ID, b.Title, taskID, "unlinked")
+		// Get the issue for display
+		b, getErr := store.Get(issueID)
+		title := issueID
+		if getErr == nil {
+			title = b.Title
 		}
 
-		fmt.Printf("Unlinked: %s (was %s)\n", b.ID, taskID)
+		if syncUnlinkJSON {
+			return outputUnlinkJSON(issueID, title, result.ExternalID, result.Action)
+		}
+
+		switch result.Action {
+		case "not_linked":
+			fmt.Printf("Skipped: %s is not linked to an external task\n", issueID)
+		case "unlinked":
+			fmt.Printf("Unlinked: %s (was %s)\n", issueID, result.ExternalID)
+		}
 		return nil
 	},
 }
@@ -69,14 +65,14 @@ func init() {
 	syncCmd.AddCommand(syncUnlinkCmd)
 }
 
-func outputUnlinkJSON(issueID, issueTitle, taskID, action string) error {
+func outputUnlinkJSON(issueID, issueTitle, externalID, action string) error {
 	result := map[string]string{
 		"issue_id":    issueID,
 		"issue_title": issueTitle,
 		"action":      action,
 	}
-	if taskID != "" {
-		result["task_id"] = taskID
+	if externalID != "" {
+		result["external_id"] = externalID
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

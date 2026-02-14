@@ -5,19 +5,40 @@ import (
 	"context"
 
 	"github.com/toba/todo/internal/core"
-	"github.com/toba/todo/internal/integration/clickup"
 	"github.com/toba/todo/internal/issue"
 )
 
 // SyncResult holds the result of syncing a single issue.
-type SyncResult = clickup.SyncResult
+type SyncResult struct {
+	IssueID     string // local issue ID
+	IssueTitle  string // local issue title
+	ExternalID  string // ClickUp task ID or GitHub issue number (as string)
+	ExternalURL string // URL to the external resource
+	Action      string // "created", "updated", "skipped", "error", "unchanged", "would create", "would update"
+	Error       error
+}
+
+// ProgressFunc is called when an issue sync completes.
+type ProgressFunc func(result SyncResult, completed, total int)
 
 // SyncOptions configures the sync operation.
 type SyncOptions struct {
 	DryRun          bool
 	Force           bool
 	NoRelationships bool
-	OnProgress      clickup.ProgressFunc
+	OnProgress      ProgressFunc
+}
+
+// LinkResult holds the result of a link operation.
+type LinkResult struct {
+	Action     string // "linked" or "already_linked"
+	ExternalID string
+}
+
+// UnlinkResult holds the result of an unlink operation.
+type UnlinkResult struct {
+	Action     string // "unlinked" or "not_linked"
+	ExternalID string // previous ID if unlinked
 }
 
 // CheckStatus represents the result of a single check.
@@ -64,8 +85,8 @@ type CheckOptions struct {
 type Integration interface {
 	Name() string
 	Sync(ctx context.Context, issues []*issue.Issue, opts SyncOptions) ([]SyncResult, error)
-	Link(ctx context.Context, issueID, externalID string) error
-	Unlink(ctx context.Context, issueID string) error
+	Link(ctx context.Context, issueID, externalID string) (*LinkResult, error)
+	Unlink(ctx context.Context, issueID string) (*UnlinkResult, error)
 	Check(ctx context.Context, opts CheckOptions) (*CheckReport, error)
 }
 
@@ -78,12 +99,23 @@ func Detect(extensions map[string]map[string]any, c *core.Core) (Integration, er
 
 	// Check for ClickUp configuration
 	if clickupCfg, ok := extensions["clickup"]; ok {
-		cfg, err := clickup.ParseConfig(clickupCfg)
+		integ, err := detectClickUp(clickupCfg, c)
 		if err != nil {
 			return nil, err
 		}
-		if cfg != nil {
-			return newClickUpIntegration(cfg, c), nil
+		if integ != nil {
+			return integ, nil
+		}
+	}
+
+	// Check for GitHub configuration
+	if githubCfg, ok := extensions["github"]; ok {
+		integ, err := detectGitHub(githubCfg, c)
+		if err != nil {
+			return nil, err
+		}
+		if integ != nil {
+			return integ, nil
 		}
 	}
 

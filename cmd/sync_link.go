@@ -8,23 +8,22 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toba/todo/internal/integration"
-	"github.com/toba/todo/internal/integration/clickup"
 )
 
 var syncLinkJSON bool
 
 var syncLinkCmd = &cobra.Command{
-	Use:   "link <issue-id> <task-id>",
+	Use:   "link <issue-id> <external-id>",
 	Short: "Link an issue to an existing external task",
-	Long: `Manually links an issue to an existing external task (e.g., ClickUp task)
-by storing the task ID in the issue's extension metadata.
+	Long: `Manually links an issue to an existing external task (e.g., ClickUp task or GitHub issue)
+by storing the external ID in the issue's extension metadata.
 
 This is useful when you have an existing task that you want to
 associate with an issue, or when syncing fails and you need to fix the link.`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		issueID := args[0]
-		taskID := args[1]
+		externalID := args[1]
 
 		ctx := context.Background()
 
@@ -37,32 +36,29 @@ associate with an issue, or when syncing fails and you need to fix the link.`,
 			return fmt.Errorf("no integration configured")
 		}
 
-		// Get the issue to check current state
-		b, err := store.Get(issueID)
-		if err != nil {
-			return fmt.Errorf("issue not found: %s", issueID)
-		}
-
-		// Check if already linked to this task
-		existingTaskID := clickup.GetExtensionString(b, clickup.ExtKeyTaskID)
-		if existingTaskID == taskID {
-			if syncLinkJSON {
-				return outputLinkJSON(b.ID, b.Title, taskID, "already_linked")
-			}
-			fmt.Printf("Skipped: %s already linked to %s\n", b.ID, taskID)
-			return nil
-		}
-
 		// Link it
-		if err := integ.Link(ctx, issueID, taskID); err != nil {
+		result, err := integ.Link(ctx, issueID, externalID)
+		if err != nil {
 			return err
 		}
 
-		if syncLinkJSON {
-			return outputLinkJSON(b.ID, b.Title, taskID, "linked")
+		// Get the issue for display
+		b, getErr := store.Get(issueID)
+		title := issueID
+		if getErr == nil {
+			title = b.Title
 		}
 
-		fmt.Printf("Linked: %s \u2192 %s\n", b.ID, taskID)
+		if syncLinkJSON {
+			return outputLinkJSON(issueID, title, externalID, result.Action)
+		}
+
+		switch result.Action {
+		case "already_linked":
+			fmt.Printf("Skipped: %s already linked to %s\n", issueID, externalID)
+		case "linked":
+			fmt.Printf("Linked: %s → %s\n", issueID, externalID)
+		}
 		return nil
 	},
 }
@@ -72,11 +68,11 @@ func init() {
 	syncCmd.AddCommand(syncLinkCmd)
 }
 
-func outputLinkJSON(issueID, issueTitle, taskID, action string) error {
+func outputLinkJSON(issueID, issueTitle, externalID, action string) error {
 	result := map[string]string{
 		"issue_id":    issueID,
 		"issue_title": issueTitle,
-		"task_id":     taskID,
+		"external_id": externalID,
 		"action":      action,
 	}
 	enc := json.NewEncoder(os.Stdout)

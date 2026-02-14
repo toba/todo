@@ -46,7 +46,7 @@ Use --skip-api to perform offline validation only.`,
 				enc.SetIndent("", "  ")
 				return enc.Encode(map[string]string{"error": "no integration configured"})
 			}
-			fmt.Println("No integration configured. Add an extensions.clickup section to .todo.yml.")
+			fmt.Println("No integration configured. Add an extensions section (clickup or github) to .todo.yml.")
 			return nil
 		}
 

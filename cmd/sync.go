@@ -55,7 +55,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 		if syncJSON {
 			return outputSyncJSON(nil)
 		}
-		fmt.Println("No integration configured. Add an extensions.clickup section to .todo.yml.")
+		fmt.Println("No integration configured. Add an extensions section (clickup or github) to .todo.yml.")
 		return nil
 	}
 
@@ -133,12 +133,12 @@ func runSync(cmd *cobra.Command, args []string) error {
 
 func outputSyncJSON(results []integration.SyncResult) error {
 	type jsonResult struct {
-		IssueID    string `json:"issue_id"`
-		IssueTitle string `json:"issue_title"`
-		TaskID     string `json:"task_id,omitempty"`
-		TaskURL    string `json:"task_url,omitempty"`
-		Action     string `json:"action"`
-		Error      string `json:"error,omitempty"`
+		IssueID     string `json:"issue_id"`
+		IssueTitle  string `json:"issue_title"`
+		ExternalID  string `json:"external_id,omitempty"`
+		ExternalURL string `json:"external_url,omitempty"`
+		Action      string `json:"action"`
+		Error       string `json:"error,omitempty"`
 	}
 
 	if results == nil {
@@ -149,11 +149,11 @@ func outputSyncJSON(results []integration.SyncResult) error {
 	jsonResults := make([]jsonResult, len(results))
 	for i, r := range results {
 		jsonResults[i] = jsonResult{
-			IssueID:    r.IssueID,
-			IssueTitle: r.IssueTitle,
-			TaskID:     r.TaskID,
-			TaskURL:    r.TaskURL,
-			Action:     r.Action,
+			IssueID:     r.IssueID,
+			IssueTitle:  r.IssueTitle,
+			ExternalID:  r.ExternalID,
+			ExternalURL: r.ExternalURL,
+			Action:      r.Action,
 		}
 		if r.Error != nil {
 			jsonResults[i].Error = r.Error.Error()
@@ -179,10 +179,10 @@ func outputSyncText(results []integration.SyncResult) error {
 		switch r.Action {
 		case "created":
 			created++
-			fmt.Printf("  Created: %s \u2192 %s \"%s\"\n", r.IssueID, r.TaskURL, truncateTitle(r.IssueTitle, 20))
+			fmt.Printf("  Created: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
 		case "updated":
 			updated++
-			fmt.Printf("  Updated: %s \u2192 %s \"%s\"\n", r.IssueID, r.TaskURL, truncateTitle(r.IssueTitle, 20))
+			fmt.Printf("  Updated: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
 		case "unchanged":
 			unchanged++
 		case "skipped":
