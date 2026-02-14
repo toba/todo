@@ -1,0 +1,63 @@
+version: 2
+
+builds:
+  - binary: beans
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/toba/todo/cmd.ver={{.Version}}
+      - -X github.com/toba/todo/cmd.commit={{.ShortCommit}}
+      - -X github.com/toba/todo/cmd.date={{.Date}}
+      - -X github.com/toba/todo/internal/version.Build={{.Timestamp}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    include:
+      - "^feat"
+      - "^fix"
+      - "^perf"
+      - "^refactor"
+  groups:
+    - title: "⚠️ Breaking Changes"
+      regexp: "!:"
+      order: 0
+    - title: Features
+      regexp: "^feat"
+      order: 1
+    - title: Bug Fixes
+      regexp: "^fix"
+      order: 2
+    - title: Performance
+      regexp: "^perf"
+      order: 3
+    - title: Other
+      order: 999
+
+release:
+  footer: >-
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

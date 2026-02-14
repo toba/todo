@@ -1,0 +1,293 @@
+# Todo GraphQL Schema
+
+scalar Time
+scalar Map
+
+type Query {
+  """
+  Get a single issue by ID. Accepts either the full ID (e.g., "todo-abc1") or the short ID without prefix (e.g., "abc1").
+  """
+  issue(id: ID!): Issue
+
+  """
+  List issues with optional filtering
+  """
+  issues(filter: IssueFilter): [Issue!]!
+}
+
+type Mutation {
+  """
+  Create a new issue
+  """
+  createIssue(input: CreateIssueInput!): Issue!
+
+  """
+  Update an existing issue
+  """
+  updateIssue(id: ID!, input: UpdateIssueInput!): Issue!
+
+  """
+  Delete an issue by ID (automatically removes incoming links)
+  """
+  deleteIssue(id: ID!): Boolean!
+
+  """
+  Set or clear the parent of an issue (validates type hierarchy)
+  """
+  setParent(id: ID!, parentId: String, ifMatch: String): Issue!
+
+  """
+  Add an issue to the blocking list
+  """
+  addBlocking(id: ID!, targetId: ID!, ifMatch: String): Issue!
+
+  """
+  Remove an issue from the blocking list
+  """
+  removeBlocking(id: ID!, targetId: ID!, ifMatch: String): Issue!
+
+  """
+  Add an issue to the blocked-by list (this issue is blocked by targetId)
+  """
+  addBlockedBy(id: ID!, targetId: ID!, ifMatch: String): Issue!
+
+  """
+  Remove an issue from the blocked-by list
+  """
+  removeBlockedBy(id: ID!, targetId: ID!, ifMatch: String): Issue!
+
+  """
+  Set extension data for a named extension (full replacement of extension entry)
+  """
+  setExtensionData(id: ID!, name: String!, data: Map!, ifMatch: String): Issue!
+
+  """
+  Remove extension data for a named extension
+  """
+  removeExtensionData(id: ID!, name: String!, ifMatch: String): Issue!
+}
+
+"""
+Input for creating a new issue
+"""
+input CreateIssueInput {
+  "Issue title (required)"
+  title: String!
+  "Issue type (defaults to 'task')"
+  type: String
+  "Status (defaults to 'todo')"
+  status: String
+  "Priority level (defaults to 'normal')"
+  priority: String
+  "Tags for categorization"
+  tags: [String!]
+  "Markdown body content"
+  body: String
+  "Due date in YYYY-MM-DD format"
+  due: String
+  "Parent issue ID (validated against type hierarchy)"
+  parent: String
+  "Issue IDs this issue is blocking"
+  blocking: [String!]
+  "Issue IDs that are blocking this issue"
+  blockedBy: [String!]
+  "Custom ID prefix (overrides config prefix for this issue)"
+  prefix: String
+}
+
+"""
+Input for updating an existing issue
+"""
+input UpdateIssueInput {
+  "New title"
+  title: String
+  "New status"
+  status: String
+  "New type"
+  type: String
+  "New priority"
+  priority: String
+  "Replace all tags (nil preserves existing, mutually exclusive with addTags/removeTags)"
+  tags: [String!]
+  "Add tags to existing list"
+  addTags: [String!]
+  "Remove tags from existing list"
+  removeTags: [String!]
+  "New body content (full replacement, mutually exclusive with bodyMod)"
+  body: String
+  "Structured body modifications (mutually exclusive with body)"
+  bodyMod: BodyModification
+  "Due date in YYYY-MM-DD format (empty string to clear)"
+  due: String
+
+  "Set parent issue ID (null/empty to clear, validates type hierarchy)"
+  parent: String
+  "Add issues to blocking list (validates cycles and existence)"
+  addBlocking: [String!]
+  "Remove issues from blocking list"
+  removeBlocking: [String!]
+  "Add issues to blocked-by list (validates cycles and existence)"
+  addBlockedBy: [String!]
+  "Remove issues from blocked-by list"
+  removeBlockedBy: [String!]
+
+  "ETag for optimistic concurrency control (optional)"
+  ifMatch: String
+}
+
+"""
+Structured body modifications applied atomically.
+Operations are applied in order: all replacements sequentially, then append.
+If any operation fails, the entire mutation fails (transactional).
+"""
+input BodyModification {
+  """
+  Text replacements applied sequentially in array order.
+  Each old text must match exactly once at the time it's applied.
+  """
+  replace: [ReplaceOperation!]
+  """
+  Text to append after all replacements.
+  Appended with blank line separator.
+  """
+  append: String
+}
+
+"""
+A single text replacement operation.
+"""
+input ReplaceOperation {
+  "Text to find (must occur exactly once, cannot be empty)"
+  old: String!
+  "Replacement text (can be empty to delete the matched text)"
+  new: String!
+}
+
+"""
+An issue represents a trackable item (task, bug, feature, etc.)
+"""
+type Issue {
+  "Unique identifier (NanoID)"
+  id: ID!
+  "Human-readable slug from filename"
+  slug: String
+  "Relative path from data directory"
+  path: String!
+  "Issue title"
+  title: String!
+  "Current status (draft, todo, in-progress, completed, scrapped)"
+  status: String!
+  "Issue type (milestone, epic, bug, feature, task)"
+  type: String!
+  "Priority level (critical, high, normal, low, deferred)"
+  priority: String!
+  "Tags for categorization"
+  tags: [String!]!
+  "Creation timestamp"
+  createdAt: Time!
+  "Last update timestamp"
+  updatedAt: Time!
+  "Due date in YYYY-MM-DD format (null if not set)"
+  due: String
+  "Markdown body content"
+  body: String!
+  "Content hash for optimistic concurrency control"
+  etag: String!
+
+  "Extension metadata (keyed by extension name)"
+  extensions: [ExtensionEntry!]!
+
+  # Direct link fields
+  "Parent issue ID (optional, type-restricted)"
+  parentId: String
+  "IDs of issues this issue is blocking"
+  blockingIds: [String!]!
+  "IDs of issues that are blocking this issue (direct field)"
+  blockedByIds: [String!]!
+
+  # Computed relationship fields
+  "Issues that block this one (incoming blocking links)"
+  blockedBy(filter: IssueFilter): [Issue!]!
+  "Issues this one is blocking (resolved from blockingIds)"
+  blocking(filter: IssueFilter): [Issue!]!
+  "Parent issue (resolved from parentId)"
+  parent: Issue
+  "Child issues (issues with this as parent)"
+  children(filter: IssueFilter): [Issue!]!
+}
+
+"""
+Extension metadata entry for a single extension
+"""
+type ExtensionEntry {
+  "Extension name (e.g., 'clickup', 'jira')"
+  name: String!
+  "Extension-specific data (arbitrary key-value pairs)"
+  data: Map!
+}
+
+"""
+Filter options for querying issues
+"""
+input IssueFilter {
+  """
+  Full-text search across slug, title, and body using Bleve query syntax.
+
+  Examples:
+  - "login" - exact term match
+  - "login~" - fuzzy match (1 edit distance)
+  - "login~2" - fuzzy match (2 edit distance)
+  - "log*" - wildcard prefix
+  - "\"user login\"" - exact phrase
+  - "user AND login" - both terms required
+  - "user OR login" - either term
+  - "slug:auth" - search only slug field
+  - "title:login" - search only title field
+  - "body:auth" - search only body field
+  """
+  search: String
+  "Include only issues with these statuses (OR logic)"
+  status: [String!]
+  "Exclude issues with these statuses"
+  excludeStatus: [String!]
+  "Include only issues with these types (OR logic)"
+  type: [String!]
+  "Exclude issues with these types"
+  excludeType: [String!]
+  "Include only issues with these priorities (OR logic)"
+  priority: [String!]
+  "Exclude issues with these priorities"
+  excludePriority: [String!]
+  "Include only issues with any of these tags (OR logic)"
+  tags: [String!]
+  "Exclude issues with any of these tags"
+  excludeTags: [String!]
+  "Include only issues with a parent"
+  hasParent: Boolean
+  "Include only issues with this specific parent ID"
+  parentId: String
+  "Include only issues that are blocking other issues"
+  hasBlocking: Boolean
+  "Include only issues that are blocking this specific issue ID"
+  blockingId: String
+  "Include only issues that are blocked by others (via incoming blocking links or blocked_by field)"
+  isBlocked: Boolean
+  "Include only issues that have explicit blocked-by entries"
+  hasBlockedBy: Boolean
+  "Include only issues blocked by this specific issue ID (via blocked_by field)"
+  blockedById: String
+  "Exclude issues that have a parent"
+  noParent: Boolean
+  "Exclude issues that are blocking other issues"
+  noBlocking: Boolean
+  "Exclude issues that have explicit blocked-by entries"
+  noBlockedBy: Boolean
+  "Include only issues with extension data for this extension name"
+  hasExtension: String
+  "Include only issues without extension data for this extension name"
+  noExtension: String
+  "Include only issues where updatedAt > extension's synced_at (stale sync detection)"
+  extensionStale: String
+  "Include only issues updated at or after this timestamp"
+  changedSince: Time
+}

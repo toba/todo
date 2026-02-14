@@ -1,0 +1,60 @@
+[tools]
+go = "latest"
+svu = "latest"
+
+[tasks.codegen]
+run = "go generate ./..."
+
+[tasks.test]
+depends = "codegen"
+run = "go test ./..."
+
+[tasks.build]
+depends = "codegen"
+run = """
+BUILD_NUM=$(( $(date -u +%s) / 60 - 29453760 ))
+go build -o beans -ldflags "\
+  -X github.com/toba/todo/cmd.ver=$(git describe --tags --always --dirty 2>/dev/null || echo dev) \
+  -X github.com/toba/todo/cmd.commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown) \
+  -X github.com/toba/todo/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  -X github.com/toba/todo/internal/version.Build=$BUILD_NUM" \
+  .
+"""
+
+[tasks.beans]
+description = "Build and run the beans CLI"
+run = "go run ."
+
+[tasks.install]
+depends = "build"
+run = "cp beans ~/.local/bin/beans"
+
+[tasks."release:patch"]
+description = "Create a patch version tag (e.g., v0.1.4 → v0.1.5)"
+run = """
+set -e
+NEW_VERSION=$(svu patch)
+git tag "$NEW_VERSION"
+echo "Created tag: $NEW_VERSION"
+echo "To release, run: git push && git push --tags"
+"""
+
+[tasks."release:minor"]
+description = "Create a minor version tag (e.g., v0.1.4 → v0.2.0)"
+run = """
+set -e
+NEW_VERSION=$(svu minor)
+git tag "$NEW_VERSION"
+echo "Created tag: $NEW_VERSION"
+echo "To release, run: git push && git push --tags"
+"""
+
+[tasks."release:major"]
+description = "Create a major version tag (e.g., v0.1.4 → v1.0.0)"
+run = """
+set -e
+NEW_VERSION=$(svu major)
+git tag "$NEW_VERSION"
+echo "Created tag: $NEW_VERSION"
+echo "To release, run: git push && git push --tags"
+"""

@@ -1,0 +1,7 @@
+/beans
+/.vscode/settings.json
+/.worktrees/
+# Added by goreleaser init:
+dist/
+/.docs.local
+/.claude/settings.local.json

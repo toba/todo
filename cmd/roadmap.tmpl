@@ -1,0 +1,51 @@
+{{- define "beanLine" -}}
+- {{typeBadge .}} {{.Title}} {{beanRef .}}
+{{end -}}
+
+{{- define "epicGroup" -}}
+### Epic: {{.Epic.Title}} {{beanRef .Epic}}
+{{with firstParagraph .Epic.Body}}
+> {{.}}
+{{end}}
+
+{{range .Items -}}
+{{template "beanLine" .}}
+{{- end}}
+{{- end -}}
+
+# Roadmap
+{{range .Milestones}}
+## Milestone: {{.Milestone.Title}} {{beanRef .Milestone}}
+{{with firstParagraph .Milestone.Body}}
+> {{.}}
+{{end}}
+{{range .Epics -}}
+{{template "epicGroup" .}}
+{{- end}}
+{{- if .Other}}
+{{- if len .Epics}}
+### Miscellaneous
+{{end}}
+
+{{range .Other -}}
+{{template "beanLine" .}}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- if .Unscheduled}}
+{{- if len $.Milestones}}
+## No Milestone
+{{end}}
+{{- range .Unscheduled.Epics -}}
+{{template "epicGroup" .}}
+{{- end}}
+{{- if .Unscheduled.Other}}
+{{- if len .Unscheduled.Epics}}
+### Miscellaneous
+{{end}}
+
+{{range .Unscheduled.Other -}}
+{{template "beanLine" .}}
+{{- end}}
+{{- end}}
+{{- end}}
