@@ -22,7 +22,7 @@ Track your work alongside your code and supercharge your coding agent with
 a full view of your project.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip core initialization for init, prime, and version commands
-		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "version" {
+		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "version" || cmd.Name() == "migrate" {
 			return nil
 		}
 
