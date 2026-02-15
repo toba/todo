@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/toba/todo/internal/config"
@@ -88,6 +89,69 @@ func TestRenderIssueRow_NarrowWidthWithPriority(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRenderIssueRow_DueDateIndicator(t *testing.T) {
+	t.Run("shows hourglass when HasDueDate is true", func(t *testing.T) {
+		cfg := IssueRowConfig{
+			MaxTitleWidth: 40,
+			StatusColor:   "green",
+			TypeColor:     "blue",
+			HasDueDate:    true,
+		}
+		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
+		if !strings.Contains(result, "⏳") {
+			t.Error("expected hourglass indicator for issue with due date")
+		}
+	})
+
+	t.Run("no hourglass when HasDueDate is false", func(t *testing.T) {
+		cfg := IssueRowConfig{
+			MaxTitleWidth: 40,
+			StatusColor:   "green",
+			TypeColor:     "blue",
+			HasDueDate:    false,
+		}
+		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
+		if strings.Contains(result, "⏳") {
+			t.Error("expected no hourglass indicator for issue without due date")
+		}
+	})
+
+	t.Run("no hourglass when dimmed even with due date", func(t *testing.T) {
+		cfg := IssueRowConfig{
+			MaxTitleWidth: 40,
+			StatusColor:   "green",
+			TypeColor:     "blue",
+			HasDueDate:    true,
+			Dimmed:        true,
+		}
+		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
+		if strings.Contains(result, "⏳") {
+			t.Error("expected no hourglass indicator when dimmed")
+		}
+	})
+
+	t.Run("narrow width with priority and due date does not panic", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("RenderIssueRow panicked with priority and due date at narrow width: %v", r)
+			}
+		}()
+
+		cfg := IssueRowConfig{
+			MaxTitleWidth: 3,
+			StatusColor:   "green",
+			TypeColor:     "blue",
+			PriorityColor: "red",
+			Priority:      "high",
+			HasDueDate:    true,
+		}
+		result := RenderIssueRow("abc123", "todo", "task", "Long title", cfg)
+		if result == "" {
+			t.Error("expected non-empty result")
+		}
+	})
 }
 
 func TestIsValidColor(t *testing.T) {

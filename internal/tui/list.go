@@ -122,6 +122,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			TreePrefix:    item.treePrefix,
 			Dimmed:        !item.matched,
 			IDColWidth:    d.idColWidth,
+			HasDueDate:    item.issue.Due != nil,
 		},
 	)
 

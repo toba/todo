@@ -346,6 +346,7 @@ type IssueRowConfig struct {
 	TreePrefix    string   // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
 	Dimmed        bool     // Render row dimmed (for unmatched ancestor issues in tree)
 	IDColWidth    int      // Width of ID column (0 = default of ColWidthID)
+	HasDueDate    bool     // Show hourglass indicator for issues with due dates
 }
 
 // Base column widths for issue lists (minimum sizes)
@@ -508,12 +509,21 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 		}
 	}
 
-	// Title (truncate if needed, accounting for priority symbol width)
+	// Due date hourglass indicator (after priority symbol, before title)
+	var dueDateSymbol string
+	if !cfg.Dimmed && cfg.HasDueDate {
+		dueDateSymbol = lipgloss.NewStyle().Foreground(ColorDanger).Render("⏳") + " "
+	}
+
+	// Title (truncate if needed, accounting for priority symbol and due date width)
 	displayTitle := title
 	titleColWidth := cfg.MaxTitleWidth // Save original for padding
 	maxWidth := cfg.MaxTitleWidth
 	if maxWidth > 0 && prioritySymbol != "" {
 		maxWidth -= 2 // Account for symbol + space
+	}
+	if maxWidth > 0 && dueDateSymbol != "" {
+		maxWidth -= 3 // Account for hourglass (2 cells wide) + space
 	}
 	if maxWidth > 3 && len(title) > maxWidth {
 		displayTitle = title[:maxWidth-3] + "..."
@@ -552,11 +562,14 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 		if prioritySymbol != "" {
 			titleLen += 2 // symbol + space
 		}
+		if dueDateSymbol != "" {
+			titleLen += 3 // hourglass (2 cells wide) + space
+		}
 		padding := ""
 		if titleColWidth > titleLen {
 			padding = strings.Repeat(" ", titleColWidth-titleLen)
 		}
-		return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + titleStyled + padding + " " + tagsCol
+		return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled + padding + " " + tagsCol
 	}
-	return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + titleStyled
+	return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled
 }
