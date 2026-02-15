@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/toba/todo/internal/core"
@@ -28,6 +30,7 @@ var checkCmd = &cobra.Command{
 	Short: "Validate configuration and issue integrity",
 	Long: `Checks configuration and issue integrity, including:
 - Configuration settings (colors, default type)
+- Sync integration configuration (unknown or multiple integrations)
 - Broken links (links to non-existent issues)
 - Self-references (issues linking to themselves)
 - Circular dependencies (cycles in blocks/parent relationships)
@@ -95,6 +98,25 @@ Note: Cycles cannot be auto-fixed and require manual intervention.`,
 			}
 			if typeColorErrors == 0 {
 				fmt.Printf("  %s All type colors valid\n", ui.Success.Render("✓"))
+			}
+		}
+
+		// 5. Check sync configuration
+		knownIntegrations := map[string]bool{"clickup": true, "github": true}
+		if len(cfg.Sync) > 0 {
+			var configuredIntegrations []string
+			for name := range cfg.Sync {
+				if !knownIntegrations[name] {
+					configErrors = append(configErrors, fmt.Sprintf("unknown sync integration '%s' (known: clickup, github)", name))
+				} else {
+					configuredIntegrations = append(configuredIntegrations, name)
+				}
+			}
+			if len(configuredIntegrations) > 1 {
+				slices.Sort(configuredIntegrations)
+				configErrors = append(configErrors, fmt.Sprintf("multiple sync integrations configured (%s); only one is supported at a time", strings.Join(configuredIntegrations, ", ")))
+			} else if len(configuredIntegrations) == 1 && !checkJSON {
+				fmt.Printf("  %s Sync integration '%s' configured\n", ui.Success.Render("✓"), configuredIntegrations[0])
 			}
 		}
 
