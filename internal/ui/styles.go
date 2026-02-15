@@ -202,7 +202,7 @@ func RenderStatusText(status string) string {
 func StatusIcon(status string) string {
 	switch status {
 	case "draft":
-		return "◌"
+		return "△" //"⬜︎"∷∴▲
 	case "ready":
 		return "○"
 	case "in-progress":
