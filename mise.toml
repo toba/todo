@@ -13,7 +13,7 @@ run = "go test ./..."
 depends = "codegen"
 run = """
 BUILD_NUM=$(( $(date -u +%s) / 60 - 29453760 ))
-go build -o beans -ldflags "\
+go build -o todo -ldflags "\
   -X github.com/toba/todo/cmd.ver=$(git describe --tags --always --dirty 2>/dev/null || echo dev) \
   -X github.com/toba/todo/cmd.commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown) \
   -X github.com/toba/todo/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
@@ -21,13 +21,13 @@ go build -o beans -ldflags "\
   .
 """
 
-[tasks.beans]
-description = "Build and run the beans CLI"
+[tasks.todo]
+description = "Build and run the todo CLI"
 run = "go run ."
 
 [tasks.install]
 depends = "build"
-run = "cp beans ~/.local/bin/beans"
+run = "cp todo ~/.local/bin/todo"
 
 [tasks."release:patch"]
 description = "Create a patch version tag (e.g., v0.1.4 → v0.1.5)"

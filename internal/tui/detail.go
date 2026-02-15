@@ -33,7 +33,7 @@ var getGlamourRenderer = sync.OnceValue(func() *glamour.TermRenderer {
 // backToListMsg signals navigation back to the list
 type backToListMsg struct{}
 
-// resolvedLink represents a link with the target bean resolved
+// resolvedLink represents a link with the target issue resolved
 type resolvedLink struct {
 	linkType string
 	issue     *issue.Issue
@@ -118,7 +118,7 @@ func (d linkDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprint(w, cursor+labelCol+row)
 }
 
-// detailModel displays a single bean's details
+// detailModel displays a single issue's details
 type detailModel struct {
 	viewport      viewport.Model
 	issue          *issue.Issue
@@ -148,7 +148,7 @@ func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config
 	// Resolve all links
 	m.links = m.resolveAllLinks()
 
-	// Check if any linked beans have tags
+	// Check if any linked issues have tags
 	hasTags := false
 	for _, link := range m.links {
 		if len(link.issue.Tags) > 0 {
@@ -303,9 +303,9 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Navigate to selected link
 			if m.linksActive {
 				if item, ok := m.linkList.SelectedItem().(linkItem); ok {
-					targetBean := item.link.issue
+					targetIssue := item.link.issue
 					return m, func() tea.Msg {
-						return selectIssueMsg{issue: targetBean}
+						return selectIssueMsg{issue: targetIssue}
 					}
 				}
 			}
@@ -314,9 +314,9 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open parent picker
 			return m, func() tea.Msg {
 				return openParentPickerMsg{
-					beanIDs:       []string{m.issue.ID},
-					beanTitle:     m.issue.Title,
-					beanTypes:     []string{m.issue.Type},
+					issueIDs:      []string{m.issue.ID},
+					issueTitle:    m.issue.Title,
+					issueTypes:    []string{m.issue.Type},
 					currentParent: m.issue.Parent,
 				}
 			}
@@ -325,8 +325,8 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open status picker
 			return m, func() tea.Msg {
 				return openStatusPickerMsg{
-					beanIDs:       []string{m.issue.ID},
-					beanTitle:     m.issue.Title,
+					issueIDs:      []string{m.issue.ID},
+					issueTitle:    m.issue.Title,
 					currentStatus: m.issue.Status,
 				}
 			}
@@ -335,8 +335,8 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open type picker
 			return m, func() tea.Msg {
 				return openTypePickerMsg{
-					beanIDs:     []string{m.issue.ID},
-					beanTitle:   m.issue.Title,
+					issueIDs:    []string{m.issue.ID},
+					issueTitle:  m.issue.Title,
 					currentType: m.issue.Type,
 				}
 			}
@@ -345,8 +345,8 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open priority picker
 			return m, func() tea.Msg {
 				return openPriorityPickerMsg{
-					beanIDs:         []string{m.issue.ID},
-					beanTitle:       m.issue.Title,
+					issueIDs:        []string{m.issue.ID},
+					issueTitle:      m.issue.Title,
 					currentPriority: m.issue.Priority,
 				}
 			}
@@ -355,8 +355,8 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open blocking picker
 			return m, func() tea.Msg {
 				return openBlockingPickerMsg{
-					beanID:          m.issue.ID,
-					beanTitle:       m.issue.Title,
+					issueID:         m.issue.ID,
+					issueTitle:      m.issue.Title,
 					currentBlocking: m.issue.Blocking,
 				}
 			}
@@ -365,15 +365,15 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			// Open editor for this issue
 			return m, func() tea.Msg {
 				return openEditorMsg{
-					beanID:   m.issue.ID,
-					beanPath: m.issue.Path,
+					issueID:   m.issue.ID,
+					issuePath: m.issue.Path,
 				}
 			}
 
 		case "y":
 			// Copy issue ID to clipboard
 			return m, func() tea.Msg {
-				return copyBeanIDMsg{ids: []string{m.issue.ID}}
+				return copyIssueIDMsg{ids: []string{m.issue.ID}}
 			}
 		}
 	}
@@ -405,7 +405,7 @@ func (m detailModel) View() string {
 		return "Loading..."
 	}
 
-	// Header (bean info only, no links)
+	// Header (issue info only, no links)
 	header := m.renderHeader()
 
 	// Links section (if any)
@@ -545,32 +545,32 @@ func (m detailModel) formatLinkLabel(linkType string, incoming bool) string {
 func (m detailModel) resolveAllLinks() []resolvedLink {
 	var links []resolvedLink
 	ctx := context.Background()
-	beanResolver := m.resolver.Issue()
+	issueResolver := m.resolver.Issue()
 
 	// Resolve outgoing links via GraphQL resolvers
-	if blocking, _ := beanResolver.Blocking(ctx, m.issue, nil); blocking != nil {
+	if blocking, _ := issueResolver.Blocking(ctx, m.issue, nil); blocking != nil {
 		for _, b := range blocking {
 			links = append(links, resolvedLink{linkType: issue.LinkTypeBlocking, issue: b, incoming: false})
 		}
 	}
-	if parent, _ := beanResolver.Parent(ctx, m.issue); parent != nil {
+	if parent, _ := issueResolver.Parent(ctx, m.issue); parent != nil {
 		links = append(links, resolvedLink{linkType: issue.LinkTypeParent, issue: parent, incoming: false})
 	}
 
 	// Resolve incoming links via GraphQL resolvers
-	if blockedBy, _ := beanResolver.BlockedBy(ctx, m.issue, nil); blockedBy != nil {
+	if blockedBy, _ := issueResolver.BlockedBy(ctx, m.issue, nil); blockedBy != nil {
 		for _, b := range blockedBy {
 			links = append(links, resolvedLink{linkType: issue.LinkTypeBlocking, issue: b, incoming: true})
 		}
 	}
-	if children, _ := beanResolver.Children(ctx, m.issue, nil); children != nil {
+	if children, _ := issueResolver.Children(ctx, m.issue, nil); children != nil {
 		for _, b := range children {
 			links = append(links, resolvedLink{linkType: issue.LinkTypeParent, issue: b, incoming: true})
 		}
 	}
 
-	// Sort all links by link type label first, then by bean status/type/title
-	// This keeps link categories together while ordering beans consistently with the main list
+	// Sort all links by link type label first, then by issue status/type/title
+	// This keeps link categories together while ordering issues consistently with the main list
 	statusNames := m.config.StatusNames()
 	typeNames := m.config.TypeNames()
 	sort.Slice(links, func(i, j int) bool {
@@ -582,14 +582,14 @@ func (m detailModel) resolveAllLinks() []resolvedLink {
 		}
 		// Within same link type: sort by status, priority, type, then title
 		priorityNames := m.config.PriorityNames()
-		return compareBeansByStatusPriorityAndType(links[i].issue, links[j].issue, statusNames, priorityNames, typeNames)
+		return compareIssuesByStatusPriorityAndType(links[i].issue, links[j].issue, statusNames, priorityNames, typeNames)
 	})
 
 	return links
 }
 
-// compareBeansByStatusPriorityAndType compares two beans using the same ordering as issue.SortByStatusPriorityAndType.
-func compareBeansByStatusPriorityAndType(a, b *issue.Issue, statusNames, priorityNames, typeNames []string) bool {
+// compareIssuesByStatusPriorityAndType compares two issues using the same ordering as issue.SortByStatusPriorityAndType.
+func compareIssuesByStatusPriorityAndType(a, b *issue.Issue, statusNames, priorityNames, typeNames []string) bool {
 	return issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames)
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/toba/todo/internal/config"
 )
 
-func TestSortBeans(t *testing.T) {
+func TestSortIssues(t *testing.T) {
 	now := time.Now()
 	earlier := now.Add(-1 * time.Hour)
 	evenEarlier := now.Add(-2 * time.Hour)
@@ -17,98 +17,98 @@ func TestSortBeans(t *testing.T) {
 	testCfg := config.Default()
 
 	t.Run("sort by id", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "c3"},
 			{ID: "a1"},
 			{ID: "b2"},
 		}
-		sortBeans(beans, "id", testCfg)
+		sortIssues(issues, "id", testCfg)
 
-		if beans[0].ID != "a1" || beans[1].ID != "b2" || beans[2].ID != "c3" {
+		if issues[0].ID != "a1" || issues[1].ID != "b2" || issues[2].ID != "c3" {
 			t.Errorf("sort by id: got [%s, %s, %s], want [a1, b2, c3]",
-				beans[0].ID, beans[1].ID, beans[2].ID)
+				issues[0].ID, issues[1].ID, issues[2].ID)
 		}
 	})
 
 	t.Run("sort by created", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "old", CreatedAt: &evenEarlier},
 			{ID: "new", CreatedAt: &now},
 			{ID: "mid", CreatedAt: &earlier},
 		}
-		sortBeans(beans, "created", testCfg)
+		sortIssues(issues, "created", testCfg)
 
 		// Should be newest first
-		if beans[0].ID != "new" || beans[1].ID != "mid" || beans[2].ID != "old" {
+		if issues[0].ID != "new" || issues[1].ID != "mid" || issues[2].ID != "old" {
 			t.Errorf("sort by created: got [%s, %s, %s], want [new, mid, old]",
-				beans[0].ID, beans[1].ID, beans[2].ID)
+				issues[0].ID, issues[1].ID, issues[2].ID)
 		}
 	})
 
 	t.Run("sort by created with nil", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "nil1", CreatedAt: nil},
 			{ID: "has", CreatedAt: &now},
 			{ID: "nil2", CreatedAt: nil},
 		}
-		sortBeans(beans, "created", testCfg)
+		sortIssues(issues, "created", testCfg)
 
 		// Non-nil should come first, then nil sorted by ID
-		if beans[0].ID != "has" {
-			t.Errorf("sort by created with nil: first should be \"has\", got %q", beans[0].ID)
+		if issues[0].ID != "has" {
+			t.Errorf("sort by created with nil: first should be \"has\", got %q", issues[0].ID)
 		}
 	})
 
 	t.Run("sort by updated", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "old", UpdatedAt: &evenEarlier},
 			{ID: "new", UpdatedAt: &now},
 			{ID: "mid", UpdatedAt: &earlier},
 		}
-		sortBeans(beans, "updated", testCfg)
+		sortIssues(issues, "updated", testCfg)
 
 		// Should be newest first
-		if beans[0].ID != "new" || beans[1].ID != "mid" || beans[2].ID != "old" {
+		if issues[0].ID != "new" || issues[1].ID != "mid" || issues[2].ID != "old" {
 			t.Errorf("sort by updated: got [%s, %s, %s], want [new, mid, old]",
-				beans[0].ID, beans[1].ID, beans[2].ID)
+				issues[0].ID, issues[1].ID, issues[2].ID)
 		}
 	})
 
 	t.Run("sort by status", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "c1", Status: "completed"},
 			{ID: "r1", Status: "ready"},
 			{ID: "i1", Status: "in-progress"},
 			{ID: "r2", Status: "ready"},
 		}
-		sortBeans(beans, "status", testCfg)
+		sortIssues(issues, "status", testCfg)
 
 		// Should be ordered by status config order (in-progress, ready, draft, completed, scrapped), then by ID within same status
 		expected := []string{"i1", "r1", "r2", "c1"}
 		for i, want := range expected {
-			if beans[i].ID != want {
-				t.Errorf("sort by status[%d]: got %q, want %q", i, beans[i].ID, want)
+			if issues[i].ID != want {
+				t.Errorf("sort by status[%d]: got %q, want %q", i, issues[i].ID, want)
 			}
 		}
 	})
 
 	t.Run("default sort (archive status then type)", func(t *testing.T) {
-		beans := []*issue.Issue{
+		issues := []*issue.Issue{
 			{ID: "completed-bug", Status: "completed", Type: "bug"},
 			{ID: "ready-feature", Status: "ready", Type: "feature"},
 			{ID: "ready-task", Status: "ready", Type: "task"},
 			{ID: "completed-task", Status: "completed", Type: "task"},
 			{ID: "ready-bug", Status: "ready", Type: "bug"},
 		}
-		sortBeans(beans, "", testCfg)
+		sortIssues(issues, "", testCfg)
 
 		// Should be: non-archive first (sorted by type order from DefaultTypes: milestone, epic, bug, feature, task),
 		// then archive (sorted by type)
 		// DefaultTypes order: milestone, epic, bug, feature, task
 		expected := []string{"ready-bug", "ready-feature", "ready-task", "completed-bug", "completed-task"}
 		for i, want := range expected {
-			if beans[i].ID != want {
-				t.Errorf("default sort[%d]: got %q, want %q", i, beans[i].ID, want)
+			if issues[i].ID != want {
+				t.Errorf("default sort[%d]: got %q, want %q", i, issues[i].ID, want)
 			}
 		}
 	})

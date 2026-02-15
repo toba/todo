@@ -163,13 +163,13 @@ func TestBuildIssueBody(t *testing.T) {
 	}{
 		{
 			name:     "with body",
-			issue:    &issue.Issue{ID: "bean-1", Body: "Some description"},
-			wantBody: "Some description\n\n<!-- bean:bean-1 -->",
+			issue:    &issue.Issue{ID: "test-1", Body: "Some description"},
+			wantBody: "Some description\n\n<!-- todo:test-1 -->",
 		},
 		{
 			name:     "empty body",
-			issue:    &issue.Issue{ID: "bean-2"},
-			wantBody: "<!-- bean:bean-2 -->",
+			issue:    &issue.Issue{ID: "test-2"},
+			wantBody: "<!-- todo:test-2 -->",
 		},
 	}
 
@@ -246,8 +246,8 @@ func TestSyncIssue_Create(t *testing.T) {
 
 	now := time.Now()
 	b := &issue.Issue{
-		ID:        "bean-1",
-		Title:     "Test bean",
+		ID:        "test-1",
+		Title:     "Test issue",
 		Status:    "todo",
 		Type:      "task",
 		Tags:      []string{"frontend"},
@@ -274,7 +274,7 @@ func TestSyncIssue_Update(t *testing.T) {
 			resp := Issue{
 				Number:  42,
 				Title:   "Old title",
-				Body:    "old body\n\n<!-- bean:bean-1 -->",
+				Body:    "old body\n\n<!-- todo:test-1 -->",
 				State:   "open",
 				HTMLURL: "https://github.com/test/repo/issues/42",
 				Labels:  []Label{{Name: "status:todo"}},
@@ -286,7 +286,7 @@ func TestSyncIssue_Update(t *testing.T) {
 		if r.Method == "PATCH" && strings.Contains(r.URL.Path, "/issues/") {
 			resp := Issue{
 				Number:  42,
-				Title:   "Updated bean",
+				Title:   "Updated issue",
 				State:   "open",
 				HTMLURL: "https://github.com/test/repo/issues/42",
 			}
@@ -309,7 +309,7 @@ func TestSyncIssue_Update(t *testing.T) {
 	}
 
 	store := newMemorySyncProvider()
-	store.SetIssueNumber("bean-1", 42)
+	store.SetIssueNumber("test-1", 42)
 	syncer := &Syncer{
 		client:          client,
 		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
@@ -320,8 +320,8 @@ func TestSyncIssue_Update(t *testing.T) {
 
 	now := time.Now()
 	b := &issue.Issue{
-		ID:        "bean-1",
-		Title:     "Updated bean",
+		ID:        "test-1",
+		Title:     "Updated issue",
 		Status:    "todo",
 		Type:      "task",
 		CreatedAt: &now,
@@ -382,7 +382,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 
 	now := time.Now()
 	b := &issue.Issue{
-		ID:        "bean-1",
+		ID:        "test-1",
 		Title:     "Test bug",
 		Status:    "todo",
 		Priority:  "high",
@@ -413,15 +413,15 @@ func TestFilterIssuesNeedingSync(t *testing.T) {
 	future := now.Add(1 * time.Hour)
 
 	store := newMemorySyncProvider()
-	store.SetIssueNumber("bean-synced", 1)
-	store.SetSyncedAt("bean-synced", now)
-	store.SetIssueNumber("bean-stale", 2)
-	store.SetSyncedAt("bean-stale", past)
+	store.SetIssueNumber("test-synced", 1)
+	store.SetSyncedAt("test-synced", now)
+	store.SetIssueNumber("test-stale", 2)
+	store.SetSyncedAt("test-stale", past)
 
 	issues := []*issue.Issue{
-		{ID: "bean-new", UpdatedAt: &now},
-		{ID: "bean-synced", UpdatedAt: &past},
-		{ID: "bean-stale", UpdatedAt: &future},
+		{ID: "test-new", UpdatedAt: &now},
+		{ID: "test-synced", UpdatedAt: &past},
+		{ID: "test-stale", UpdatedAt: &future},
 	}
 
 	result := FilterIssuesNeedingSync(issues, store, false)
@@ -432,7 +432,7 @@ func TestFilterIssuesNeedingSync(t *testing.T) {
 	}
 	sort.Strings(ids)
 
-	expected := []string{"bean-new", "bean-stale"}
+	expected := []string{"test-new", "test-stale"}
 	sort.Strings(expected)
 
 	if !labelsMatch(ids, expected) {
@@ -444,12 +444,12 @@ func TestFilterIssuesNeedingSync_Force(t *testing.T) {
 	now := time.Now()
 
 	store := newMemorySyncProvider()
-	store.SetIssueNumber("bean-1", 1)
-	store.SetSyncedAt("bean-1", now)
+	store.SetIssueNumber("test-1", 1)
+	store.SetSyncedAt("test-1", now)
 
 	issues := []*issue.Issue{
-		{ID: "bean-1", UpdatedAt: &now},
-		{ID: "bean-2", UpdatedAt: &now},
+		{ID: "test-1", UpdatedAt: &now},
+		{ID: "test-2", UpdatedAt: &now},
 	}
 
 	result := FilterIssuesNeedingSync(issues, store, true)
@@ -468,8 +468,8 @@ func TestSyncIssue_DryRun_Create(t *testing.T) {
 	}
 
 	b := &issue.Issue{
-		ID:     "bean-1",
-		Title:  "Test bean",
+		ID:     "test-1",
+		Title:  "Test issue",
 		Status: "todo",
 	}
 

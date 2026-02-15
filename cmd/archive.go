@@ -19,19 +19,19 @@ The archive keeps the main data directory tidy while preserving project history.
 
 Relationships (parent, blocking) are preserved in archived issues.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		allBeans := store.All()
+		allIssues := store.All()
 
-		// Find beans with any archive status
-		var archiveBeans []*issue.Issue
+		// Find issues with any archive status
+		var archiveIssues []*issue.Issue
 		archiveSet := make(map[string]bool)
-		for _, b := range allBeans {
+		for _, b := range allIssues {
 			if cfg.IsArchiveStatus(b.Status) {
-				archiveBeans = append(archiveBeans, b)
+				archiveIssues = append(archiveIssues, b)
 				archiveSet[b.ID] = true
 			}
 		}
 
-		if len(archiveBeans) == 0 {
+		if len(archiveIssues) == 0 {
 			if archiveJSON {
 				return output.SuccessMessage("No issues to archive")
 			}
@@ -39,12 +39,12 @@ Relationships (parent, blocking) are preserved in archived issues.`,
 			return nil
 		}
 
-		// Sort beans for consistent display
-		issue.SortByStatusPriorityAndType(archiveBeans, cfg.StatusNames(), cfg.PriorityNames(), cfg.TypeNames())
+		// Sort issues for consistent display
+		issue.SortByStatusPriorityAndType(archiveIssues, cfg.StatusNames(), cfg.PriorityNames(), cfg.TypeNames())
 
 		// Archive all issues with archive status
 		var archived []string
-		for _, b := range archiveBeans {
+		for _, b := range archiveIssues {
 			if err := store.Archive(b.ID); err != nil {
 				if archiveJSON {
 					return output.Error(output.ErrFileError, fmt.Sprintf("failed to archive issue %s: %s", b.ID, err.Error()))

@@ -11,14 +11,14 @@ func TestSearch(t *testing.T) {
 	core, _ := setupTestCore(t)
 	defer core.Close()
 
-	// Create beans with searchable content
-	beans := []*issue.Issue{
+	// Create issues with searchable content
+	issues := []*issue.Issue{
 		{ID: "aaa1", Slug: "auth", Title: "User Authentication", Body: "Implement login system"},
 		{ID: "bbb2", Slug: "db", Title: "Database Schema", Body: "Create tables for users"},
 		{ID: "ccc3", Slug: "api", Title: "API Endpoints", Body: "REST interface for authentication"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create() error = %v", err)
 		}
@@ -39,12 +39,12 @@ func TestSearch_ByBody(t *testing.T) {
 	core, _ := setupTestCore(t)
 	defer core.Close()
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "Feature A", Body: "Implement JWT tokens"},
 		{ID: "bbb2", Title: "Feature B", Body: "Add database migrations"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create() error = %v", err)
 		}
@@ -67,7 +67,7 @@ func TestSearch_LazyInit(t *testing.T) {
 	// Create an issue first (before any search)
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Content",
 	}
 	if err := core.Create(b); err != nil {
@@ -92,17 +92,17 @@ func TestSearch_CreateUpdatesIndex(t *testing.T) {
 	// Initialize search index by doing a search first
 	_, _ = core.Search("anything")
 
-	// Create a new bean
+	// Create a new issue
 	b := &issue.Issue{
 		ID:    "new1",
-		Title: "New Bean",
+		Title: "New Issue",
 		Body:  "Fresh content",
 	}
 	if err := core.Create(b); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	// Search should find the new bean
+	// Search should find the new issue
 	results, err := core.Search("Fresh")
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
@@ -165,7 +165,7 @@ func TestSearch_DeleteUpdatesIndex(t *testing.T) {
 	// Initialize index
 	results, _ := core.Search("deleteme")
 	if len(results) != 1 {
-		t.Fatal("bean should be indexed before delete")
+		t.Fatal("issue should be indexed before delete")
 	}
 
 	// Delete the issue
@@ -173,7 +173,7 @@ func TestSearch_DeleteUpdatesIndex(t *testing.T) {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
-	// Search should NOT find the deleted bean
+	// Search should NOT find the deleted issue
 	results, err := core.Search("deleteme")
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
@@ -191,7 +191,7 @@ func TestSearch_LoadRebuildsIndex(t *testing.T) {
 	// Create an issue
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Initial Bean",
+		Title: "Initial Issue",
 		Body:  "Content",
 	}
 	if err := core.Create(b); err != nil {
@@ -201,9 +201,9 @@ func TestSearch_LoadRebuildsIndex(t *testing.T) {
 	// Initialize index
 	_, _ = core.Search("Initial")
 
-	// Write a new bean file directly (simulating external change)
+	// Write a new issue file directly (simulating external change)
 	content := `---
-title: External Bean
+title: External Issue
 status: todo
 ---
 
@@ -218,7 +218,7 @@ External content keyword.
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Search should find the externally added bean
+	// Search should find the externally added issue
 	results, err := core.Search("External")
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
@@ -235,7 +235,7 @@ func TestSearch_NoResults(t *testing.T) {
 
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Content",
 	}
 	if err := core.Create(b); err != nil {
@@ -258,7 +258,7 @@ func TestClose_ClosesSearchIndex(t *testing.T) {
 	// Create an issue and search to initialize index
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Content",
 	}
 	if err := core.Create(b); err != nil {

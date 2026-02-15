@@ -130,14 +130,14 @@ func TestIntersectStrings(t *testing.T) {
 func TestCollectDescendants(t *testing.T) {
 	tests := []struct {
 		name     string
-		beanID   string
-		allBeans []*issue.Issue
+		issueID   string
+		allIssues []*issue.Issue
 		want     map[string]bool
 	}{
 		{
 			name:   "no children",
-			beanID: "root",
-			allBeans: []*issue.Issue{
+			issueID: "root",
+			allIssues: []*issue.Issue{
 				{ID: "root"},
 				{ID: "other", Parent: "someone-else"},
 			},
@@ -145,8 +145,8 @@ func TestCollectDescendants(t *testing.T) {
 		},
 		{
 			name:   "direct children only",
-			beanID: "root",
-			allBeans: []*issue.Issue{
+			issueID: "root",
+			allIssues: []*issue.Issue{
 				{ID: "root"},
 				{ID: "child1", Parent: "root"},
 				{ID: "child2", Parent: "root"},
@@ -158,8 +158,8 @@ func TestCollectDescendants(t *testing.T) {
 		},
 		{
 			name:   "grandchildren included",
-			beanID: "root",
-			allBeans: []*issue.Issue{
+			issueID: "root",
+			allIssues: []*issue.Issue{
 				{ID: "root"},
 				{ID: "child1", Parent: "root"},
 				{ID: "grandchild1", Parent: "child1"},
@@ -173,32 +173,32 @@ func TestCollectDescendants(t *testing.T) {
 		},
 		{
 			name:   "no matching parent",
-			beanID: "nonexistent",
-			allBeans: []*issue.Issue{
+			issueID: "nonexistent",
+			allIssues: []*issue.Issue{
 				{ID: "a", Parent: "b"},
 				{ID: "b"},
 			},
 			want: map[string]bool{},
 		},
 		{
-			name:     "empty bean list",
-			beanID:   "root",
-			allBeans: []*issue.Issue{},
+			name:     "empty issue list",
+			issueID:   "root",
+			allIssues: []*issue.Issue{},
 			want:     map[string]bool{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := collectDescendants(tt.beanID, tt.allBeans)
+			got := collectDescendants(tt.issueID, tt.allIssues)
 			if len(got) != len(tt.want) {
 				t.Fatalf("collectDescendants(%q, ...) returned %v (len %d), want %v (len %d)",
-					tt.beanID, got, len(got), tt.want, len(tt.want))
+					tt.issueID, got, len(got), tt.want, len(tt.want))
 			}
 			for k, v := range tt.want {
 				if got[k] != v {
 					t.Errorf("collectDescendants(%q, ...)[%q] = %v, want %v",
-						tt.beanID, k, got[k], v)
+						tt.issueID, k, got[k], v)
 				}
 			}
 		})

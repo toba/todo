@@ -34,8 +34,8 @@ const (
 	viewHelpOverlay
 )
 
-// beansChangedMsg is sent when beans change on disk (via file watcher)
-type beansChangedMsg struct{}
+// issuesChangedMsg is sent when issues change on disk (via file watcher)
+type issuesChangedMsg struct{}
 
 // openTagPickerMsg requests opening the tag picker
 type openTagPickerMsg struct{}
@@ -48,15 +48,15 @@ type tagSelectedMsg struct {
 // clearFilterMsg is sent to clear any active filter
 type clearFilterMsg struct{}
 
-// copyBeanIDMsg requests copying issue ID(s) to the clipboard
-type copyBeanIDMsg struct {
+// copyIssueIDMsg requests copying issue ID(s) to clipboard
+type copyIssueIDMsg struct {
 	ids []string
 }
 
 // openEditorMsg requests opening the editor for an issue
 type openEditorMsg struct {
-	beanID   string
-	beanPath string
+	issueID   string
+	issuePath string
 }
 
 // editorFinishedMsg is sent when the editor closes
@@ -64,12 +64,12 @@ type editorFinishedMsg struct {
 	err error
 }
 
-// openParentPickerMsg requests opening the parent picker for bean(s)
+// openParentPickerMsg requests opening the parent picker for issue(s)
 type openParentPickerMsg struct {
-	beanIDs       []string // IDs of beans to update
-	beanTitle     string   // Display title (single title or "N selected beans")
-	beanTypes     []string // Types of the issues (to filter eligible parents)
-	currentParent string   // Only meaningful for single bean
+	issueIDs      []string // IDs of issues to update
+	issueTitle    string   // Display title (single title or "N selected issues")
+	issueTypes    []string // Types of the issues (to filter eligible parents)
+	currentParent string   // Only meaningful for single issue
 }
 
 // App is the main TUI application model
@@ -100,9 +100,9 @@ type App struct {
 	// Modal state - tracks view behind modal pickers
 	previousState viewState
 
-	// Editor state - tracks bean being edited to update updated_at on save
-	editingBeanID      string
-	editingBeanModTime time.Time
+	// Editor state - tracks issue being edited to update updated_at on save
+	editingIssueID      string
+	editingIssueModTime time.Time
 }
 
 // New creates a new TUI application
@@ -182,22 +182,22 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case beansChangedMsg:
-		// Beans changed on disk - refresh
+	case issuesChangedMsg:
+		// Issues changed on disk - refresh
 		if a.state == viewDetail {
-			// Try to reload the current bean via GraphQL
-			updatedBean, err := a.resolver.Query().Issue(context.Background(), a.detail.issue.ID)
-			if err != nil || updatedBean == nil {
-				// Bean was deleted - return to list
+			// Try to reload the current issue via GraphQL
+			updatedIssue, err := a.resolver.Query().Issue(context.Background(), a.detail.issue.ID)
+			if err != nil || updatedIssue == nil {
+				// Issue was deleted - return to list
 				a.state = viewList
 				a.history = nil
 			} else {
-				// Recreate detail view with fresh bean data
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+				// Recreate detail view with fresh issue data
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
 		// Trigger list refresh
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openTagPickerMsg:
 		// Collect all tags with their counts
@@ -213,41 +213,41 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tagSelectedMsg:
 		a.state = viewList
 		a.list.setTagFilter(msg.tag)
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openParentPickerMsg:
 		// Check if all issue types can have parents
-		for _, beanType := range msg.beanTypes {
-			if core.ValidParentTypes(beanType) == nil {
+		for _, issueType := range msg.issueTypes {
+			if core.ValidParentTypes(issueType) == nil {
 				// At least one issue type (e.g., milestone) cannot have parents - don't open the picker
 				return a, nil
 			}
 		}
 		a.previousState = a.state // Remember where we came from for the modal background
-		a.parentPicker = newParentPickerModel(msg.beanIDs, msg.beanTitle, msg.beanTypes, msg.currentParent, a.resolver, a.config, a.width, a.height)
+		a.parentPicker = newParentPickerModel(msg.issueIDs, msg.issueTitle, msg.issueTypes, msg.currentParent, a.resolver, a.config, a.width, a.height)
 		a.state = viewParentPicker
 		return a, a.parentPicker.Init()
 
 	case closeParentPickerMsg:
-		// Return to previous view and refresh in case beans changed while picker was open
+		// Return to previous view and refresh in case issues changed while picker was open
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openStatusPickerMsg:
 		a.previousState = a.state
-		a.statusPicker = newStatusPickerModel(msg.beanIDs, msg.beanTitle, msg.currentStatus, a.config, a.width, a.height)
+		a.statusPicker = newStatusPickerModel(msg.issueIDs, msg.issueTitle, msg.currentStatus, a.config, a.width, a.height)
 		a.state = viewStatusPicker
 		return a, a.statusPicker.Init()
 
 	case closeStatusPickerMsg:
-		// Return to previous view and refresh in case beans changed while picker was open
+		// Return to previous view and refresh in case issues changed while picker was open
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case statusSelectedMsg:
 		// Update all issues' status via GraphQL mutations
-		for _, beanID := range msg.beanIDs {
-			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), beanID, model.UpdateIssueInput{
+		for _, issueID := range msg.issueIDs {
+			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, model.UpdateIssueInput{
 				Status: &msg.status,
 			})
 			if err != nil {
@@ -258,31 +258,31 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Return to the previous view and refresh
 		a.state = a.previousState
 		// Clear selection after batch edit
-		clear(a.list.selectedBeans)
-		if a.state == viewDetail && len(msg.beanIDs) == 1 {
-			updatedBean, _ := a.resolver.Query().Issue(context.Background(), msg.beanIDs[0])
-			if updatedBean != nil {
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+		clear(a.list.selectedIssues)
+		if a.state == viewDetail && len(msg.issueIDs) == 1 {
+			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
+			if updatedIssue != nil {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openTypePickerMsg:
 		a.previousState = a.state
-		a.typePicker = newTypePickerModel(msg.beanIDs, msg.beanTitle, msg.currentType, a.config, a.width, a.height)
+		a.typePicker = newTypePickerModel(msg.issueIDs, msg.issueTitle, msg.currentType, a.config, a.width, a.height)
 		a.state = viewTypePicker
 		return a, a.typePicker.Init()
 
 	case closeTypePickerMsg:
-		// Return to previous view and refresh in case beans changed while picker was open
+		// Return to previous view and refresh in case issues changed while picker was open
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case typeSelectedMsg:
 		// Update all issues' type via GraphQL mutations
-		for _, beanID := range msg.beanIDs {
-			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), beanID, model.UpdateIssueInput{
-				Type: &msg.beanType,
+		for _, issueID := range msg.issueIDs {
+			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, model.UpdateIssueInput{
+				Type: &msg.issueType,
 			})
 			if err != nil {
 				// Continue with other issues even if one fails
@@ -292,30 +292,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Return to the previous view and refresh
 		a.state = a.previousState
 		// Clear selection after batch edit
-		clear(a.list.selectedBeans)
-		if a.state == viewDetail && len(msg.beanIDs) == 1 {
-			updatedBean, _ := a.resolver.Query().Issue(context.Background(), msg.beanIDs[0])
-			if updatedBean != nil {
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+		clear(a.list.selectedIssues)
+		if a.state == viewDetail && len(msg.issueIDs) == 1 {
+			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
+			if updatedIssue != nil {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openPriorityPickerMsg:
 		a.previousState = a.state
-		a.priorityPicker = newPriorityPickerModel(msg.beanIDs, msg.beanTitle, msg.currentPriority, a.config, a.width, a.height)
+		a.priorityPicker = newPriorityPickerModel(msg.issueIDs, msg.issueTitle, msg.currentPriority, a.config, a.width, a.height)
 		a.state = viewPriorityPicker
 		return a, a.priorityPicker.Init()
 
 	case closePriorityPickerMsg:
-		// Return to previous view and refresh in case beans changed while picker was open
+		// Return to previous view and refresh in case issues changed while picker was open
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case prioritySelectedMsg:
 		// Update all issues' priority via GraphQL mutations
-		for _, beanID := range msg.beanIDs {
-			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), beanID, model.UpdateIssueInput{
+		for _, issueID := range msg.issueIDs {
+			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, model.UpdateIssueInput{
 				Priority: &msg.priority,
 			})
 			if err != nil {
@@ -326,14 +326,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Return to the previous view and refresh
 		a.state = a.previousState
 		// Clear selection after batch edit
-		clear(a.list.selectedBeans)
-		if a.state == viewDetail && len(msg.beanIDs) == 1 {
-			updatedBean, _ := a.resolver.Query().Issue(context.Background(), msg.beanIDs[0])
-			if updatedBean != nil {
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+		clear(a.list.selectedIssues)
+		if a.state == viewDetail && len(msg.issueIDs) == 1 {
+			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
+			if updatedIssue != nil {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openSortPickerMsg:
 		a.previousState = a.state
@@ -348,7 +348,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sortSelectedMsg:
 		a.list.sortOrder = msg.order
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openHelpMsg:
 		a.previousState = a.state
@@ -362,26 +362,26 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case openBlockingPickerMsg:
 		a.previousState = a.state
-		a.blockingPicker = newBlockingPickerModel(msg.beanID, msg.beanTitle, msg.currentBlocking, a.resolver, a.config, a.width, a.height)
+		a.blockingPicker = newBlockingPickerModel(msg.issueID, msg.issueTitle, msg.currentBlocking, a.resolver, a.config, a.width, a.height)
 		a.state = viewBlockingPicker
 		return a, a.blockingPicker.Init()
 
 	case closeBlockingPickerMsg:
-		// Return to previous view and refresh in case beans changed while picker was open
+		// Return to previous view and refresh in case issues changed while picker was open
 		a.state = a.previousState
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case blockingConfirmedMsg:
 		// Apply all blocking changes via GraphQL mutations
 		for _, targetID := range msg.toAdd {
-			_, err := a.resolver.Mutation().AddBlocking(context.Background(), msg.beanID, targetID, nil)
+			_, err := a.resolver.Mutation().AddBlocking(context.Background(), msg.issueID, targetID, nil)
 			if err != nil {
 				// Continue with other changes even if one fails
 				continue
 			}
 		}
 		for _, targetID := range msg.toRemove {
-			_, err := a.resolver.Mutation().RemoveBlocking(context.Background(), msg.beanID, targetID, nil)
+			_, err := a.resolver.Mutation().RemoveBlocking(context.Background(), msg.issueID, targetID, nil)
 			if err != nil {
 				// Continue with other changes even if one fails
 				continue
@@ -390,12 +390,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Return to previous view and refresh
 		a.state = a.previousState
 		if a.state == viewDetail {
-			updatedBean, _ := a.resolver.Query().Issue(context.Background(), msg.beanID)
-			if updatedBean != nil {
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueID)
+			if updatedIssue != nil {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case openCreateModalMsg:
 		a.previousState = a.state
@@ -407,10 +407,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.state = a.previousState
 		return a, nil
 
-	case beanCreatedMsg:
+	case issueCreatedMsg:
 		// Create the issue via GraphQL mutation with draft status
 		draftStatus := "draft"
-		createdBean, err := a.resolver.Mutation().CreateIssue(context.Background(), model.CreateIssueInput{
+		createdIssue, err := a.resolver.Mutation().CreateIssue(context.Background(), model.CreateIssueInput{
 			Title:  msg.title,
 			Status: &draftStatus,
 		})
@@ -419,24 +419,24 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.state = a.previousState
 			return a, nil
 		}
-		// Return to list and open the new bean in editor
+		// Return to list and open the new issue in editor
 		a.state = viewList
 		return a, tea.Batch(
-			a.list.loadBeans,
+			a.list.loadIssues,
 			func() tea.Msg {
-				return openEditorMsg{beanID: createdBean.ID, beanPath: createdBean.Path}
+				return openEditorMsg{issueID: createdIssue.ID, issuePath: createdIssue.Path}
 			},
 		)
 
 	case openEditorMsg:
 		// Launch editor for the issue file
 		editorCmd, editorArgs := getEditor(a.config)
-		fullPath := filepath.Join(a.core.Root(), msg.beanPath)
+		fullPath := filepath.Join(a.core.Root(), msg.issuePath)
 
 		// Record the issue ID and file mod time before editing
-		a.editingBeanID = msg.beanID
+		a.editingIssueID = msg.issueID
 		if info, err := os.Stat(fullPath); err == nil {
-			a.editingBeanModTime = info.ModTime()
+			a.editingIssueModTime = info.ModTime()
 		}
 
 		args := append(editorArgs, fullPath)
@@ -447,23 +447,23 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editorFinishedMsg:
 		// Editor closed - check if file was modified and update updated_at if so
-		if a.editingBeanID != "" {
-			if b, err := a.core.Get(a.editingBeanID); err == nil {
+		if a.editingIssueID != "" {
+			if b, err := a.core.Get(a.editingIssueID); err == nil {
 				fullPath := filepath.Join(a.core.Root(), b.Path)
 				if info, err := os.Stat(fullPath); err == nil {
-					if info.ModTime().After(a.editingBeanModTime) {
+					if info.ModTime().After(a.editingIssueModTime) {
 						// File was modified - reload from disk first to get user's changes,
 						// then call Update to set updated_at
 						_ = a.core.Load()
-						if b, err = a.core.Get(a.editingBeanID); err == nil {
+						if b, err = a.core.Get(a.editingIssueID); err == nil {
 							_ = a.core.Update(b, nil)
 						}
 					}
 				}
 			}
 			// Clear editing state
-			a.editingBeanID = ""
-			a.editingBeanModTime = time.Time{}
+			a.editingIssueID = ""
+			a.editingIssueModTime = time.Time{}
 		}
 		return a, nil
 
@@ -473,8 +473,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.parentID != "" {
 			parentID = &msg.parentID
 		}
-		for _, beanID := range msg.beanIDs {
-			_, err := a.resolver.Mutation().SetParent(context.Background(), beanID, parentID, nil)
+		for _, issueID := range msg.issueIDs {
+			_, err := a.resolver.Mutation().SetParent(context.Background(), issueID, parentID, nil)
 			if err != nil {
 				// Continue with other issues even if one fails
 				continue
@@ -483,21 +483,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Return to the previous view and refresh
 		a.state = a.previousState
 		// Clear selection after batch edit
-		clear(a.list.selectedBeans)
-		if a.state == viewDetail && len(msg.beanIDs) == 1 {
+		clear(a.list.selectedIssues)
+		if a.state == viewDetail && len(msg.issueIDs) == 1 {
 			// Refresh the issue to show updated parent
-			updatedBean, _ := a.resolver.Query().Issue(context.Background(), msg.beanIDs[0])
-			if updatedBean != nil {
-				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
+			if updatedIssue != nil {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
 			}
 		}
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
 	case clearFilterMsg:
 		a.list.clearFilter()
-		return a, a.list.loadBeans
+		return a, a.list.loadIssues
 
-	case copyBeanIDMsg:
+	case copyIssueIDMsg:
 		var statusMsg string
 		text := strings.Join(msg.ids, ", ")
 		if err := clipboard.WriteAll(text); err != nil {
@@ -572,9 +572,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // collectTagsWithCounts returns all tags with their usage counts
 func (a *App) collectTagsWithCounts() []tagWithCount {
-	beans, _ := a.resolver.Query().Issues(context.Background(), nil)
+	issues, _ := a.resolver.Query().Issues(context.Background(), nil)
 	tagCounts := make(map[string]int)
-	for _, b := range beans {
+	for _, b := range issues {
 		for _, tag := range b.Tags {
 			tagCounts[tag]++
 		}
@@ -678,16 +678,16 @@ func Run(core *core.Core, cfg *config.Config) error {
 	}
 	defer core.Unwatch()
 
-	// Subscribe to bean events
+	// Subscribe to issue events
 	eventCh, unsubscribe := core.Subscribe()
 	defer unsubscribe()
 
 	// Forward events to TUI in a goroutine
 	go func() {
 		for range eventCh {
-			// Send message to TUI when beans change
+			// Send message to TUI when issues change
 			if app.program != nil {
-				app.program.Send(beansChangedMsg{})
+				app.program.Send(issuesChangedMsg{})
 			}
 		}
 	}()

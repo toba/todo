@@ -10,7 +10,7 @@ import (
 // pickerModalConfig holds configuration for rendering a picker modal
 type pickerModalConfig struct {
 	Title       string // e.g., "Select Status"
-	BeanTitle   string // the issue's title
+	IssueTitle   string // the issue's title
 	IssueID      string // the issue's ID
 	ListContent string // the rendered list
 	Description string // optional description shown below list
@@ -33,13 +33,13 @@ func renderPickerModal(cfg pickerModalConfig) string {
 
 	modalWidth := max(40, min(maxWidth, cfg.Width*widthPct/100))
 
-	// Header with bean title (truncated if needed)
+	// Header with issue title (truncated if needed)
 	titleWidth := modalWidth - 4
-	beanTitle := cfg.BeanTitle
-	if len(beanTitle) > titleWidth {
-		beanTitle = beanTitle[:titleWidth-3] + "..."
+	issueTitle := cfg.IssueTitle
+	if len(issueTitle) > titleWidth {
+		issueTitle = issueTitle[:titleWidth-3] + "..."
 	}
-	header := lipgloss.NewStyle().Bold(true).Render(beanTitle)
+	header := lipgloss.NewStyle().Bold(true).Render(issueTitle)
 
 	// Subtitle with issue ID
 	subtitle := ui.Muted.Render(cfg.IssueID)

@@ -11,7 +11,7 @@ import (
 
 const idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-// NewID generates a new bean ID in the fixed xxx-xxx format (3 random chars, hyphen, 3 random chars).
+// NewID generates a new issue ID in the fixed xxx-xxx format (3 random chars, hyphen, 3 random chars).
 func NewID() string {
 	raw, err := gonanoid.Generate(idAlphabet, 6)
 	if err != nil {
@@ -20,14 +20,14 @@ func NewID() string {
 	return raw[:3] + "-" + raw[3:]
 }
 
-// BuildPath returns the hash-prefixed relative path for a bean file.
+// BuildPath returns the hash-prefixed relative path for an issue file.
 // The first character of the ID is used as a subfolder for filesystem organization.
 func BuildPath(id, slug string) string {
 	prefix := string(id[0])
 	return filepath.Join(prefix, BuildFilename(id, slug))
 }
 
-// ParseFilename extracts the ID and optional slug from a bean filename.
+// ParseFilename extracts the ID and optional slug from an issue filename.
 // Supports multiple formats for backward compatibility:
 //   - New format: "f7g--user-registration.md" -> ("f7g", "user-registration")
 //   - Dot format: "f7g.user-registration.md" -> ("f7g", "user-registration")

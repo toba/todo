@@ -34,20 +34,20 @@ func TestBuildRoadmap(t *testing.T) {
 
 	tests := []struct {
 		name                  string
-		beans                 []*issue.Issue
+		issues                 []*issue.Issue
 		includeDone           bool
 		wantMilestones        int
 		wantUnscheduledEpics  int
 		wantUnscheduledOther  int
 	}{
 		{
-			name:           "empty beans",
-			beans:          []*issue.Issue{},
+			name:           "empty issues list",
+			issues:          []*issue.Issue{},
 			wantMilestones: 0,
 		},
 		{
 			name: "milestone with epic and items",
-			beans: []*issue.Issue{
+			issues: []*issue.Issue{
 				{ID: "m1", Type: "milestone", Title: "v1.0", Status: "todo", CreatedAt: &now},
 				{ID: "e1", Type: "epic", Title: "Auth", Status: "todo", Parent: "m1"},
 				{ID: "t1", Type: "task", Title: "Login", Status: "todo", Parent: "e1"},
@@ -56,7 +56,7 @@ func TestBuildRoadmap(t *testing.T) {
 		},
 		{
 			name: "milestone with direct children (no epic)",
-			beans: []*issue.Issue{
+			issues: []*issue.Issue{
 				{ID: "m1", Type: "milestone", Title: "v1.0", Status: "todo", CreatedAt: &now},
 				{ID: "t1", Type: "task", Title: "Docs", Status: "todo", Parent: "m1"},
 			},
@@ -64,7 +64,7 @@ func TestBuildRoadmap(t *testing.T) {
 		},
 		{
 			name: "unscheduled epic",
-			beans: []*issue.Issue{
+			issues: []*issue.Issue{
 				{ID: "e1", Type: "epic", Title: "Future", Status: "todo"},
 				{ID: "t1", Type: "task", Title: "Nice to have", Status: "todo", Parent: "e1"},
 			},
@@ -73,7 +73,7 @@ func TestBuildRoadmap(t *testing.T) {
 		},
 		{
 			name: "done items excluded by default",
-			beans: []*issue.Issue{
+			issues: []*issue.Issue{
 				{ID: "m1", Type: "milestone", Title: "v1.0", Status: "todo", CreatedAt: &now},
 				{ID: "t1", Type: "task", Title: "Done task", Status: "completed", Parent: "m1"},
 			},
@@ -82,7 +82,7 @@ func TestBuildRoadmap(t *testing.T) {
 		},
 		{
 			name: "done items included when requested",
-			beans: []*issue.Issue{
+			issues: []*issue.Issue{
 				{ID: "m1", Type: "milestone", Title: "v1.0", Status: "todo", CreatedAt: &now},
 				{ID: "t1", Type: "task", Title: "Done task", Status: "completed", Parent: "m1"},
 			},
@@ -90,8 +90,8 @@ func TestBuildRoadmap(t *testing.T) {
 			wantMilestones: 1,
 		},
 		{
-			name: "orphan bean appears in unscheduled other",
-			beans: []*issue.Issue{
+			name: "orphan issue appears in unscheduled other",
+			issues: []*issue.Issue{
 				{ID: "m1", Type: "milestone", Title: "v1.0", Status: "todo", CreatedAt: &now},
 				{ID: "t1", Type: "task", Title: "Orphan", Status: "todo"}, // no parent link
 			},
@@ -102,7 +102,7 @@ func TestBuildRoadmap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := buildRoadmap(tt.beans, tt.includeDone, nil, nil)
+			result := buildRoadmap(tt.issues, tt.includeDone, nil, nil)
 
 			if got := len(result.Milestones); got != tt.wantMilestones {
 				t.Errorf("got %d milestones, want %d", got, tt.wantMilestones)
@@ -172,7 +172,7 @@ func TestFirstParagraph(t *testing.T) {
 	}
 }
 
-func TestRenderBeanRef(t *testing.T) {
+func TestRenderIssueRef(t *testing.T) {
 	tests := []struct {
 		name       string
 		issue       *issue.Issue
@@ -197,8 +197,8 @@ func TestRenderBeanRef(t *testing.T) {
 			name:       "link with prefix",
 			issue:       &issue.Issue{ID: "abc", Path: "abc--milestone.md"},
 			asLink:     true,
-			linkPrefix: "https://example.com/beans/",
-			want:       "([abc](https://example.com/beans/abc--milestone.md))",
+			linkPrefix: "https://example.com/issues/",
+			want:       "([abc](https://example.com/issues/abc--milestone.md))",
 		},
 		{
 			name:       "link with prefix without trailing slash",
@@ -227,7 +227,7 @@ func TestStatusFiltering(t *testing.T) {
 	cfg = config.Default()
 
 	now := time.Now()
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "m1", Type: "milestone", Title: "Todo Milestone", Status: "todo", CreatedAt: &now},
 		{ID: "m2", Type: "milestone", Title: "In Progress Milestone", Status: "in-progress", CreatedAt: &now},
 		{ID: "t1", Type: "task", Title: "Task 1", Status: "todo", Parent: "m1"},
@@ -235,7 +235,7 @@ func TestStatusFiltering(t *testing.T) {
 	}
 
 	t.Run("filter by status", func(t *testing.T) {
-		result := buildRoadmap(beans, false, []string{"todo"}, nil)
+		result := buildRoadmap(issues, false, []string{"todo"}, nil)
 		if len(result.Milestones) != 1 {
 			t.Errorf("expected 1 milestone, got %d", len(result.Milestones))
 		}
@@ -245,7 +245,7 @@ func TestStatusFiltering(t *testing.T) {
 	})
 
 	t.Run("exclude by status", func(t *testing.T) {
-		result := buildRoadmap(beans, false, nil, []string{"in-progress"})
+		result := buildRoadmap(issues, false, nil, []string{"in-progress"})
 		if len(result.Milestones) != 1 {
 			t.Errorf("expected 1 milestone, got %d", len(result.Milestones))
 		}

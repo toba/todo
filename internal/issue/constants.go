@@ -1,6 +1,6 @@
 package issue
 
-// Link types used in bean relationships.
+// Link types used in issue relationships.
 const (
 	LinkTypeParent    = "parent"
 	LinkTypeBlocking  = "blocking"

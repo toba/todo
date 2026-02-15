@@ -29,7 +29,7 @@ var deleteCmd = &cobra.Command{
 	Use:     "delete <id> [id...]",
 	Aliases: []string{"rm"},
 	Short:   "Delete one or more issues",
-	Long: `Deletes one or more beans after confirmation (use -f to skip confirmation).
+	Long: `Deletes one or more issues after confirmation (use -f to skip confirmation).
 
 If other issues reference the target issue(s) (as parent or via blocking), you will be
 warned and those references will be removed after confirmation. Use -f to skip all warnings.`,
@@ -97,13 +97,13 @@ warned and those references will be removed after confirmation. Use -f to skip a
 	},
 }
 
-// confirmDeleteMultiple prompts the user to confirm deletion of one or more beans.
+// confirmDeleteMultiple prompts the user to confirm deletion of one or more issues.
 func confirmDeleteMultiple(targets []issueWithLinks) bool {
-	beansWithLinks := 0
+	issuesWithLinks := 0
 	totalLinks := 0
 	for _, t := range targets {
 		if len(t.links) > 0 {
-			beansWithLinks++
+			issuesWithLinks++
 			totalLinks += len(t.links)
 		}
 	}
@@ -114,14 +114,14 @@ func confirmDeleteMultiple(targets []issueWithLinks) bool {
 		if len(t.links) > 0 {
 			fmt.Printf("Warning: %d issue(s) link to '%s':\n", len(t.links), t.issue.Title)
 			for _, link := range t.links {
-				fmt.Printf("  - %s (%s) via %s\n", link.FromBean.ID, link.FromBean.Title, link.LinkType)
+				fmt.Printf("  - %s (%s) via %s\n", link.FromIssue.ID, link.FromIssue.Title, link.LinkType)
 			}
 			fmt.Print("Delete anyway and remove references? [y/N] ")
 		} else {
 			fmt.Printf("Delete '%s' (%s)? [y/N] ", t.issue.Title, t.issue.Path)
 		}
 	} else {
-		// Multiple beans: show batch summary
+		// Multiple issues: show batch summary
 		fmt.Printf("About to delete %d issue(s):\n", len(targets))
 		for _, t := range targets {
 			if len(t.links) > 0 {
@@ -130,8 +130,8 @@ func confirmDeleteMultiple(targets []issueWithLinks) bool {
 				fmt.Printf("  - %s (%s)\n", t.issue.ID, t.issue.Title)
 			}
 		}
-		if beansWithLinks > 0 {
-			fmt.Printf("\nWarning: %d issue(s) have incoming references (%d total) that will be removed.\n", beansWithLinks, totalLinks)
+		if issuesWithLinks > 0 {
+			fmt.Printf("\nWarning: %d issue(s) have incoming references (%d total) that will be removed.\n", issuesWithLinks, totalLinks)
 		}
 		fmt.Print("\nProceed with deletion? [y/N] ")
 	}

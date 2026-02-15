@@ -38,8 +38,8 @@ func substringFilter(term string, targets []string) []list.Rank {
 	return ranks
 }
 
-// beanItem wraps an issue to implement list.Item, with tree context
-type beanItem struct {
+// issueItem wraps an issue to implement list.Item, with tree context
+type issueItem struct {
 	issue       *issue.Issue
 	cfg        *config.Config
 	treePrefix string // tree prefix for rendering (e.g., "├─" or "  └─")
@@ -47,9 +47,9 @@ type beanItem struct {
 	deepSearch *bool  // pointer to listModel.deepSearch
 }
 
-func (i beanItem) Title() string       { return i.issue.Title }
-func (i beanItem) Description() string { return i.issue.ID + " · " + i.issue.Status }
-func (i beanItem) FilterValue() string {
+func (i issueItem) Title() string       { return i.issue.Title }
+func (i issueItem) Description() string { return i.issue.ID + " · " + i.issue.Status }
+func (i issueItem) FilterValue() string {
 	if i.deepSearch != nil && *i.deepSearch {
 		return i.issue.Title + " " + i.issue.ID + " " + i.issue.Body
 	}
@@ -63,7 +63,7 @@ type itemDelegate struct {
 	width         int
 	cols          ui.ResponsiveColumns // cached responsive columns
 	idColWidth    int                  // ID column width (accounts for tree prefix)
-	selectedBeans *map[string]bool     // pointer to marked beans for multi-select
+	selectedIssues *map[string]bool     // pointer to marked issues for multi-select
 }
 
 func newItemDelegate(cfg *config.Config) itemDelegate {
@@ -75,7 +75,7 @@ func (d itemDelegate) Spacing() int                            { return 0 }
 func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	item, ok := listItem.(beanItem)
+	item, ok := listItem.(issueItem)
 	if !ok {
 		return
 	}
@@ -94,10 +94,10 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 	maxTitleWidth := max(0, m.Width()-baseWidth)
 
-	// Check if bean is marked for multi-select
+	// Check if issue is marked for multi-select
 	var isMarked bool
-	if d.selectedBeans != nil {
-		isMarked = (*d.selectedBeans)[item.issue.ID]
+	if d.selectedIssues != nil {
+		isMarked = (*d.selectedIssues)[item.issue.ID]
 	}
 
 	str := ui.RenderIssueRow(
@@ -138,29 +138,29 @@ type listModel struct {
 	err      error
 
 	// Responsive column state
-	hasTags    bool                 // whether any beans have tags
+	hasTags    bool                 // whether any issues have tags
 	cols       ui.ResponsiveColumns // calculated responsive columns
 	idColWidth int                  // ID column width (accounts for tree depth)
 
 	// Active filters
-	tagFilter string // if set, only show beans with this tag
+	tagFilter string // if set, only show issues with this tag
 
 	// Sort order
 	sortOrder sortOrder // current sort mode
 
-	// Deep search mode (heap-allocated so beanItem pointers survive value copies)
+	// Deep search mode (heap-allocated so issueItem pointers survive value copies)
 	deepSearch *bool // when true, filter also searches issue body
 
 	// Multi-select state
-	selectedBeans map[string]bool // IDs of beans marked for multi-edit
+	selectedIssues map[string]bool // IDs of issues marked for multi-edit
 
 	// Status message to display in footer
 	statusMessage string
 }
 
 func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
-	selectedBeans := make(map[string]bool)
-	delegate := itemDelegate{cfg: cfg, selectedBeans: &selectedBeans}
+	selectedIssues := make(map[string]bool)
+	delegate := itemDelegate{cfg: cfg, selectedIssues: &selectedIssues}
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Issues"
@@ -180,12 +180,12 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 		config:        cfg,
 		sortOrder:     sortOrder(cfg.GetDefaultSort()),
 		deepSearch:    &deepSearch,
-		selectedBeans: selectedBeans,
+		selectedIssues: selectedIssues,
 	}
 }
 
-// beansLoadedMsg is sent when beans are loaded
-type beansLoadedMsg struct {
+// issuesLoadedMsg is sent when issues are loaded
+type issuesLoadedMsg struct {
 	items      []ui.FlatItem // flattened tree items
 	idColWidth int           // calculated ID column width for tree
 }
@@ -201,24 +201,24 @@ type selectIssueMsg struct {
 }
 
 func (m listModel) Init() tea.Cmd {
-	return m.loadBeans
+	return m.loadIssues
 }
 
-func (m listModel) loadBeans() tea.Msg {
+func (m listModel) loadIssues() tea.Msg {
 	// Build filter if tag filter is set
 	var filter *model.IssueFilter
 	if m.tagFilter != "" {
 		filter = &model.IssueFilter{Tags: []string{m.tagFilter}}
 	}
 
-	// Query filtered beans
-	filteredBeans, err := m.resolver.Query().Issues(context.Background(), filter)
+	// Query filtered issues
+	filteredIssues, err := m.resolver.Query().Issues(context.Background(), filter)
 	if err != nil {
 		return errMsg{err}
 	}
 
 	// Query all issues for tree context (ancestors)
-	allBeans, err := m.resolver.Query().Issues(context.Background(), nil)
+	allIssues, err := m.resolver.Query().Issues(context.Background(), nil)
 	if err != nil {
 		return errMsg{err}
 	}
@@ -227,32 +227,32 @@ func (m listModel) loadBeans() tea.Msg {
 	var sortFn func([]*issue.Issue)
 	switch m.sortOrder {
 	case sortCreated:
-		effectiveDates := issue.ComputeEffectiveDates(allBeans, "created_at")
-		sortFn = func(beans []*issue.Issue) {
-			issue.SortByCreatedAt(beans, effectiveDates)
+		effectiveDates := issue.ComputeEffectiveDates(allIssues, "created_at")
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByCreatedAt(issues, effectiveDates)
 		}
 	case sortUpdated:
-		effectiveDates := issue.ComputeEffectiveDates(allBeans, "updated_at")
-		sortFn = func(beans []*issue.Issue) {
-			issue.SortByUpdatedAt(beans, effectiveDates)
+		effectiveDates := issue.ComputeEffectiveDates(allIssues, "updated_at")
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByUpdatedAt(issues, effectiveDates)
 		}
 	case sortDue:
-		sortFn = func(beans []*issue.Issue) {
-			issue.SortByDueDate(beans)
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByDueDate(issues)
 		}
 	default:
-		sortFn = func(beans []*issue.Issue) {
-			issue.SortByStatusPriorityAndType(beans, m.config.StatusNames(), m.config.PriorityNames(), m.config.TypeNames())
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByStatusPriorityAndType(issues, m.config.StatusNames(), m.config.PriorityNames(), m.config.TypeNames())
 		}
 	}
 
 	// Build tree and flatten it
-	tree := ui.BuildTree(filteredBeans, allBeans, sortFn)
+	tree := ui.BuildTree(filteredIssues, allIssues, sortFn)
 	items := ui.FlattenTree(tree)
 
 	// Calculate ID column width based on max ID length and tree depth
 	maxIDLen := 0
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		if len(b.ID) > maxIDLen {
 			maxIDLen = len(b.ID)
 		}
@@ -264,7 +264,7 @@ func (m listModel) loadBeans() tea.Msg {
 		idColWidth += maxDepth * 3 // 3 chars per depth level (├─ + space)
 	}
 
-	return beansLoadedMsg{items: items, idColWidth: idColWidth}
+	return issuesLoadedMsg{items: items, idColWidth: idColWidth}
 }
 
 // setTagFilter sets the tag filter
@@ -295,12 +295,12 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		m.cols = ui.CalculateResponsiveColumns(msg.Width, m.hasTags)
 		m.updateDelegate()
 
-	case beansLoadedMsg:
+	case issuesLoadedMsg:
 		items := make([]list.Item, len(msg.items))
-		// Check if any beans have tags
+		// Check if any issues have tags
 		m.hasTags = false
 		for i, flatItem := range msg.items {
-			items[i] = beanItem{
+			items[i] = issueItem{
 				issue:       flatItem.Issue,
 				cfg:        m.config,
 				treePrefix: flatItem.TreePrefix,
@@ -340,32 +340,32 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 			switch msg.String() {
 			case " ":
 				// Toggle selection for multi-select, then move to next item
-				if item, ok := m.list.SelectedItem().(beanItem); ok {
-					if m.selectedBeans[item.issue.ID] {
-						delete(m.selectedBeans, item.issue.ID)
+				if item, ok := m.list.SelectedItem().(issueItem); ok {
+					if m.selectedIssues[item.issue.ID] {
+						delete(m.selectedIssues, item.issue.ID)
 					} else {
-						m.selectedBeans[item.issue.ID] = true
+						m.selectedIssues[item.issue.ID] = true
 					}
 					m.list.CursorDown()
 				}
 				return m, nil
 			case "enter":
-				if item, ok := m.list.SelectedItem().(beanItem); ok {
+				if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return selectIssueMsg{issue: item.issue}
 					}
 				}
 			case "p":
-				// Open parent picker for selected bean(s)
-				if len(m.selectedBeans) > 0 {
+				// Open parent picker for selected issue(s)
+				if len(m.selectedIssues) > 0 {
 					// Multi-select mode
-					ids := make([]string, 0, len(m.selectedBeans))
-					types := make([]string, 0, len(m.selectedBeans))
-					for id := range m.selectedBeans {
+					ids := make([]string, 0, len(m.selectedIssues))
+					types := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
 						ids = append(ids, id)
 						// Find the issue to get its type
 						for _, item := range m.list.Items() {
-							if bi, ok := item.(beanItem); ok && bi.issue.ID == id {
+							if bi, ok := item.(issueItem); ok && bi.issue.ID == id {
 								types = append(types, bi.issue.Type)
 								break
 							}
@@ -373,97 +373,97 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					}
 					return m, func() tea.Msg {
 						return openParentPickerMsg{
-							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
-							beanTypes: types,
+							issueIDs:   ids,
+							issueTitle: fmt.Sprintf("%d selected issues", len(ids)),
+							issueTypes: types,
 						}
 					}
-				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openParentPickerMsg{
-							beanIDs:       []string{item.issue.ID},
-							beanTitle:     item.issue.Title,
-							beanTypes:     []string{item.issue.Type},
+							issueIDs:       []string{item.issue.ID},
+							issueTitle:     item.issue.Title,
+							issueTypes:     []string{item.issue.Type},
 							currentParent: item.issue.Parent,
 						}
 					}
 				}
 			case "s":
-				// Open status picker for selected bean(s)
-				if len(m.selectedBeans) > 0 {
+				// Open status picker for selected issue(s)
+				if len(m.selectedIssues) > 0 {
 					// Multi-select mode
-					ids := make([]string, 0, len(m.selectedBeans))
-					for id := range m.selectedBeans {
+					ids := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
 						ids = append(ids, id)
 					}
 					return m, func() tea.Msg {
 						return openStatusPickerMsg{
-							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
+							issueIDs:   ids,
+							issueTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
-				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openStatusPickerMsg{
-							beanIDs:       []string{item.issue.ID},
-							beanTitle:     item.issue.Title,
+							issueIDs:       []string{item.issue.ID},
+							issueTitle:     item.issue.Title,
 							currentStatus: item.issue.Status,
 						}
 					}
 				}
 			case "t":
-				// Open type picker for selected bean(s)
-				if len(m.selectedBeans) > 0 {
+				// Open type picker for selected issue(s)
+				if len(m.selectedIssues) > 0 {
 					// Multi-select mode
-					ids := make([]string, 0, len(m.selectedBeans))
-					for id := range m.selectedBeans {
+					ids := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
 						ids = append(ids, id)
 					}
 					return m, func() tea.Msg {
 						return openTypePickerMsg{
-							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
+							issueIDs:   ids,
+							issueTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
-				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openTypePickerMsg{
-							beanIDs:     []string{item.issue.ID},
-							beanTitle:   item.issue.Title,
+							issueIDs:     []string{item.issue.ID},
+							issueTitle:   item.issue.Title,
 							currentType: item.issue.Type,
 						}
 					}
 				}
 			case "P":
-				// Open priority picker for selected bean(s)
-				if len(m.selectedBeans) > 0 {
+				// Open priority picker for selected issue(s)
+				if len(m.selectedIssues) > 0 {
 					// Multi-select mode
-					ids := make([]string, 0, len(m.selectedBeans))
-					for id := range m.selectedBeans {
+					ids := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
 						ids = append(ids, id)
 					}
 					return m, func() tea.Msg {
 						return openPriorityPickerMsg{
-							beanIDs:   ids,
-							beanTitle: fmt.Sprintf("%d selected issues", len(ids)),
+							issueIDs:   ids,
+							issueTitle: fmt.Sprintf("%d selected issues", len(ids)),
 						}
 					}
-				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openPriorityPickerMsg{
-							beanIDs:         []string{item.issue.ID},
-							beanTitle:       item.issue.Title,
+							issueIDs:         []string{item.issue.ID},
+							issueTitle:       item.issue.Title,
 							currentPriority: item.issue.Priority,
 						}
 					}
 				}
 			case "b":
-				// Open blocking picker for selected bean
-				if item, ok := m.list.SelectedItem().(beanItem); ok {
+				// Open blocking picker for selected issue
+				if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openBlockingPickerMsg{
-							beanID:          item.issue.ID,
-							beanTitle:       item.issue.Title,
+							issueID:          item.issue.ID,
+							issueTitle:       item.issue.Title,
 							currentBlocking: item.issue.Blocking,
 						}
 					}
@@ -479,36 +479,36 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return openCreateModalMsg{}
 				}
 			case "e":
-				// Open editor for selected bean
-				if item, ok := m.list.SelectedItem().(beanItem); ok {
+				// Open editor for selected issue
+				if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openEditorMsg{
-							beanID:   item.issue.ID,
-							beanPath: item.issue.Path,
+							issueID:   item.issue.ID,
+							issuePath: item.issue.Path,
 						}
 					}
 				}
 			case "y":
 				// Copy issue ID(s) to clipboard
-				if len(m.selectedBeans) > 0 {
+				if len(m.selectedIssues) > 0 {
 					// Multi-select mode: copy all selected IDs
-					ids := make([]string, 0, len(m.selectedBeans))
-					for id := range m.selectedBeans {
+					ids := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
 						ids = append(ids, id)
 					}
 					return m, func() tea.Msg {
-						return copyBeanIDMsg{ids: ids}
+						return copyIssueIDMsg{ids: ids}
 					}
-				} else if item, ok := m.list.SelectedItem().(beanItem); ok {
-					// Single bean mode
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
+					// Single issue mode
 					return m, func() tea.Msg {
-						return copyBeanIDMsg{ids: []string{item.issue.ID}}
+						return copyIssueIDMsg{ids: []string{item.issue.ID}}
 					}
 				}
 			case "esc", "backspace":
-				// First clear selection if any beans are selected
-				if len(m.selectedBeans) > 0 {
-					clear(m.selectedBeans)
+				// First clear selection if any issues are selected
+				if len(m.selectedIssues) > 0 {
+					clear(m.selectedIssues)
 					return m, nil
 				}
 				// Then clear active filter if any
@@ -541,7 +541,7 @@ func (m *listModel) updateDelegate() {
 		width:         m.width,
 		cols:          m.cols,
 		idColWidth:    m.idColWidth,
-		selectedBeans: &m.selectedBeans,
+		selectedIssues: &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
 }
@@ -574,15 +574,15 @@ func (m listModel) View() string {
 	// Footer - show different help based on filter/selection state
 	var help string
 
-	// Show selection count if any beans are selected
+	// Show selection count if any issues are selected
 	var selectionPrefix string
-	if len(m.selectedBeans) > 0 {
+	if len(m.selectedIssues) > 0 {
 		selectionStyle := lipgloss.NewStyle().Foreground(ui.ColorWarning).Bold(true)
-		selectionPrefix = selectionStyle.Render(fmt.Sprintf("(%d selected) ", len(m.selectedBeans)))
+		selectionPrefix = selectionStyle.Render(fmt.Sprintf("(%d selected) ", len(m.selectedIssues)))
 	}
 
-	if len(m.selectedBeans) > 0 {
-		// When beans are selected, show esc to clear selection
+	if len(m.selectedIssues) > 0 {
+		// When issues are selected, show esc to clear selection
 		help = helpKeyStyle.Render("space") + " " + helpStyle.Render("toggle") + "  " +
 			helpKeyStyle.Render("o") + " " + helpStyle.Render("sort") + "  " +
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +

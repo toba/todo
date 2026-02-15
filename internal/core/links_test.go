@@ -9,27 +9,27 @@ import (
 func TestFindIncomingLinks(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create beans with relationships
+	// Create issues with relationships
 	// A -> B (blocks)
 	// A -> C (parent)
 	// D -> B (blocks)
-	beanA := &issue.Issue{
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"bbb2"},
 		Parent: "ccc3",
 	}
-	beanB := &issue.Issue{ID: "bbb2", Title: "Bean B", Status: "todo"}
-	beanC := &issue.Issue{ID: "ccc3", Title: "Bean C", Status: "todo"}
-	beanD := &issue.Issue{
+	issueB := &issue.Issue{ID: "bbb2", Title: "Issue B", Status: "todo"}
+	issueC := &issue.Issue{ID: "ccc3", Title: "Issue C", Status: "todo"}
+	issueD := &issue.Issue{
 		ID:     "ddd4",
-		Title:  "Bean D",
+		Title:  "Issue D",
 		Status: "todo",
 		Blocking: []string{"bbb2"},
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB, beanC, beanD} {
+	for _, b := range []*issue.Issue{issueA, issueB, issueC, issueD} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -44,7 +44,7 @@ func TestFindIncomingLinks(t *testing.T) {
 		// Check both A and D block B
 		fromIDs := make(map[string]string)
 		for _, link := range links {
-			fromIDs[link.FromBean.ID] = link.LinkType
+			fromIDs[link.FromIssue.ID] = link.LinkType
 		}
 		if fromIDs["aaa1"] != "blocking" {
 			t.Error("expected aaa1 -> bbb2 via blocks")
@@ -59,8 +59,8 @@ func TestFindIncomingLinks(t *testing.T) {
 		if len(links) != 1 {
 			t.Errorf("FindIncomingLinks(ccc3) = %d links, want 1", len(links))
 		}
-		if links[0].FromBean.ID != "aaa1" || links[0].LinkType != "parent" {
-			t.Errorf("expected aaa1 -> ccc3 via parent, got %s -> ccc3 via %s", links[0].FromBean.ID, links[0].LinkType)
+		if links[0].FromIssue.ID != "aaa1" || links[0].LinkType != "parent" {
+			t.Errorf("expected aaa1 -> ccc3 via parent, got %s -> ccc3 via %s", links[0].FromIssue.ID, links[0].LinkType)
 		}
 	})
 
@@ -71,7 +71,7 @@ func TestFindIncomingLinks(t *testing.T) {
 		}
 	})
 
-	t.Run("nonexistent bean", func(t *testing.T) {
+	t.Run("nonexistent issue", func(t *testing.T) {
 		links := core.FindIncomingLinks("nonexistent")
 		if len(links) != 0 {
 			t.Errorf("FindIncomingLinks(nonexistent) = %d links, want 0", len(links))
@@ -83,25 +83,25 @@ func TestDetectCycle(t *testing.T) {
 	core, _ := setupTestCore(t)
 
 	// Create a chain: A blocks B, B blocks C
-	beanA := &issue.Issue{
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"bbb2"},
 	}
-	beanB := &issue.Issue{
+	issueB := &issue.Issue{
 		ID:     "bbb2",
-		Title:  "Bean B",
+		Title:  "Issue B",
 		Status: "todo",
 		Blocking: []string{"ccc3"},
 	}
-	beanC := &issue.Issue{
+	issueC := &issue.Issue{
 		ID:     "ccc3",
-		Title:  "Bean C",
+		Title:  "Issue C",
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB, beanC} {
+	for _, b := range []*issue.Issue{issueA, issueB, issueC} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -120,8 +120,8 @@ func TestDetectCycle(t *testing.T) {
 
 	t.Run("no cycle", func(t *testing.T) {
 		// Adding D blocks A would not create a cycle (D doesn't exist in chain)
-		beanD := &issue.Issue{ID: "ddd4", Title: "Bean D", Status: "todo"}
-		if err := core.Create(beanD); err != nil {
+		issueD := &issue.Issue{ID: "ddd4", Title: "Issue D", Status: "todo"}
+		if err := core.Create(issueD); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
 
@@ -133,25 +133,25 @@ func TestDetectCycle(t *testing.T) {
 
 	t.Run("parent cycle detection", func(t *testing.T) {
 		// Create parent chain: X -> Y -> Z (X has parent Y, Y has parent Z)
-		beanX := &issue.Issue{
+		issueX := &issue.Issue{
 			ID:     "xxx1",
-			Title:  "Bean X",
+			Title:  "Issue X",
 			Status: "todo",
 			Parent: "yyy2",
 		}
-		beanY := &issue.Issue{
+		issueY := &issue.Issue{
 			ID:     "yyy2",
-			Title:  "Bean Y",
+			Title:  "Issue Y",
 			Status: "todo",
 			Parent: "zzz3",
 		}
-		beanZ := &issue.Issue{
+		issueZ := &issue.Issue{
 			ID:     "zzz3",
-			Title:  "Bean Z",
+			Title:  "Issue Z",
 			Status: "todo",
 		}
 
-		for _, b := range []*issue.Issue{beanX, beanY, beanZ} {
+		for _, b := range []*issue.Issue{issueX, issueY, issueZ} {
 			if err := core.Create(b); err != nil {
 				t.Fatalf("Create error: %v", err)
 			}
@@ -168,25 +168,25 @@ func TestDetectCycle(t *testing.T) {
 func TestCheckAllLinks(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create beans with various link issues:
-	// - Broken parent link to nonexistent bean
+	// Create issues with various link issues:
+	// - Broken parent link to nonexistent issue
 	// - Self-reference in blocks
 	// - Cycle (A -> B -> A via blocks)
-	beanA := &issue.Issue{
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"bbb2", "aaa1"}, // aaa1 is self-reference
 		Parent: "nonexistent",
 	}
-	beanB := &issue.Issue{
+	issueB := &issue.Issue{
 		ID:     "bbb2",
-		Title:  "Bean B",
+		Title:  "Issue B",
 		Status: "todo",
 		Blocking: []string{"aaa1"}, // creates cycle
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB} {
+	for _, b := range []*issue.Issue{issueA, issueB} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -249,20 +249,20 @@ func TestCheckAllLinks(t *testing.T) {
 func TestCheckAllLinksClean(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create clean beans with no issues
-	beanA := &issue.Issue{
+	// Create clean issues with no problems
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"bbb2"},
 	}
-	beanB := &issue.Issue{
+	issueB := &issue.Issue{
 		ID:     "bbb2",
-		Title:  "Bean B",
+		Title:  "Issue B",
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB} {
+	for _, b := range []*issue.Issue{issueA, issueB} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -271,7 +271,7 @@ func TestCheckAllLinksClean(t *testing.T) {
 	result := core.CheckAllLinks()
 
 	if result.HasIssues() {
-		t.Errorf("HasIssues() should return false for clean beans, got broken=%d self=%d cycles=%d",
+		t.Errorf("HasIssues() should return false for clean issues, got broken=%d self=%d cycles=%d",
 			len(result.BrokenLinks), len(result.SelfLinks), len(result.Cycles))
 	}
 }
@@ -279,27 +279,27 @@ func TestCheckAllLinksClean(t *testing.T) {
 func TestRemoveLinksTo(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create beans where multiple beans link to one target
-	beanA := &issue.Issue{
+	// Create issues where multiple issues link to one target
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"target"},
 		Parent: "target",
 	}
-	beanB := &issue.Issue{
+	issueB := &issue.Issue{
 		ID:     "bbb2",
-		Title:  "Bean B",
+		Title:  "Issue B",
 		Status: "todo",
 		Blocking: []string{"target"},
 	}
 	target := &issue.Issue{
 		ID:     "target",
-		Title:  "Target Bean",
+		Title:  "Target Issue",
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB, target} {
+	for _, b := range []*issue.Issue{issueA, issueB, target} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -318,33 +318,33 @@ func TestRemoveLinksTo(t *testing.T) {
 	// Verify links are gone
 	loadedA, _ := core.Get("aaa1")
 	if loadedA.Parent != "" || len(loadedA.Blocking) != 0 {
-		t.Errorf("Bean A still has relationships: parent=%q blocks=%v", loadedA.Parent, loadedA.Blocking)
+		t.Errorf("Issue A still has relationships: parent=%q blocks=%v", loadedA.Parent, loadedA.Blocking)
 	}
 
 	loadedB, _ := core.Get("bbb2")
 	if len(loadedB.Blocking) != 0 {
-		t.Errorf("Bean B still has %d blocks, want 0", len(loadedB.Blocking))
+		t.Errorf("Issue B still has %d blocks, want 0", len(loadedB.Blocking))
 	}
 }
 
 func TestFixBrokenLinks(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create bean with broken link and self-reference
-	beanA := &issue.Issue{
+	// Create issue with broken link and self-reference
+	issueA := &issue.Issue{
 		ID:     "aaa1",
-		Title:  "Bean A",
+		Title:  "Issue A",
 		Status: "todo",
 		Blocking: []string{"bbb2", "aaa1"}, // bbb2 is valid, aaa1 is self-reference
 		Parent: "nonexistent",             // broken
 	}
-	beanB := &issue.Issue{
+	issueB := &issue.Issue{
 		ID:     "bbb2",
-		Title:  "Bean B",
+		Title:  "Issue B",
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{beanA, beanB} {
+	for _, b := range []*issue.Issue{issueA, issueB} {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -363,7 +363,7 @@ func TestFixBrokenLinks(t *testing.T) {
 	// Verify only valid link remains
 	loadedA, _ := core.Get("aaa1")
 	if len(loadedA.Blocking) != 1 {
-		t.Errorf("Bean A has %d blocks, want 1", len(loadedA.Blocking))
+		t.Errorf("Issue A has %d blocks, want 1", len(loadedA.Blocking))
 	}
 	if !loadedA.IsBlocking("bbb2") {
 		t.Error("valid 'blocks' link should be preserved")
@@ -427,7 +427,7 @@ func TestCanonicalCycleKey(t *testing.T) {
 func TestIsBlocked(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create test beans with various blocking scenarios
+	// Create test issues with various blocking scenarios
 	activeBlocker := &issue.Issue{
 		ID:       "active-blocker",
 		Title:    "Active Blocker",
@@ -466,7 +466,7 @@ func TestIsBlocked(t *testing.T) {
 		Title:  "Not Blocked",
 		Status: "todo",
 	}
-	// Bean with direct blocked_by field
+	// Issue with direct blocked_by field
 	blockedByFieldActive := &issue.Issue{
 		ID:        "blocked-by-field-active",
 		Title:     "Blocked by Field (Active)",
@@ -479,21 +479,21 @@ func TestIsBlocked(t *testing.T) {
 		Status:    "todo",
 		BlockedBy: []string{"completed-blocker"},
 	}
-	// Bean with broken blocker link
+	// Issue with broken blocker link
 	blockedByBroken := &issue.Issue{
 		ID:        "blocked-by-broken",
 		Title:     "Blocked by Broken Link",
 		Status:    "todo",
 		BlockedBy: []string{"nonexistent"},
 	}
-	// Bean with multiple blockers (one active, one completed)
+	// Issue with multiple blockers (one active, one completed)
 	mixedBlockers := &issue.Issue{
 		ID:        "mixed-blockers",
 		Title:     "Mixed Blockers",
 		Status:    "todo",
 		BlockedBy: []string{"active-blocker", "completed-blocker"},
 	}
-	// Bean with multiple blockers (all completed)
+	// Issue with multiple blockers (all completed)
 	allResolvedBlockers := &issue.Issue{
 		ID:        "all-resolved-blockers",
 		Title:     "All Resolved Blockers",
@@ -501,22 +501,22 @@ func TestIsBlocked(t *testing.T) {
 		BlockedBy: []string{"completed-blocker", "scrapped-blocker"},
 	}
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		activeBlocker, completedBlocker, scrappedBlocker,
 		blockedByActive, blockedByCompleted, blockedByScrapped,
 		notBlocked, blockedByFieldActive, blockedByFieldCompleted,
 		blockedByBroken, mixedBlockers, allResolvedBlockers,
 	}
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
 	}
 
 	tests := []struct {
-		name   string
-		beanID string
-		want   bool
+		name    string
+		issueID string
+		want    bool
 	}{
 		{"blocked by active via Blocking field", "blocked-by-active", true},
 		{"blocked by completed via Blocking field", "blocked-by-completed", false},
@@ -527,14 +527,14 @@ func TestIsBlocked(t *testing.T) {
 		{"broken blocker link", "blocked-by-broken", false},
 		{"mixed blockers (one active)", "mixed-blockers", true},
 		{"all resolved blockers", "all-resolved-blockers", false},
-		{"nonexistent bean", "nonexistent", false},
+		{"nonexistent issue", "nonexistent", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := core.IsBlocked(tt.beanID)
+			got := core.IsBlocked(tt.issueID)
 			if got != tt.want {
-				t.Errorf("IsBlocked(%q) = %v, want %v", tt.beanID, got, tt.want)
+				t.Errorf("IsBlocked(%q) = %v, want %v", tt.issueID, got, tt.want)
 			}
 		})
 	}
@@ -543,7 +543,7 @@ func TestIsBlocked(t *testing.T) {
 func TestFindActiveBlockers(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create test beans
+	// Create test issues
 	activeBlocker1 := &issue.Issue{
 		ID:       "active-blocker-1",
 		Title:    "Active Blocker 1",
@@ -563,7 +563,7 @@ func TestFindActiveBlockers(t *testing.T) {
 	}
 	target := &issue.Issue{
 		ID:        "target",
-		Title:     "Target Bean",
+		Title:     "Target Issue",
 		Status:    "todo",
 		BlockedBy: []string{"active-blocker-2", "completed-blocker"},
 	}
@@ -573,8 +573,8 @@ func TestFindActiveBlockers(t *testing.T) {
 		Status: "todo",
 	}
 
-	beans := []*issue.Issue{activeBlocker1, activeBlocker2, completedBlocker, target, noBlockers}
-	for _, b := range beans {
+	issues := []*issue.Issue{activeBlocker1, activeBlocker2, completedBlocker, target, noBlockers}
+	for _, b := range issues {
 		if err := core.Create(b); err != nil {
 			t.Fatalf("Create error: %v", err)
 		}
@@ -601,14 +601,14 @@ func TestFindActiveBlockers(t *testing.T) {
 		}
 	})
 
-	t.Run("returns nil for bean with no blockers", func(t *testing.T) {
+	t.Run("returns nil for issue with no blockers", func(t *testing.T) {
 		blockers := core.FindActiveBlockers("no-blockers")
 		if len(blockers) != 0 {
 			t.Errorf("FindActiveBlockers() returned %d blockers, want 0", len(blockers))
 		}
 	})
 
-	t.Run("returns nil for nonexistent bean", func(t *testing.T) {
+	t.Run("returns nil for nonexistent issue", func(t *testing.T) {
 		blockers := core.FindActiveBlockers("nonexistent")
 		if blockers != nil {
 			t.Errorf("FindActiveBlockers() returned %v, want nil", blockers)

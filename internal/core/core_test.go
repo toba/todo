@@ -18,7 +18,7 @@ func setupTestCore(t *testing.T) (*Core, string) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, DataDir)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
+		t.Fatalf("failed to create test issues dir: %v", err)
 	}
 
 	cfg := config.Default()
@@ -36,7 +36,7 @@ func setupTestCoreWithRequireIfMatch(t *testing.T) (*Core, string) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, DataDir)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
+		t.Fatalf("failed to create test issues dir: %v", err)
 	}
 
 	cfg := config.Default()
@@ -50,7 +50,7 @@ func setupTestCoreWithRequireIfMatch(t *testing.T) (*Core, string) {
 	return core, dataDir
 }
 
-func createTestBean(t *testing.T, core *Core, id, title, status string) *issue.Issue {
+func createTestIssue(t *testing.T, core *Core, id, title, status string) *issue.Issue {
 	t.Helper()
 	b := &issue.Issue{
 		ID:     id,
@@ -59,7 +59,7 @@ func createTestBean(t *testing.T, core *Core, id, title, status string) *issue.I
 		Status: status,
 	}
 	if err := core.Create(b); err != nil {
-		t.Fatalf("failed to create test bean: %v", err)
+		t.Fatalf("failed to create test issue: %v", err)
 	}
 	return b
 }
@@ -88,10 +88,10 @@ func TestInit(t *testing.T) {
 
 	info, err := os.Stat(dataDir)
 	if err != nil {
-		t.Fatalf(".beans directory not created: %v", err)
+		t.Fatalf("issues directory not created: %v", err)
 	}
 	if !info.IsDir() {
-		t.Error(".beans is not a directory")
+		t.Error("issues path is not a directory")
 	}
 }
 
@@ -115,8 +115,8 @@ func TestCreate(t *testing.T) {
 
 	b := &issue.Issue{
 		ID:     "abc-def",
-		Slug:   "test-bean",
-		Title:  "Test Bean",
+		Slug:   "test-issue",
+		Title:  "Test Issue",
 		Status: "todo",
 		Body:   "Some content here.",
 	}
@@ -127,9 +127,9 @@ func TestCreate(t *testing.T) {
 	}
 
 	// Check file exists in hash subfolder
-	expectedPath := filepath.Join(dataDir, "a", "abc-def--test-bean.md")
+	expectedPath := filepath.Join(dataDir, "a", "abc-def--test-issue.md")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-		t.Errorf("bean file not created at %s", expectedPath)
+		t.Errorf("issue file not created at %s", expectedPath)
 	}
 
 	// Check timestamps were set
@@ -141,14 +141,14 @@ func TestCreate(t *testing.T) {
 	}
 
 	// Check Path was set to hash subfolder path
-	if b.Path != filepath.Join("a", "abc-def--test-bean.md") {
-		t.Errorf("Path = %q, want %q", b.Path, filepath.Join("a", "abc-def--test-bean.md"))
+	if b.Path != filepath.Join("a", "abc-def--test-issue.md") {
+		t.Errorf("Path = %q, want %q", b.Path, filepath.Join("a", "abc-def--test-issue.md"))
 	}
 
 	// Check in-memory state
 	all := core.All()
 	if len(all) != 1 {
-		t.Errorf("All() returned %d beans, want 1", len(all))
+		t.Errorf("All() returned %d issues, want 1", len(all))
 	}
 }
 
@@ -156,7 +156,7 @@ func TestCreateGeneratesID(t *testing.T) {
 	core, _ := setupTestCore(t)
 
 	b := &issue.Issue{
-		Title:  "Auto ID Bean",
+		Title:  "Auto ID Issue",
 		Status: "todo",
 	}
 
@@ -180,30 +180,30 @@ func TestCreateGeneratesID(t *testing.T) {
 func TestAll(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "aaa1", "First Bean", "todo")
-	createTestBean(t, core, "bbb2", "Second Bean", "in-progress")
-	createTestBean(t, core, "ccc3", "Third Bean", "completed")
+	createTestIssue(t, core, "aaa1", "First Issue", "todo")
+	createTestIssue(t, core, "bbb2", "Second Issue", "in-progress")
+	createTestIssue(t, core, "ccc3", "Third Issue", "completed")
 
-	beans := core.All()
-	if len(beans) != 3 {
-		t.Errorf("All() returned %d beans, want 3", len(beans))
+	issues := core.All()
+	if len(issues) != 3 {
+		t.Errorf("All() returned %d issues, want 3", len(issues))
 	}
 }
 
 func TestAllEmpty(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	beans := core.All()
-	if len(beans) != 0 {
-		t.Errorf("All() returned %d beans, want 0", len(beans))
+	issues := core.All()
+	if len(issues) != 0 {
+		t.Errorf("All() returned %d issues, want 0", len(issues))
 	}
 }
 
 func TestGet(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "abc1", "First", "todo")
-	createTestBean(t, core, "def2", "Second", "todo")
+	createTestIssue(t, core, "abc1", "First", "todo")
+	createTestIssue(t, core, "def2", "Second", "todo")
 
 	t.Run("exact match", func(t *testing.T) {
 		b, err := core.Get("abc1")
@@ -226,7 +226,7 @@ func TestGet(t *testing.T) {
 func TestGetNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "abc1", "Test", "todo")
+	createTestIssue(t, core, "abc1", "Test", "todo")
 
 	_, err := core.Get("xyz")
 	if err != ErrNotFound {
@@ -238,7 +238,7 @@ func TestGetNotFound(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	b := createTestBean(t, core, "upd1", "Original Title", "todo")
+	b := createTestIssue(t, core, "upd1", "Original Title", "todo")
 	originalCreatedAt := *b.CreatedAt
 
 	// Update the issue
@@ -278,7 +278,7 @@ func TestUpdateNotFound(t *testing.T) {
 
 	b := &issue.Issue{
 		ID:     "nonexistent",
-		Title:  "Ghost Bean",
+		Title:  "Ghost Issue",
 		Status: "todo",
 	}
 
@@ -291,12 +291,12 @@ func TestUpdateNotFound(t *testing.T) {
 func TestDelete(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "del1", "To Delete", "todo")
+	b := createTestIssue(t, core, "del1", "To Delete", "todo")
 	filePath := filepath.Join(dataDir, b.Path)
 
 	// Verify file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		t.Fatal("bean file should exist before delete")
+		t.Fatal("issue file should exist before delete")
 	}
 
 	// Delete
@@ -307,13 +307,13 @@ func TestDelete(t *testing.T) {
 
 	// Verify file is gone
 	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		t.Error("bean file should not exist after delete")
+		t.Error("issue file should not exist after delete")
 	}
 
 	// Verify in-memory state
 	_, err = core.Get("del1")
 	if err != ErrNotFound {
-		t.Error("bean should not be in memory after delete")
+		t.Error("issue should not be in memory after delete")
 	}
 }
 
@@ -330,7 +330,7 @@ func TestDeleteNotFound(t *testing.T) {
 func TestDeletePartialIDNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "unique123", "Test", "todo")
+	createTestIssue(t, core, "unique123", "Test", "todo")
 
 	// Partial ID should not match
 	err := core.Delete("unique")
@@ -338,15 +338,15 @@ func TestDeletePartialIDNotFound(t *testing.T) {
 		t.Errorf("Delete() error = %v, want ErrNotFound", err)
 	}
 
-	// Verify bean still exists
+	// Verify issue still exists
 	_, err = core.Get("unique123")
 	if err != nil {
-		t.Errorf("bean should still exist, got error: %v", err)
+		t.Errorf("issue should still exist, got error: %v", err)
 	}
 }
 
 func TestFullPath(t *testing.T) {
-	core := New("/path/to/.beans", nil)
+	core := New("/path/to/.issues", nil)
 
 	b := &issue.Issue{
 		ID:   "abc1",
@@ -354,7 +354,7 @@ func TestFullPath(t *testing.T) {
 	}
 
 	got := core.FullPath(b)
-	want := "/path/to/.beans/abc1--test.md"
+	want := "/path/to/.issues/abc1--test.md"
 
 	if got != want {
 		t.Errorf("FullPath() = %q, want %q", got, want)
@@ -366,7 +366,7 @@ func TestLoad(t *testing.T) {
 
 	// Create an issue file manually
 	content := `---
-title: Manual Bean
+title: Manual Issue
 status: open
 ---
 
@@ -386,15 +386,15 @@ Manual content.
 		t.Fatalf("Get() error = %v", err)
 	}
 
-	if b.Title != "Manual Bean" {
-		t.Errorf("Title = %q, want %q", b.Title, "Manual Bean")
+	if b.Title != "Manual Issue" {
+		t.Errorf("Title = %q, want %q", b.Title, "Manual Issue")
 	}
 }
 
 func TestLoadIgnoresNonMdFiles(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "abc1", "Real Bean", "todo")
+	createTestIssue(t, core, "abc1", "Real Issue", "todo")
 
 	// Create non-.md files that should be ignored
 	os.WriteFile(filepath.Join(dataDir, "config.yaml"), []byte("config"), 0644)
@@ -406,36 +406,36 @@ func TestLoadIgnoresNonMdFiles(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	beans := core.All()
-	if len(beans) != 1 {
-		t.Errorf("All() returned %d beans, want 1 (should ignore non-.md files)", len(beans))
+	issues := core.All()
+	if len(issues) != 1 {
+		t.Errorf("All() returned %d issues, want 1 (should ignore non-.md files)", len(issues))
 	}
 }
 
 func TestBlocksPreserved(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create bean A that blocks bean B
-	beanA := &issue.Issue{
+	// Create issue A that blocks issue B
+	issueA := &issue.Issue{
 		ID:       "aaa1",
 		Slug:     "blocker",
-		Title:    "Blocker Bean",
+		Title:    "Blocker Issue",
 		Status:   "todo",
 		Blocking: []string{"bbb2"},
 	}
-	if err := core.Create(beanA); err != nil {
-		t.Fatalf("Create beanA error = %v", err)
+	if err := core.Create(issueA); err != nil {
+		t.Fatalf("Create issueA error = %v", err)
 	}
 
-	// Create bean B
-	beanB := &issue.Issue{
+	// Create issue B
+	issueB := &issue.Issue{
 		ID:     "bbb2",
 		Slug:   "blocked",
-		Title:  "Blocked Bean",
+		Title:  "Blocked Issue",
 		Status: "todo",
 	}
-	if err := core.Create(beanB); err != nil {
-		t.Fatalf("Create beanB error = %v", err)
+	if err := core.Create(issueB); err != nil {
+		t.Fatalf("Create issueB error = %v", err)
 	}
 
 	// Reload from disk
@@ -453,23 +453,23 @@ func TestBlocksPreserved(t *testing.T) {
 		t.Fatalf("Get bbb2 error = %v", err)
 	}
 
-	// Bean A should have direct blocks link
+	// Issue A should have direct blocks link
 	if !loadedA.IsBlocking("bbb2") {
-		t.Errorf("Bean A Blocks = %v, want [bbb2]", loadedA.Blocking)
+		t.Errorf("Issue A Blocks = %v, want [bbb2]", loadedA.Blocking)
 	}
 
-	// Bean B should have no blocks
+	// Issue B should have no blocks
 	if len(loadedB.Blocking) != 0 {
-		t.Errorf("Bean B Blocks = %v, want empty", loadedB.Blocking)
+		t.Errorf("Issue B Blocks = %v, want empty", loadedB.Blocking)
 	}
 }
 
 func TestConcurrentAccess(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	// Create some initial beans
+	// Create some initial issues
 	for range 10 {
-		createTestBean(t, core, issue.NewID(), "Initial Bean", "todo")
+		createTestIssue(t, core, issue.NewID(), "Initial Issue", "todo")
 	}
 
 	// Run concurrent operations
@@ -490,7 +490,7 @@ func TestConcurrentAccess(t *testing.T) {
 		wg.Go(func() {
 			for range 10 {
 				b := &issue.Issue{
-					Title:  "Concurrent Bean",
+					Title:  "Concurrent Issue",
 					Status: "todo",
 				}
 				if err := core.Create(b); err != nil {
@@ -511,7 +511,7 @@ func TestConcurrentAccess(t *testing.T) {
 func TestWatch(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "wat1", "Initial Bean", "todo")
+	createTestIssue(t, core, "wat1", "Initial Issue", "todo")
 
 	// Start watching
 	changeCount := 0
@@ -529,9 +529,9 @@ func TestWatch(t *testing.T) {
 	// Give watcher time to start
 	time.Sleep(50 * time.Millisecond)
 
-	// Create a new bean file manually (simulating external change)
+	// Create a new issue file manually (simulating external change)
 	content := `---
-title: External Bean
+title: External Issue
 status: open
 ---
 `
@@ -550,10 +550,10 @@ status: open
 		t.Error("onChange callback was not invoked")
 	}
 
-	// Verify the new bean is in memory
+	// Verify the new issue is in memory
 	_, err = core.Get("ext1")
 	if err != nil {
-		t.Errorf("external bean not loaded: %v", err)
+		t.Errorf("external issue not loaded: %v", err)
 	}
 
 	// Stop watching
@@ -562,10 +562,10 @@ status: open
 	}
 }
 
-func TestWatchDeletedBean(t *testing.T) {
+func TestWatchDeletedIssue(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "del1", "To Delete", "todo")
+	b := createTestIssue(t, core, "del1", "To Delete", "todo")
 
 	// Start watching
 	changed := make(chan struct{}, 1)
@@ -598,7 +598,7 @@ func TestWatchDeletedBean(t *testing.T) {
 	// Verify the issue is gone from memory
 	_, err = core.Get("del1")
 	if err != ErrNotFound {
-		t.Errorf("deleted bean still in memory: %v", err)
+		t.Errorf("deleted issue still in memory: %v", err)
 	}
 
 	if err := core.Unwatch(); err != nil {
@@ -660,7 +660,7 @@ func TestSubscribe(t *testing.T) {
 
 	// Create an issue file (should trigger EventCreated)
 	content := `---
-title: New Bean
+title: New Issue
 status: todo
 ---
 `
@@ -679,7 +679,7 @@ status: todo
 			if e.Type == EventCreated && e.IssueID == "new1" {
 				found = true
 				if e.Issue == nil {
-					t.Error("EventCreated should include Bean")
+					t.Error("EventCreated should include Issue")
 				}
 			}
 		}
@@ -755,8 +755,8 @@ func TestUnsubscribe(t *testing.T) {
 func TestEventTypes(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	// Create an initial bean
-	createTestBean(t, core, "evt1", "Event Test", "todo")
+	// Create an initial issue
+	createTestIssue(t, core, "evt1", "Event Test", "todo")
 
 	if err := core.StartWatching(); err != nil {
 		t.Fatalf("StartWatching() error = %v", err)
@@ -787,7 +787,7 @@ status: in-progress
 				if e.Type == EventUpdated && e.IssueID == "evt1" {
 					found = true
 					if e.Issue == nil {
-						t.Error("EventUpdated should include Bean")
+						t.Error("EventUpdated should include Issue")
 					}
 					if e.Issue.Title != "Updated Title" {
 						t.Errorf("expected updated title, got %q", e.Issue.Title)
@@ -815,7 +815,7 @@ status: in-progress
 				if e.Type == EventDeleted && e.IssueID == "evt1" {
 					found = true
 					if e.Issue != nil {
-						t.Error("EventDeleted should have nil Bean")
+						t.Error("EventDeleted should have nil Issue")
 					}
 				}
 			}
@@ -852,8 +852,8 @@ func TestSubscribersClosedOnUnwatch(t *testing.T) {
 func TestMultipleChangesInDebounceWindow(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	// Create an initial bean to update
-	createTestBean(t, core, "upd1", "To Update", "todo")
+	// Create an initial issue to update
+	createTestIssue(t, core, "upd1", "To Update", "todo")
 
 	if err := core.StartWatching(); err != nil {
 		t.Fatalf("StartWatching() error = %v", err)
@@ -866,9 +866,9 @@ func TestMultipleChangesInDebounceWindow(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Make multiple changes rapidly (within debounce window)
-	// 1. Create a new bean
+	// 1. Create a new issue
 	content1 := `---
-title: New Bean
+title: New Issue
 status: todo
 ---
 `
@@ -876,7 +876,7 @@ status: todo
 
 	// 2. Update existing issue
 	content2 := `---
-title: Updated Bean
+title: Updated Issue
 status: in-progress
 ---
 `
@@ -921,8 +921,8 @@ status: in-progress
 	if err != nil {
 		t.Fatalf("upd1 should exist: %v", err)
 	}
-	if upd.Title != "Updated Bean" {
-		t.Errorf("upd1 title = %q, want %q", upd.Title, "Updated Bean")
+	if upd.Title != "Updated Issue" {
+		t.Errorf("upd1 title = %q, want %q", upd.Title, "Updated Issue")
 	}
 
 	// tmp1 should not exist
@@ -935,8 +935,8 @@ status: in-progress
 func TestInvalidFileIgnored(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	// Create a valid bean first
-	createTestBean(t, core, "val1", "Valid Bean", "todo")
+	// Create a valid issue first
+	createTestIssue(t, core, "val1", "Valid Issue", "todo")
 
 	if err := core.StartWatching(); err != nil {
 		t.Fatalf("StartWatching() error = %v", err)
@@ -948,7 +948,7 @@ func TestInvalidFileIgnored(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	// Create an invalid bean file (malformed YAML frontmatter)
+	// Create an invalid issue file (malformed YAML frontmatter)
 	invalidContent := `---
 title: [unclosed bracket
 status: {broken yaml
@@ -956,7 +956,7 @@ status: {broken yaml
 `
 	os.WriteFile(filepath.Join(dataDir, "bad1--invalid.md"), []byte(invalidContent), 0644)
 
-	// Also create a valid bean to verify processing continues
+	// Also create a valid issue to verify processing continues
 	validContent := `---
 title: Another Valid
 status: todo
@@ -984,7 +984,7 @@ status: todo
 		t.Error("timeout waiting for events")
 	}
 
-	// Valid beans should still be accessible
+	// Valid issues should still be accessible
 	if _, err := core.Get("val1"); err != nil {
 		t.Errorf("val1 should still exist: %v", err)
 	}
@@ -996,7 +996,7 @@ status: todo
 func TestRapidUpdatesToSameFile(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "rap1", "Rapid Updates", "todo")
+	createTestIssue(t, core, "rap1", "Rapid Updates", "todo")
 
 	if err := core.StartWatching(); err != nil {
 		t.Fatalf("StartWatching() error = %v", err)
@@ -1051,7 +1051,7 @@ status: todo
 func TestArchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "arc-001", "To Archive", "completed")
+	b := createTestIssue(t, core, "arc-001", "To Archive", "completed")
 	originalFilename := filepath.Base(b.Path)
 
 	// Archive the issue
@@ -1063,16 +1063,16 @@ func TestArchive(t *testing.T) {
 	// Verify file moved to archive directory
 	archivePath := filepath.Join(dataDir, ArchiveDir, originalFilename)
 	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
-		t.Error("bean file should exist in archive directory")
+		t.Error("issue file should exist in archive directory")
 	}
 
 	// Verify file no longer in hash subfolder
 	subfolderPath := filepath.Join(dataDir, "a", "arc-001--to-archive.md")
 	if _, err := os.Stat(subfolderPath); !os.IsNotExist(err) {
-		t.Error("bean file should not exist in hash subfolder")
+		t.Error("issue file should not exist in hash subfolder")
 	}
 
-	// Verify bean is still accessible in memory
+	// Verify issue is still accessible in memory
 	archived, err := core.Get("arc-001")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
@@ -1087,7 +1087,7 @@ func TestArchive(t *testing.T) {
 func TestArchiveIdempotent(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "arc-001", "To Archive", "completed")
+	createTestIssue(t, core, "arc-001", "To Archive", "completed")
 
 	// Archive twice should not error
 	if err := core.Archive("arc-001"); err != nil {
@@ -1110,7 +1110,7 @@ func TestArchiveNotFound(t *testing.T) {
 func TestUnarchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	b := createTestBean(t, core, "una-001", "To Unarchive", "completed")
+	b := createTestIssue(t, core, "una-001", "To Unarchive", "completed")
 	originalFilename := filepath.Base(b.Path)
 
 	// Archive first
@@ -1127,13 +1127,13 @@ func TestUnarchive(t *testing.T) {
 	// Verify file moved to hash subfolder
 	subfolderPath := filepath.Join(dataDir, "u", originalFilename)
 	if _, err := os.Stat(subfolderPath); os.IsNotExist(err) {
-		t.Error("bean file should exist in hash subfolder")
+		t.Error("issue file should exist in hash subfolder")
 	}
 
 	// Verify file no longer in archive
 	archivePath := filepath.Join(dataDir, ArchiveDir, originalFilename)
 	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
-		t.Error("bean file should not exist in archive directory")
+		t.Error("issue file should not exist in archive directory")
 	}
 
 	// Verify path is updated to hash subfolder path
@@ -1150,22 +1150,22 @@ func TestUnarchive(t *testing.T) {
 func TestUnarchiveIdempotent(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "una-001", "To Unarchive", "completed")
+	createTestIssue(t, core, "una-001", "To Unarchive", "completed")
 
-	// Unarchive non-archived bean should not error
+	// Unarchive non-archived issue should not error
 	if err := core.Unarchive("una-001"); err != nil {
-		t.Fatalf("Unarchive() on non-archived bean error = %v", err)
+		t.Fatalf("Unarchive() on non-archived issue error = %v", err)
 	}
 }
 
 func TestIsArchived(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "isa-001", "Test Archived", "completed")
+	createTestIssue(t, core, "isa-001", "Test Archived", "completed")
 
 	t.Run("not archived", func(t *testing.T) {
 		if core.IsArchived("isa-001") {
-			t.Error("IsArchived() should return false for non-archived bean")
+			t.Error("IsArchived() should return false for non-archived issue")
 		}
 	})
 
@@ -1176,23 +1176,23 @@ func TestIsArchived(t *testing.T) {
 
 	t.Run("archived", func(t *testing.T) {
 		if !core.IsArchived("isa-001") {
-			t.Error("IsArchived() should return true for archived bean")
+			t.Error("IsArchived() should return true for archived issue")
 		}
 	})
 
 	t.Run("nonexistent", func(t *testing.T) {
 		if core.IsArchived("nonexistent") {
-			t.Error("IsArchived() should return false for nonexistent bean")
+			t.Error("IsArchived() should return false for nonexistent issue")
 		}
 	})
 }
 
-func TestArchivedBeansAlwaysLoaded(t *testing.T) {
+func TestArchivedIssuesAlwaysLoaded(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	// Create beans and archive one
-	createTestBean(t, core, "act-001", "Active Bean", "todo")
-	createTestBean(t, core, "arc-001", "Archived Bean", "completed")
+	// Create issues and archive one
+	createTestIssue(t, core, "act-001", "Active Issue", "todo")
+	createTestIssue(t, core, "arc-001", "Archived Issue", "completed")
 	if err := core.Archive("arc-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -1205,41 +1205,41 @@ func TestArchivedBeansAlwaysLoaded(t *testing.T) {
 	}
 
 	t.Run("all issues loaded including archived", func(t *testing.T) {
-		beans := core2.All()
-		if len(beans) != 2 {
-			t.Errorf("All() returned %d beans, want 2 (active + archived)", len(beans))
+		allIssues := core2.All()
+		if len(allIssues) != 2 {
+			t.Errorf("All() returned %d issues, want 2 (active + archived)", len(allIssues))
 		}
 	})
 
-	t.Run("active bean accessible", func(t *testing.T) {
+	t.Run("active issue accessible", func(t *testing.T) {
 		if _, err := core2.Get("act-001"); err != nil {
-			t.Errorf("active bean should be found: %v", err)
+			t.Errorf("active issue should be found: %v", err)
 		}
 	})
 
-	t.Run("archived bean accessible", func(t *testing.T) {
+	t.Run("archived issue accessible", func(t *testing.T) {
 		if _, err := core2.Get("arc-001"); err != nil {
-			t.Errorf("archived bean should be found: %v", err)
+			t.Errorf("archived issue should be found: %v", err)
 		}
 	})
 
-	t.Run("archived bean has correct path", func(t *testing.T) {
+	t.Run("archived issue has correct path", func(t *testing.T) {
 		b, _ := core2.Get("arc-001")
 		if !core2.IsArchived("arc-001") {
-			t.Error("archived bean should be identified as archived")
+			t.Error("archived issue should be identified as archived")
 		}
-		if b.Path != "archive/arc-001--archived-bean.md" {
-			t.Errorf("archived bean path = %q, want %q", b.Path, "archive/arc-001--archived-bean.md")
+		if b.Path != "archive/arc-001--archived-issue.md" {
+			t.Errorf("archived issue path = %q, want %q", b.Path, "archive/arc-001--archived-issue.md")
 		}
 	})
 }
 
 func TestLoadFromSubdirectories(t *testing.T) {
-	// Create a core with beans in various subdirectories
+	// Create a core with issues in various subdirectories
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, DataDir)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test .beans dir: %v", err)
+		t.Fatalf("failed to create test issues dir: %v", err)
 	}
 
 	// Create subdirectories
@@ -1256,11 +1256,11 @@ func TestLoadFromSubdirectories(t *testing.T) {
 		t.Fatalf("failed to create nested dir: %v", err)
 	}
 
-	// Create beans in different locations
-	writeTestBeanFile(t, filepath.Join(dataDir, "root1--root-issue.md"), "root1", "Root Bean", "todo")
-	writeTestBeanFile(t, filepath.Join(milestone1Dir, "m1b1--milestone-one-issue.md"), "m1b1", "Milestone One Bean", "todo")
-	writeTestBeanFile(t, filepath.Join(milestone2Dir, "m2b1--milestone-two-issue.md"), "m2b1", "Milestone Two Bean", "in-progress")
-	writeTestBeanFile(t, filepath.Join(nestedDir, "auth1--auth-issue.md"), "auth1", "Auth Bean", "todo")
+	// Create issues in different locations
+	writeTestIssueFile(t, filepath.Join(dataDir, "root1--root-issue.md"), "root1", "Root Issue", "todo")
+	writeTestIssueFile(t, filepath.Join(milestone1Dir, "m1b1--milestone-one-issue.md"), "m1b1", "Milestone One Issue", "todo")
+	writeTestIssueFile(t, filepath.Join(milestone2Dir, "m2b1--milestone-two-issue.md"), "m2b1", "Milestone Two Issue", "in-progress")
+	writeTestIssueFile(t, filepath.Join(nestedDir, "auth1--auth-issue.md"), "auth1", "Auth Issue", "todo")
 
 	// Load and verify all issues are found
 	core := New(dataDir, config.Default())
@@ -1269,9 +1269,9 @@ func TestLoadFromSubdirectories(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	beans := core.All()
-	if len(beans) != 4 {
-		t.Errorf("All() returned %d beans, want 4", len(beans))
+	allIssues := core.All()
+	if len(allIssues) != 4 {
+		t.Errorf("All() returned %d issues, want 4", len(allIssues))
 	}
 
 	// Verify each issue is accessible and has correct path
@@ -1298,8 +1298,8 @@ func TestLoadFromSubdirectories(t *testing.T) {
 	}
 }
 
-// writeTestBeanFile creates an issue file directly on disk (for testing load scenarios)
-func writeTestBeanFile(t *testing.T, path, id, title, status string) {
+// writeTestIssueFile creates an issue file directly on disk (for testing load scenarios)
+func writeTestIssueFile(t *testing.T, path, id, title, status string) {
 	t.Helper()
 	content := fmt.Sprintf(`---
 title: %s
@@ -1307,17 +1307,17 @@ status: %s
 type: task
 ---
 
-Test bean content.
+Test issue content.
 `, title, status)
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write test bean file: %v", err)
+		t.Fatalf("failed to write test issue file: %v", err)
 	}
 }
 
 func TestGetFromArchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "gfa-001", "Get From Archive", "completed")
+	createTestIssue(t, core, "gfa-001", "Get From Archive", "completed")
 	if err := core.Archive("gfa-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -1329,7 +1329,7 @@ func TestGetFromArchive(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	t.Run("bean in archive", func(t *testing.T) {
+	t.Run("issue in archive", func(t *testing.T) {
 		b, err := core2.GetFromArchive("gfa-001")
 		if err != nil {
 			t.Fatalf("GetFromArchive() error = %v", err)
@@ -1342,24 +1342,24 @@ func TestGetFromArchive(t *testing.T) {
 		}
 	})
 
-	t.Run("bean not in archive", func(t *testing.T) {
+	t.Run("issue not in archive", func(t *testing.T) {
 		b, err := core2.GetFromArchive("nonexistent")
 		if err != nil {
 			t.Fatalf("GetFromArchive() error = %v", err)
 		}
 		if b != nil {
-			t.Error("GetFromArchive() should return nil for nonexistent bean")
+			t.Error("GetFromArchive() should return nil for nonexistent issue")
 		}
 	})
 
 	t.Run("no archive directory", func(t *testing.T) {
 		// Create a fresh core with no archive
 		tmpDir := t.TempDir()
-		freshBeansDir := filepath.Join(tmpDir, DataDir)
-		if err := os.MkdirAll(freshBeansDir, 0755); err != nil {
-			t.Fatalf("failed to create .beans dir: %v", err)
+		freshIssuesDir := filepath.Join(tmpDir, DataDir)
+		if err := os.MkdirAll(freshIssuesDir, 0755); err != nil {
+			t.Fatalf("failed to create issues dir: %v", err)
 		}
-		core3 := New(freshBeansDir, config.Default())
+		core3 := New(freshIssuesDir, config.Default())
 		core3.SetWarnWriter(nil)
 		if err := core3.Load(); err != nil {
 			t.Fatalf("Load() error = %v", err)
@@ -1378,7 +1378,7 @@ func TestGetFromArchive(t *testing.T) {
 func TestLoadAndUnarchive(t *testing.T) {
 	core, dataDir := setupTestCore(t)
 
-	createTestBean(t, core, "lau-001", "Load And Unarchive", "completed")
+	createTestIssue(t, core, "lau-001", "Load And Unarchive", "completed")
 	if err := core.Archive("lau-001"); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -1390,13 +1390,13 @@ func TestLoadAndUnarchive(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Bean should be accessible (archived issues are always loaded)
+	// Issue should be accessible (archived issues are always loaded)
 	b, err := core2.Get("lau-001")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
 	if !core2.IsArchived("lau-001") {
-		t.Error("bean should be identified as archived before LoadAndUnarchive")
+		t.Error("should be identified as archived before LoadAndUnarchive")
 	}
 
 	// Load and unarchive should move the file
@@ -1408,24 +1408,24 @@ func TestLoadAndUnarchive(t *testing.T) {
 		t.Fatal("LoadAndUnarchive() returned nil")
 	}
 	if unarchived.ID != b.ID {
-		t.Errorf("LoadAndUnarchive returned different bean: got %q, want %q", unarchived.ID, b.ID)
+		t.Errorf("LoadAndUnarchive returned different issue: got %q, want %q", unarchived.ID, b.ID)
 	}
 
-	// Bean should no longer be archived
+	// Issue should no longer be archived
 	if core2.IsArchived("lau-001") {
-		t.Error("bean should not be archived after LoadAndUnarchive")
+		t.Error("should not be archived after LoadAndUnarchive")
 	}
 
 	// File should be in hash subfolder, not archive
 	subfolderPath := filepath.Join(dataDir, "l", "lau-001--load-and-unarchive.md")
 	if _, err := os.Stat(subfolderPath); os.IsNotExist(err) {
-		t.Error("bean file should exist in hash subfolder after LoadAndUnarchive")
+		t.Error("issue file should exist in hash subfolder after LoadAndUnarchive")
 	}
 
 	// File should NOT be in archive directory
 	archivePath := filepath.Join(dataDir, "archive", "lau-001--load-and-unarchive.md")
 	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
-		t.Error("bean file should not exist in archive directory after LoadAndUnarchive")
+		t.Error("issue file should not exist in archive directory after LoadAndUnarchive")
 	}
 }
 
@@ -1442,7 +1442,7 @@ func TestLoadAndUnarchiveNotFound(t *testing.T) {
 func TestNormalizeID(t *testing.T) {
 	core, _ := setupTestCore(t)
 
-	createTestBean(t, core, "abc-def", "Test Bean", "todo")
+	createTestIssue(t, core, "abc-def", "Test Issue", "todo")
 
 	t.Run("exact match returns same ID", func(t *testing.T) {
 		normalized, found := core.NormalizeID("abc-def")
@@ -1601,12 +1601,12 @@ func TestUpdateWithETagDebug(t *testing.T) {
 	// Get from core to see what's stored
 	stored, _ := core.Get("etag-debug")
 	storedEtag := stored.ETag()
-	t.Logf("ETag of stored bean: %s", storedEtag)
+	t.Logf("ETag of stored: %s", storedEtag)
 
 	// Modify our local copy
 	b.Title = "Updated"
 	modifiedEtag := b.ETag()
-	t.Logf("ETag of modified local bean: %s", modifiedEtag)
+	t.Logf("ETag of modified local: %s", modifiedEtag)
 
 	// What will Update see?
 	err := core.Update(b, &etagAfterCreate)

@@ -10,14 +10,14 @@ import (
 func TestFormatRelationships(t *testing.T) {
 	t.Run("blocked by only", func(t *testing.T) {
 		b := &issue.Issue{
-			BlockedBy: []string{"bean-abc"},
+			BlockedBy: []string{"issue-abc"},
 		}
 		result := formatRelationships(b)
 		if !strings.Contains(result, "blocked by:") {
 			t.Error("expected 'blocked by:' label in output")
 		}
-		if !strings.Contains(result, "bean-abc") {
-			t.Error("expected blocker ID 'bean-abc' in output")
+		if !strings.Contains(result, "issue-abc") {
+			t.Error("expected blocker ID 'issue-abc' in output")
 		}
 		if strings.Contains(result, "parent:") {
 			t.Error("unexpected 'parent:' label in output")
@@ -29,34 +29,34 @@ func TestFormatRelationships(t *testing.T) {
 
 	t.Run("blocking and blocked by together", func(t *testing.T) {
 		b := &issue.Issue{
-			Blocking:  []string{"bean-def"},
-			BlockedBy: []string{"bean-ghi"},
+			Blocking:  []string{"issue-def"},
+			BlockedBy: []string{"issue-ghi"},
 		}
 		result := formatRelationships(b)
 		if !strings.Contains(result, "blocking:") {
 			t.Error("expected 'blocking:' label in output")
 		}
-		if !strings.Contains(result, "bean-def") {
-			t.Error("expected blocking ID 'bean-def' in output")
+		if !strings.Contains(result, "issue-def") {
+			t.Error("expected blocking ID 'issue-def' in output")
 		}
 		if !strings.Contains(result, "blocked by:") {
 			t.Error("expected 'blocked by:' label in output")
 		}
-		if !strings.Contains(result, "bean-ghi") {
-			t.Error("expected blocker ID 'bean-ghi' in output")
+		if !strings.Contains(result, "issue-ghi") {
+			t.Error("expected blocker ID 'issue-ghi' in output")
 		}
 	})
 
 	t.Run("parent only", func(t *testing.T) {
 		b := &issue.Issue{
-			Parent: "bean-parent",
+			Parent: "issue-parent",
 		}
 		result := formatRelationships(b)
 		if !strings.Contains(result, "parent:") {
 			t.Error("expected 'parent:' label in output")
 		}
-		if !strings.Contains(result, "bean-parent") {
-			t.Error("expected parent ID 'bean-parent' in output")
+		if !strings.Contains(result, "issue-parent") {
+			t.Error("expected parent ID 'issue-parent' in output")
 		}
 		if strings.Contains(result, "blocking:") {
 			t.Error("unexpected 'blocking:' label in output")
@@ -68,30 +68,30 @@ func TestFormatRelationships(t *testing.T) {
 
 	t.Run("all three relationships", func(t *testing.T) {
 		b := &issue.Issue{
-			Parent:    "bean-parent",
-			Blocking:  []string{"bean-child"},
-			BlockedBy: []string{"bean-dep1", "bean-dep2"},
+			Parent:    "issue-parent",
+			Blocking:  []string{"issue-child"},
+			BlockedBy: []string{"issue-dep1", "issue-dep2"},
 		}
 		result := formatRelationships(b)
 		if !strings.Contains(result, "parent:") {
 			t.Error("expected 'parent:' label in output")
 		}
-		if !strings.Contains(result, "bean-parent") {
+		if !strings.Contains(result, "issue-parent") {
 			t.Error("expected parent ID in output")
 		}
 		if !strings.Contains(result, "blocking:") {
 			t.Error("expected 'blocking:' label in output")
 		}
-		if !strings.Contains(result, "bean-child") {
+		if !strings.Contains(result, "issue-child") {
 			t.Error("expected blocking ID in output")
 		}
 		if !strings.Contains(result, "blocked by:") {
 			t.Error("expected 'blocked by:' label in output")
 		}
-		if !strings.Contains(result, "bean-dep1") {
+		if !strings.Contains(result, "issue-dep1") {
 			t.Error("expected first blocker ID in output")
 		}
-		if !strings.Contains(result, "bean-dep2") {
+		if !strings.Contains(result, "issue-dep2") {
 			t.Error("expected second blocker ID in output")
 		}
 
@@ -109,7 +109,7 @@ func TestFormatRelationships(t *testing.T) {
 
 	t.Run("multiple blocked by entries", func(t *testing.T) {
 		b := &issue.Issue{
-			BlockedBy: []string{"bean-a", "bean-b", "bean-c"},
+			BlockedBy: []string{"issue-a", "issue-b", "issue-c"},
 		}
 		result := formatRelationships(b)
 		if strings.Count(result, "blocked by:") != 3 {
@@ -117,11 +117,11 @@ func TestFormatRelationships(t *testing.T) {
 		}
 	})
 
-	t.Run("empty bean", func(t *testing.T) {
+	t.Run("empty issue", func(t *testing.T) {
 		b := &issue.Issue{}
 		result := formatRelationships(b)
 		if result != "" {
-			t.Errorf("expected empty string for bean with no relationships, got %q", result)
+			t.Errorf("expected empty string for issue with no relationships, got %q", result)
 		}
 	})
 }

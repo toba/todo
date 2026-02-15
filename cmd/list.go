@@ -101,7 +101,7 @@ Search Syntax (--search/-S):
 			filter.IsBlocked = &listIsBlocked
 		}
 
-		// --ready: beans available to start (not blocked, excludes in-progress/completed/scrapped/draft)
+		// --ready: issues available to start (not blocked, excludes in-progress/completed/scrapped/draft)
 		if listReady {
 			isBlocked := false
 			filter.IsBlocked = &isBlocked
@@ -110,27 +110,27 @@ Search Syntax (--search/-S):
 
 		// Execute query via GraphQL resolver
 		resolver := &graph.Resolver{Core: store}
-		beans, err := resolver.Query().Issues(context.Background(), filter)
+		issues, err := resolver.Query().Issues(context.Background(), filter)
 		if err != nil {
 			return fmt.Errorf("querying issues: %w", err)
 		}
 
-		// Sort beans
-		sortBeans(beans, listSort, cfg)
+		// Sort issues
+		sortIssues(issues, listSort, cfg)
 
 		// JSON output (flat list)
 		if listJSON {
 			if !listFull {
-				for _, b := range beans {
+				for _, b := range issues {
 					b.Body = ""
 				}
 			}
-			return output.SuccessMultiple(beans)
+			return output.SuccessMultiple(issues)
 		}
 
 		// Quiet mode: just IDs (flat)
 		if listQuiet {
-			for _, b := range beans {
+			for _, b := range issues {
 				fmt.Println(b.ID)
 			}
 			return nil
@@ -138,18 +138,18 @@ Search Syntax (--search/-S):
 
 		// Default: tree view
 		// We need all issues to find ancestors for context
-		allBeans, err := resolver.Query().Issues(context.Background(), nil)
+		allIssues, err := resolver.Query().Issues(context.Background(), nil)
 		if err != nil {
 			return fmt.Errorf("querying all issues for tree: %w", err)
 		}
 
 		// Create sort function for tree building
 		sortFn := func(b []*issue.Issue) {
-			sortBeans(b, listSort, cfg)
+			sortIssues(b, listSort, cfg)
 		}
 
 		// Build tree
-		tree := ui.BuildTree(beans, allBeans, sortFn)
+		tree := ui.BuildTree(issues, allIssues, sortFn)
 
 		if len(tree) == 0 {
 			fmt.Println(ui.Muted.Render("No issues found. Create one with: todo new <title>"))
@@ -158,16 +158,16 @@ Search Syntax (--search/-S):
 
 		// Calculate max ID width from all issues in tree
 		maxIDWidth := 2
-		for _, b := range allBeans {
+		for _, b := range allIssues {
 			if len(b.ID) > maxIDWidth {
 				maxIDWidth = len(b.ID)
 			}
 		}
 		maxIDWidth += 2
 
-		// Check if any beans have tags
+		// Check if any issues have tags
 		hasTags := false
-		for _, b := range beans {
+		for _, b := range issues {
 			if len(b.Tags) > 0 {
 				hasTags = true
 				break
@@ -185,37 +185,37 @@ Search Syntax (--search/-S):
 	},
 }
 
-func sortBeans(beans []*issue.Issue, sortBy string, cfg *config.Config) {
+func sortIssues(issues []*issue.Issue, sortBy string, cfg *config.Config) {
 	statusNames := cfg.StatusNames()
 	priorityNames := cfg.PriorityNames()
 	typeNames := cfg.TypeNames()
 
 	switch sortBy {
 	case "created":
-		sort.Slice(beans, func(i, j int) bool {
-			if beans[i].CreatedAt == nil && beans[j].CreatedAt == nil {
-				return beans[i].ID < beans[j].ID
+		sort.Slice(issues, func(i, j int) bool {
+			if issues[i].CreatedAt == nil && issues[j].CreatedAt == nil {
+				return issues[i].ID < issues[j].ID
 			}
-			if beans[i].CreatedAt == nil {
+			if issues[i].CreatedAt == nil {
 				return false
 			}
-			if beans[j].CreatedAt == nil {
+			if issues[j].CreatedAt == nil {
 				return true
 			}
-			return beans[i].CreatedAt.After(*beans[j].CreatedAt)
+			return issues[i].CreatedAt.After(*issues[j].CreatedAt)
 		})
 	case "updated":
-		sort.Slice(beans, func(i, j int) bool {
-			if beans[i].UpdatedAt == nil && beans[j].UpdatedAt == nil {
-				return beans[i].ID < beans[j].ID
+		sort.Slice(issues, func(i, j int) bool {
+			if issues[i].UpdatedAt == nil && issues[j].UpdatedAt == nil {
+				return issues[i].ID < issues[j].ID
 			}
-			if beans[i].UpdatedAt == nil {
+			if issues[i].UpdatedAt == nil {
 				return false
 			}
-			if beans[j].UpdatedAt == nil {
+			if issues[j].UpdatedAt == nil {
 				return true
 			}
-			return beans[i].UpdatedAt.After(*beans[j].UpdatedAt)
+			return issues[i].UpdatedAt.After(*issues[j].UpdatedAt)
 		})
 	case "status":
 		// Build status order from configured statuses
@@ -223,12 +223,12 @@ func sortBeans(beans []*issue.Issue, sortBy string, cfg *config.Config) {
 		for i, s := range statusNames {
 			statusOrder[s] = i
 		}
-		sort.Slice(beans, func(i, j int) bool {
-			oi, oj := statusOrder[beans[i].Status], statusOrder[beans[j].Status]
+		sort.Slice(issues, func(i, j int) bool {
+			oi, oj := statusOrder[issues[i].Status], statusOrder[issues[j].Status]
 			if oi != oj {
 				return oi < oj
 			}
-			return beans[i].ID < beans[j].ID
+			return issues[i].ID < issues[j].ID
 		})
 	case "priority":
 		// Build priority order from configured priorities
@@ -236,7 +236,7 @@ func sortBeans(beans []*issue.Issue, sortBy string, cfg *config.Config) {
 		for i, p := range priorityNames {
 			priorityOrder[p] = i
 		}
-		// Find normal priority index for beans without priority
+		// Find normal priority index for issues without priority
 		normalIdx := len(priorityNames)
 		for i, p := range priorityNames {
 			if p == config.PriorityNormal {
@@ -244,33 +244,33 @@ func sortBeans(beans []*issue.Issue, sortBy string, cfg *config.Config) {
 				break
 			}
 		}
-		sort.Slice(beans, func(i, j int) bool {
+		sort.Slice(issues, func(i, j int) bool {
 			pi := normalIdx
-			if beans[i].Priority != "" {
-				if order, ok := priorityOrder[beans[i].Priority]; ok {
+			if issues[i].Priority != "" {
+				if order, ok := priorityOrder[issues[i].Priority]; ok {
 					pi = order
 				}
 			}
 			pj := normalIdx
-			if beans[j].Priority != "" {
-				if order, ok := priorityOrder[beans[j].Priority]; ok {
+			if issues[j].Priority != "" {
+				if order, ok := priorityOrder[issues[j].Priority]; ok {
 					pj = order
 				}
 			}
 			if pi != pj {
 				return pi < pj
 			}
-			return beans[i].ID < beans[j].ID
+			return issues[i].ID < issues[j].ID
 		})
 	case "due":
-		issue.SortByDueDate(beans)
+		issue.SortByDueDate(issues)
 	case "id":
-		sort.Slice(beans, func(i, j int) bool {
-			return beans[i].ID < beans[j].ID
+		sort.Slice(issues, func(i, j int) bool {
+			return issues[i].ID < issues[j].ID
 		})
 	default:
 		// Default: sort by status order, then priority, then type order, then title (same as TUI)
-		issue.SortByStatusPriorityAndType(beans, statusNames, priorityNames, typeNames)
+		issue.SortByStatusPriorityAndType(issues, statusNames, priorityNames, typeNames)
 	}
 }
 

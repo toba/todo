@@ -27,7 +27,7 @@ func TestNewIndex(t *testing.T) {
 	defer idx.Close()
 }
 
-func TestIndexBean(t *testing.T) {
+func TestIndexIssue(t *testing.T) {
 	idx := setupTestIndex(t)
 
 	b := &issue.Issue{
@@ -54,13 +54,13 @@ func TestIndexBean(t *testing.T) {
 func TestSearch_MatchTitle(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "User Authentication", Body: "Login system"},
 		{ID: "bbb2", Title: "Database Schema", Body: "Table definitions"},
 		{ID: "ccc3", Title: "API Endpoints", Body: "REST interface"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -79,13 +79,13 @@ func TestSearch_MatchTitle(t *testing.T) {
 func TestSearch_MatchBody(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "Feature A", Body: "Implement JWT tokens"},
 		{ID: "bbb2", Title: "Feature B", Body: "Add database migrations"},
 		{ID: "ccc3", Title: "Feature C", Body: "Update UI components"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -104,13 +104,13 @@ func TestSearch_MatchBody(t *testing.T) {
 func TestSearch_MatchSlug(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Slug: "auth-feature", Title: "Feature A", Body: "Some content"},
 		{ID: "bbb2", Slug: "database-migration", Title: "Feature B", Body: "Other content"},
 		{ID: "ccc3", Slug: "ui-update", Title: "Feature C", Body: "More content"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -130,13 +130,13 @@ func TestSearch_MatchSlug(t *testing.T) {
 func TestSearch_MultipleResults(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "User Login", Body: "Authentication flow"},
 		{ID: "bbb2", Title: "User Registration", Body: "Sign up form"},
 		{ID: "ccc3", Title: "Admin Panel", Body: "Dashboard"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -157,7 +157,7 @@ func TestSearch_NoResults(t *testing.T) {
 
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Some content",
 	}
 	if err := idx.IndexIssue(b); err != nil {
@@ -179,7 +179,7 @@ func TestSearch_EmptyQuery(t *testing.T) {
 
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Some content",
 	}
 	if err := idx.IndexIssue(b); err != nil {
@@ -199,13 +199,13 @@ func TestSearch_EmptyQuery(t *testing.T) {
 func TestSearch_BooleanQuery(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "User Authentication", Body: "Login with password"},
 		{ID: "bbb2", Title: "User Registration", Body: "Create account"},
 		{ID: "ccc3", Title: "Admin Authentication", Body: "Admin login"},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -227,13 +227,13 @@ func TestSearch_BooleanQuery(t *testing.T) {
 func TestSearch_Wildcard(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "aaa1", Title: "Authentication", Body: ""},
 		{ID: "bbb2", Title: "Authorization", Body: ""},
 		{ID: "ccc3", Title: "Automation", Body: ""},
 	}
 
-	for _, b := range beans {
+	for _, b := range issues {
 		if err := idx.IndexIssue(b); err != nil {
 			t.Fatalf("IndexIssue() error = %v", err)
 		}
@@ -250,12 +250,12 @@ func TestSearch_Wildcard(t *testing.T) {
 	}
 }
 
-func TestDeleteBean(t *testing.T) {
+func TestDeleteIssue(t *testing.T) {
 	idx := setupTestIndex(t)
 
 	b := &issue.Issue{
 		ID:    "abc1",
-		Title: "Test Bean",
+		Title: "Test Issue",
 		Body:  "Some content",
 	}
 	if err := idx.IndexIssue(b); err != nil {
@@ -265,7 +265,7 @@ func TestDeleteBean(t *testing.T) {
 	// Verify it's indexed
 	ids, _ := idx.Search("Test", 10)
 	if len(ids) != 1 {
-		t.Fatal("bean should be indexed before delete")
+		t.Fatal("issue should be indexed before delete")
 	}
 
 	// Delete
@@ -280,31 +280,31 @@ func TestDeleteBean(t *testing.T) {
 	}
 }
 
-func TestIndexBeans(t *testing.T) {
+func TestIndexIssues(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	beans := []*issue.Issue{
-		{ID: "aaa1", Title: "Bean One", Body: "First content"},
-		{ID: "bbb2", Title: "Bean Two", Body: "Second content"},
-		{ID: "ccc3", Title: "Bean Three", Body: "Third content"},
+	issues := []*issue.Issue{
+		{ID: "aaa1", Title: "Issue One", Body: "First content"},
+		{ID: "bbb2", Title: "Issue Two", Body: "Second content"},
+		{ID: "ccc3", Title: "Issue Three", Body: "Third content"},
 	}
 
-	if err := idx.IndexIssues(beans); err != nil {
+	if err := idx.IndexIssues(issues); err != nil {
 		t.Fatalf("IndexIssues() error = %v", err)
 	}
 
 	// all issues should be searchable
-	ids, err := idx.Search("Bean", 10)
+	ids, err := idx.Search("Issue", 10)
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
 
 	if len(ids) != 3 {
-		t.Errorf("Search(Bean) returned %d results, want 3", len(ids))
+		t.Errorf("Search(Issue) returned %d results, want 3", len(ids))
 	}
 }
 
-func TestIndexBean_Update(t *testing.T) {
+func TestIndexIssue_Update(t *testing.T) {
 	idx := setupTestIndex(t)
 
 	// Index initial version
@@ -340,11 +340,11 @@ func TestIndexBean_Update(t *testing.T) {
 func TestSearch_Limit(t *testing.T) {
 	idx := setupTestIndex(t)
 
-	// Index many beans
+	// Index many issues
 	for range 20 {
 		b := &issue.Issue{
 			ID:    issue.NewID(),
-			Title: "Test Bean",
+			Title: "Test Issue",
 			Body:  "Content",
 		}
 		if err := idx.IndexIssue(b); err != nil {

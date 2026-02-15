@@ -19,7 +19,7 @@ var (
 type checkResult struct {
 	Success      bool                      `json:"success"`
 	ConfigErrors []string                  `json:"config_errors"`
-	BeanIssues   *core.LinkCheckResult `json:"bean_issues,omitempty"`
+	LinkIssues   *core.LinkCheckResult `json:"link_issues,omitempty"`
 	Fixed        int                       `json:"fixed,omitempty"`
 }
 
@@ -29,7 +29,7 @@ var checkCmd = &cobra.Command{
 	Long: `Checks configuration and issue integrity, including:
 - Configuration settings (colors, default type)
 - Broken links (links to non-existent issues)
-- Self-references (beans linking to themselves)
+- Self-references (issues linking to themselves)
 - Circular dependencies (cycles in blocks/parent relationships)
 
 Use --fix to automatically remove broken links and self-references.
@@ -166,7 +166,7 @@ Note: Cycles cannot be auto-fixed and require manual intervention.`,
 			result := checkResult{
 				Success:      totalIssues == 0,
 				ConfigErrors: configErrors,
-				BeanIssues:   linkResult,
+				LinkIssues:   linkResult,
 				Fixed:        fixed,
 			}
 			data, _ := json.MarshalIndent(result, "", "  ")

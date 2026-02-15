@@ -18,7 +18,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("beans %s (%s) built %s [build %s]\n", ver, commit, date, version.Build)
+		fmt.Printf("todo %s (%s) built %s [build %s]\n", ver, commit, date, version.Build)
 	},
 }
 

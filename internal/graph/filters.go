@@ -12,14 +12,14 @@ import (
 	"github.com/toba/todo/internal/issue"
 )
 
-// ApplyFilter applies BeanFilter to a slice of beans and returns filtered results.
-// This is used by both the top-level beans query and relationship field resolvers.
-func ApplyFilter(beans []*issue.Issue, filter *model.IssueFilter, core *core.Core) []*issue.Issue {
+// ApplyFilter applies IssueFilter to a slice of issues and returns filtered results.
+// This is used by both the top-level issues query and relationship field resolvers.
+func ApplyFilter(issues []*issue.Issue, filter *model.IssueFilter, core *core.Core) []*issue.Issue {
 	if filter == nil {
-		return beans
+		return issues
 	}
 
-	result := beans
+	result := issues
 
 	// Status filters
 	if len(filter.Status) > 0 {
@@ -110,15 +110,15 @@ func ApplyFilter(beans []*issue.Issue, filter *model.IssueFilter, core *core.Cor
 	return result
 }
 
-// filterByField filters beans to include only those where getter returns a value in values (OR logic).
-func filterByField(beans []*issue.Issue, values []string, getter func(*issue.Issue) string) []*issue.Issue {
+// filterByField filters issues to include only those where getter returns a value in values (OR logic).
+func filterByField(issues []*issue.Issue, values []string, getter func(*issue.Issue) string) []*issue.Issue {
 	valueSet := make(map[string]bool, len(values))
 	for _, v := range values {
 		valueSet[v] = true
 	}
 
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if valueSet[getter(b)] {
 			result = append(result, b)
 		}
@@ -126,15 +126,15 @@ func filterByField(beans []*issue.Issue, values []string, getter func(*issue.Iss
 	return result
 }
 
-// excludeByField filters beans to exclude those where getter returns a value in values.
-func excludeByField(beans []*issue.Issue, values []string, getter func(*issue.Issue) string) []*issue.Issue {
+// excludeByField filters issues to exclude those where getter returns a value in values.
+func excludeByField(issues []*issue.Issue, values []string, getter func(*issue.Issue) string) []*issue.Issue {
 	valueSet := make(map[string]bool, len(values))
 	for _, v := range values {
 		valueSet[v] = true
 	}
 
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if !valueSet[getter(b)] {
 			result = append(result, b)
 		}
@@ -142,16 +142,16 @@ func excludeByField(beans []*issue.Issue, values []string, getter func(*issue.Is
 	return result
 }
 
-// filterByPriority filters beans to include only those with matching priorities (OR logic).
+// filterByPriority filters issues to include only those with matching priorities (OR logic).
 // Empty priority in the issue is treated as "normal" for matching purposes.
-func filterByPriority(beans []*issue.Issue, priorities []string) []*issue.Issue {
+func filterByPriority(issues []*issue.Issue, priorities []string) []*issue.Issue {
 	prioritySet := make(map[string]bool, len(priorities))
 	for _, p := range priorities {
 		prioritySet[p] = true
 	}
 
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		priority := cmp.Or(b.Priority, config.PriorityNormal)
 		if prioritySet[priority] {
 			result = append(result, b)
@@ -160,16 +160,16 @@ func filterByPriority(beans []*issue.Issue, priorities []string) []*issue.Issue 
 	return result
 }
 
-// excludeByPriority filters beans to exclude those with matching priorities.
+// excludeByPriority filters issues to exclude those with matching priorities.
 // Empty priority in the issue is treated as "normal" for matching purposes.
-func excludeByPriority(beans []*issue.Issue, priorities []string) []*issue.Issue {
+func excludeByPriority(issues []*issue.Issue, priorities []string) []*issue.Issue {
 	prioritySet := make(map[string]bool, len(priorities))
 	for _, p := range priorities {
 		prioritySet[p] = true
 	}
 
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		priority := cmp.Or(b.Priority, config.PriorityNormal)
 		if !prioritySet[priority] {
 			result = append(result, b)
@@ -178,15 +178,15 @@ func excludeByPriority(beans []*issue.Issue, priorities []string) []*issue.Issue
 	return result
 }
 
-// filterByTags filters beans to include only those with any of the given tags (OR logic).
-func filterByTags(beans []*issue.Issue, tags []string) []*issue.Issue {
+// filterByTags filters issues to include only those with any of the given tags (OR logic).
+func filterByTags(issues []*issue.Issue, tags []string) []*issue.Issue {
 	tagSet := make(map[string]bool, len(tags))
 	for _, t := range tags {
 		tagSet[t] = true
 	}
 
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		for _, t := range b.Tags {
 			if tagSet[t] {
 				result = append(result, b)
@@ -197,8 +197,8 @@ func filterByTags(beans []*issue.Issue, tags []string) []*issue.Issue {
 	return result
 }
 
-// excludeByTags filters beans to exclude those with any of the given tags.
-func excludeByTags(beans []*issue.Issue, tags []string) []*issue.Issue {
+// excludeByTags filters issues to exclude those with any of the given tags.
+func excludeByTags(issues []*issue.Issue, tags []string) []*issue.Issue {
 	tagSet := make(map[string]bool, len(tags))
 	for _, t := range tags {
 		tagSet[t] = true
@@ -206,7 +206,7 @@ func excludeByTags(beans []*issue.Issue, tags []string) []*issue.Issue {
 
 	var result []*issue.Issue
 outer:
-	for _, b := range beans {
+	for _, b := range issues {
 		for _, t := range b.Tags {
 			if tagSet[t] {
 				continue outer
@@ -217,10 +217,10 @@ outer:
 	return result
 }
 
-// filterByHasParent filters beans to include only those with a parent.
-func filterByHasParent(beans []*issue.Issue) []*issue.Issue {
+// filterByHasParent filters issues to include only those with a parent.
+func filterByHasParent(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if b.Parent != "" {
 			result = append(result, b)
 		}
@@ -228,10 +228,10 @@ func filterByHasParent(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByNoParent filters beans to include only those without a parent.
-func filterByNoParent(beans []*issue.Issue) []*issue.Issue {
+// filterByNoParent filters issues to include only those without a parent.
+func filterByNoParent(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if b.Parent == "" {
 			result = append(result, b)
 		}
@@ -239,10 +239,10 @@ func filterByNoParent(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByParentID filters beans with specific parent ID.
-func filterByParentID(beans []*issue.Issue, parentID string) []*issue.Issue {
+// filterByParentID filters issues with specific parent ID.
+func filterByParentID(issues []*issue.Issue, parentID string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if b.Parent == parentID {
 			result = append(result, b)
 		}
@@ -250,10 +250,10 @@ func filterByParentID(beans []*issue.Issue, parentID string) []*issue.Issue {
 	return result
 }
 
-// filterByHasBlocking filters beans that are blocking other issues.
-func filterByHasBlocking(beans []*issue.Issue) []*issue.Issue {
+// filterByHasBlocking filters issues that are blocking other issues.
+func filterByHasBlocking(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if len(b.Blocking) > 0 {
 			result = append(result, b)
 		}
@@ -261,10 +261,10 @@ func filterByHasBlocking(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByBlockingID filters beans that are blocking a specific issue ID.
-func filterByBlockingID(beans []*issue.Issue, targetID string) []*issue.Issue {
+// filterByBlockingID filters issues that are blocking a specific issue ID.
+func filterByBlockingID(issues []*issue.Issue, targetID string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if slices.Contains(b.Blocking, targetID) {
 			result = append(result, b)
 		}
@@ -272,10 +272,10 @@ func filterByBlockingID(beans []*issue.Issue, targetID string) []*issue.Issue {
 	return result
 }
 
-// filterByNoBlocking filters beans that aren't blocking other issues.
-func filterByNoBlocking(beans []*issue.Issue) []*issue.Issue {
+// filterByNoBlocking filters issues that aren't blocking other issues.
+func filterByNoBlocking(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if len(b.Blocking) == 0 {
 			result = append(result, b)
 		}
@@ -283,11 +283,11 @@ func filterByNoBlocking(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByIsBlocked filters beans that are blocked by others.
+// filterByIsBlocked filters issues that are blocked by others.
 // an issue is considered blocked only if it has active (non-completed, non-scrapped) blockers.
-func filterByIsBlocked(beans []*issue.Issue, core *core.Core) []*issue.Issue {
+func filterByIsBlocked(issues []*issue.Issue, core *core.Core) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if core.IsBlocked(b.ID) {
 			result = append(result, b)
 		}
@@ -295,11 +295,11 @@ func filterByIsBlocked(beans []*issue.Issue, core *core.Core) []*issue.Issue {
 	return result
 }
 
-// filterByNotBlocked filters beans that are NOT blocked by others.
+// filterByNotBlocked filters issues that are NOT blocked by others.
 // an issue is considered not blocked if it has no active (non-completed, non-scrapped) blockers.
-func filterByNotBlocked(beans []*issue.Issue, core *core.Core) []*issue.Issue {
+func filterByNotBlocked(issues []*issue.Issue, core *core.Core) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if !core.IsBlocked(b.ID) {
 			result = append(result, b)
 		}
@@ -307,10 +307,10 @@ func filterByNotBlocked(beans []*issue.Issue, core *core.Core) []*issue.Issue {
 	return result
 }
 
-// filterByHasBlockedBy filters beans that have explicit blocked_by entries.
-func filterByHasBlockedBy(beans []*issue.Issue) []*issue.Issue {
+// filterByHasBlockedBy filters issues that have explicit blocked_by entries.
+func filterByHasBlockedBy(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if len(b.BlockedBy) > 0 {
 			result = append(result, b)
 		}
@@ -318,10 +318,10 @@ func filterByHasBlockedBy(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByBlockedByID filters beans that are blocked by a specific issue ID (via blocked_by field).
-func filterByBlockedByID(beans []*issue.Issue, blockerID string) []*issue.Issue {
+// filterByBlockedByID filters issues that are blocked by a specific issue ID (via blocked_by field).
+func filterByBlockedByID(issues []*issue.Issue, blockerID string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if slices.Contains(b.BlockedBy, blockerID) {
 			result = append(result, b)
 		}
@@ -329,10 +329,10 @@ func filterByBlockedByID(beans []*issue.Issue, blockerID string) []*issue.Issue 
 	return result
 }
 
-// filterByNoBlockedBy filters beans that have no explicit blocked_by entries.
-func filterByNoBlockedBy(beans []*issue.Issue) []*issue.Issue {
+// filterByNoBlockedBy filters issues that have no explicit blocked_by entries.
+func filterByNoBlockedBy(issues []*issue.Issue) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if len(b.BlockedBy) == 0 {
 			result = append(result, b)
 		}
@@ -340,10 +340,10 @@ func filterByNoBlockedBy(beans []*issue.Issue) []*issue.Issue {
 	return result
 }
 
-// filterByHasSync filters beans to include only those with sync data for the given name.
-func filterByHasSync(beans []*issue.Issue, name string) []*issue.Issue {
+// filterByHasSync filters issues to include only those with sync data for the given name.
+func filterByHasSync(issues []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if b.HasSync(name) {
 			result = append(result, b)
 		}
@@ -351,10 +351,10 @@ func filterByHasSync(beans []*issue.Issue, name string) []*issue.Issue {
 	return result
 }
 
-// filterByNoSync filters beans to include only those without sync data for the given name.
-func filterByNoSync(beans []*issue.Issue, name string) []*issue.Issue {
+// filterByNoSync filters issues to include only those without sync data for the given name.
+func filterByNoSync(issues []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if !b.HasSync(name) {
 			result = append(result, b)
 		}
@@ -362,11 +362,11 @@ func filterByNoSync(beans []*issue.Issue, name string) []*issue.Issue {
 	return result
 }
 
-// filterBySyncStale filters beans where updatedAt > sync[name]["synced_at"].
+// filterBySyncStale filters issues where updatedAt > sync[name]["synced_at"].
 // If no synced_at or unparseable, the issue is treated as stale (conservative).
-func filterBySyncStale(beans []*issue.Issue, name string) []*issue.Issue {
+func filterBySyncStale(issues []*issue.Issue, name string) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if isSyncStale(b, name) {
 			result = append(result, b)
 		}
@@ -402,10 +402,10 @@ func isSyncStale(b *issue.Issue, name string) bool {
 	return b.UpdatedAt.After(syncedAt)
 }
 
-// filterByChangedSince filters beans where updatedAt >= since.
-func filterByChangedSince(beans []*issue.Issue, since time.Time) []*issue.Issue {
+// filterByChangedSince filters issues where updatedAt >= since.
+func filterByChangedSince(issues []*issue.Issue, since time.Time) []*issue.Issue {
 	var result []*issue.Issue
-	for _, b := range beans {
+	for _, b := range issues {
 		if b.UpdatedAt != nil && !b.UpdatedAt.Before(since) {
 			result = append(result, b)
 		}

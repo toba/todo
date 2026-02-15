@@ -43,14 +43,14 @@ func (e *ETagRequiredError) Error() string {
 	return "if-match etag is required (set require_if_match: false in config to disable)"
 }
 
-// Core provides thread-safe in-memory storage for beans with filesystem persistence.
+// Core provides thread-safe in-memory storage for issues with filesystem persistence.
 type Core struct {
 	root   string         // absolute path to .issues directory
 	config *config.Config // project configuration
 
 	// In-memory state
 	mu    sync.RWMutex
-	beans map[string]*issue.Issue // ID -> Bean
+	issues map[string]*issue.Issue // ID -> Issue
 
 	// Search index (optional, lazy-initialized)
 	searchIndex *search.Index
@@ -58,7 +58,7 @@ type Core struct {
 	// File watching (optional)
 	watching bool
 	done     chan struct{}
-	onChange func() // callback when beans change (legacy API)
+	onChange func() // callback when issues change (legacy API)
 
 	// Event subscribers (for channel-based API)
 	subscribers map[uint64]*subscription
@@ -74,7 +74,7 @@ func New(root string, cfg *config.Config) *Core {
 	return &Core{
 		root:        root,
 		config:      cfg,
-		beans:       make(map[string]*issue.Issue),
+		issues:      make(map[string]*issue.Issue),
 		subscribers: make(map[uint64]*subscription),
 		warnWriter:  os.Stderr,
 	}
@@ -115,7 +115,7 @@ func (c *Core) Load() error {
 // Loads all .md files from the root directory and any subdirectories.
 func (c *Core) loadFromDisk() error {
 	// Clear existing issues
-	c.beans = make(map[string]*issue.Issue)
+	c.issues = make(map[string]*issue.Issue)
 
 	// Walk the entire .issues directory tree, loading all .md files
 	err := filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
@@ -128,12 +128,12 @@ func (c *Core) loadFromDisk() error {
 			return nil
 		}
 
-		b, loadErr := c.loadBean(path)
+		b, loadErr := c.loadIssue(path)
 		if loadErr != nil {
 			return fmt.Errorf("loading %s: %w", path, loadErr)
 		}
 
-		c.beans[b.ID] = b
+		c.issues[b.ID] = b
 		return nil
 	})
 	if err != nil {
@@ -153,8 +153,8 @@ func (c *Core) loadFromDisk() error {
 	return nil
 }
 
-// loadBean reads and parses a single bean file.
-func (c *Core) loadBean(path string) (*issue.Issue, error) {
+// loadIssue reads and parses a single issue file.
+func (c *Core) loadIssue(path string) (*issue.Issue, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -220,18 +220,18 @@ func (c *Core) ensureSearchIndexLocked() error {
 	c.searchIndex = idx
 
 	// Populate the in-memory index with existing issues
-	allBeans := make([]*issue.Issue, 0, len(c.beans))
-	for _, b := range c.beans {
-		allBeans = append(allBeans, b)
+	allIssues := make([]*issue.Issue, 0, len(c.issues))
+	for _, b := range c.issues {
+		allIssues = append(allIssues, b)
 	}
-	if err := c.searchIndex.IndexIssues(allBeans); err != nil {
+	if err := c.searchIndex.IndexIssues(allIssues); err != nil {
 		return fmt.Errorf("populating search index: %w", err)
 	}
 
 	return nil
 }
 
-// Search performs full-text search and returns matching beans.
+// Search performs full-text search and returns matching issues.
 // The search index is lazily initialized on first use.
 func (c *Core) Search(query string) ([]*issue.Issue, error) {
 	// Ensure index is initialized (needs write lock for lazy init)
@@ -250,13 +250,13 @@ func (c *Core) Search(query string) ([]*issue.Issue, error) {
 		return nil, err
 	}
 
-	// Read from beans map (needs read lock only)
+	// Read from issues map (needs read lock only)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	result := make([]*issue.Issue, 0, len(ids))
 	for _, id := range ids {
-		if b, ok := c.beans[id]; ok {
+		if b, ok := c.issues[id]; ok {
 			result = append(result, b)
 		}
 	}
@@ -268,8 +268,8 @@ func (c *Core) All() []*issue.Issue {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	result := make([]*issue.Issue, 0, len(c.beans))
-	for _, b := range c.beans {
+	result := make([]*issue.Issue, 0, len(c.issues))
+	for _, b := range c.issues {
 		result = append(result, b)
 	}
 	return result
@@ -280,7 +280,7 @@ func (c *Core) Get(id string) (*issue.Issue, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if b, ok := c.beans[id]; ok {
+	if b, ok := c.issues[id]; ok {
 		return b, nil
 	}
 
@@ -293,14 +293,14 @@ func (c *Core) NormalizeID(id string) (string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if _, ok := c.beans[id]; ok {
+	if _, ok := c.issues[id]; ok {
 		return id, true
 	}
 
 	return id, false
 }
 
-// Create adds a new bean, generating an ID if needed, and writes it to disk.
+// Create adds a new issue, generating an ID if needed, and writes it to disk.
 func (c *Core) Create(b *issue.Issue) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -321,12 +321,12 @@ func (c *Core) Create(b *issue.Issue) error {
 	}
 
 	// Add to in-memory map
-	c.beans[b.ID] = b
+	c.issues[b.ID] = b
 
 	// Update search index if active (best-effort, don't fail create)
 	if c.searchIndex != nil {
 		if err := c.searchIndex.IndexIssue(b); err != nil {
-			c.logWarn("failed to index bean %s: %v", b.ID, err)
+			c.logWarn("failed to index issue %s: %v", b.ID, err)
 		}
 	}
 
@@ -340,13 +340,13 @@ func (c *Core) Update(b *issue.Issue, ifMatch *string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verify bean exists in memory
-	storedBean, ok := c.beans[b.ID]
+	// Verify issue exists in memory
+	storedIssue, ok := c.issues[b.ID]
 	if !ok {
 		return ErrNotFound
 	}
 
-	if err := c.validateETagLocked(storedBean, ifMatch); err != nil {
+	if err := c.validateETagLocked(storedIssue, ifMatch); err != nil {
 		return err
 	}
 
@@ -360,12 +360,12 @@ func (c *Core) Update(b *issue.Issue, ifMatch *string) error {
 	}
 
 	// Update in-memory map
-	c.beans[b.ID] = b
+	c.issues[b.ID] = b
 
 	// Update search index if active (best-effort, don't fail update)
 	if c.searchIndex != nil {
 		if err := c.searchIndex.IndexIssue(b); err != nil {
-			c.logWarn("failed to update bean %s in search index: %v", b.ID, err)
+			c.logWarn("failed to update issue %s in search index: %v", b.ID, err)
 		}
 	}
 
@@ -380,12 +380,12 @@ func (c *Core) SaveSyncOnly(b *issue.Issue, ifMatch *string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	storedBean, ok := c.beans[b.ID]
+	storedIssue, ok := c.issues[b.ID]
 	if !ok {
 		return ErrNotFound
 	}
 
-	if err := c.validateETagLocked(storedBean, ifMatch); err != nil {
+	if err := c.validateETagLocked(storedIssue, ifMatch); err != nil {
 		return err
 	}
 
@@ -395,15 +395,15 @@ func (c *Core) SaveSyncOnly(b *issue.Issue, ifMatch *string) error {
 		return err
 	}
 
-	c.beans[b.ID] = b
+	c.issues[b.ID] = b
 
 	// No search index update needed — extension data is not indexed
 	return nil
 }
 
-// validateETagLocked validates the etag for a stored bean against the provided ifMatch value.
+// validateETagLocked validates the etag for a stored issue against the provided ifMatch value.
 // Must be called with c.mu held.
-func (c *Core) validateETagLocked(storedBean *issue.Issue, ifMatch *string) error {
+func (c *Core) validateETagLocked(storedIssue *issue.Issue, ifMatch *string) error {
 	requireIfMatch := c.config != nil && c.config.Issues.RequireIfMatch
 
 	if requireIfMatch && (ifMatch == nil || *ifMatch == "") {
@@ -412,18 +412,18 @@ func (c *Core) validateETagLocked(storedBean *issue.Issue, ifMatch *string) erro
 
 	if ifMatch != nil && *ifMatch != "" {
 		var currentETag string
-		if storedBean.Path != "" {
-			diskPath := filepath.Join(c.root, storedBean.Path)
+		if storedIssue.Path != "" {
+			diskPath := filepath.Join(c.root, storedIssue.Path)
 			content, err := os.ReadFile(diskPath)
 			if err != nil {
-				currentETag = storedBean.ETag()
+				currentETag = storedIssue.ETag()
 			} else {
 				h := fnv.New64a()
 				h.Write(content)
 				currentETag = hex.EncodeToString(h.Sum(nil))
 			}
 		} else {
-			currentETag = storedBean.ETag()
+			currentETag = storedIssue.ETag()
 		}
 
 		if currentETag != *ifMatch {
@@ -473,24 +473,24 @@ func (c *Core) Delete(id string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	targetBean, ok := c.beans[id]
+	targetIssue, ok := c.issues[id]
 	if !ok {
 		return ErrNotFound
 	}
 
 	// Remove from disk
-	path := filepath.Join(c.root, targetBean.Path)
+	path := filepath.Join(c.root, targetIssue.Path)
 	if err := os.Remove(path); err != nil {
 		return err
 	}
 
 	// Remove from in-memory map
-	delete(c.beans, id)
+	delete(c.issues, id)
 
 	// Update search index if active (best-effort, don't fail delete)
 	if c.searchIndex != nil {
 		if err := c.searchIndex.DeleteIssue(id); err != nil {
-			c.logWarn("failed to remove bean %s from search index: %v", id, err)
+			c.logWarn("failed to remove issue %s from search index: %v", id, err)
 		}
 	}
 
@@ -503,13 +503,13 @@ func (c *Core) Archive(id string) error {
 	defer c.mu.Unlock()
 
 	// Find the issue
-	targetBean, targetID, err := c.findBeanLocked(id)
+	targetIssue, targetID, err := c.findIssueLocked(id)
 	if err != nil {
 		return err
 	}
 
 	// Check if already archived
-	if c.isArchivedPath(targetBean.Path) {
+	if c.isArchivedPath(targetIssue.Path) {
 		return nil // Already archived, nothing to do
 	}
 
@@ -520,17 +520,17 @@ func (c *Core) Archive(id string) error {
 	}
 
 	// Move the file
-	oldPath := filepath.Join(c.root, targetBean.Path)
-	newRelPath := filepath.Join(ArchiveDir, filepath.Base(targetBean.Path))
+	oldPath := filepath.Join(c.root, targetIssue.Path)
+	newRelPath := filepath.Join(ArchiveDir, filepath.Base(targetIssue.Path))
 	newPath := filepath.Join(c.root, newRelPath)
 
 	if err := os.Rename(oldPath, newPath); err != nil {
-		return fmt.Errorf("moving bean to archive: %w", err)
+		return fmt.Errorf("moving issue to archive: %w", err)
 	}
 
-	// Update bean's path
-	targetBean.Path = newRelPath
-	c.beans[targetID] = targetBean
+	// Update issue's path
+	targetIssue.Path = newRelPath
+	c.issues[targetID] = targetIssue
 
 	return nil
 }
@@ -541,19 +541,19 @@ func (c *Core) Unarchive(id string) error {
 	defer c.mu.Unlock()
 
 	// Find the issue
-	targetBean, targetID, err := c.findBeanLocked(id)
+	targetIssue, targetID, err := c.findIssueLocked(id)
 	if err != nil {
 		return err
 	}
 
 	// Check if not archived
-	if !c.isArchivedPath(targetBean.Path) {
+	if !c.isArchivedPath(targetIssue.Path) {
 		return nil // Not archived, nothing to do
 	}
 
 	// Move the file back to the hash subfolder
-	oldPath := filepath.Join(c.root, targetBean.Path)
-	newRelPath := issue.BuildPath(targetBean.ID, targetBean.Slug)
+	oldPath := filepath.Join(c.root, targetIssue.Path)
+	newRelPath := issue.BuildPath(targetIssue.ID, targetIssue.Slug)
 	newPath := filepath.Join(c.root, newRelPath)
 
 	// Ensure the hash subfolder exists
@@ -562,12 +562,12 @@ func (c *Core) Unarchive(id string) error {
 	}
 
 	if err := os.Rename(oldPath, newPath); err != nil {
-		return fmt.Errorf("moving bean from archive: %w", err)
+		return fmt.Errorf("moving issue from archive: %w", err)
 	}
 
-	// Update bean's path
-	targetBean.Path = newRelPath
-	c.beans[targetID] = targetBean
+	// Update issue's path
+	targetIssue.Path = newRelPath
+	c.issues[targetID] = targetIssue
 
 	return nil
 }
@@ -577,7 +577,7 @@ func (c *Core) IsArchived(id string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	b, _, err := c.findBeanLocked(id)
+	b, _, err := c.findIssueLocked(id)
 	if err != nil {
 		return false
 	}
@@ -585,16 +585,15 @@ func (c *Core) IsArchived(id string) bool {
 	return c.isArchivedPath(b.Path)
 }
 
-// isArchivedPath returns true if the path indicates an archived bean.
+// isArchivedPath returns true if the path indicates an archived issue.
 func (c *Core) isArchivedPath(path string) bool {
 	return strings.HasPrefix(path, ArchiveDir+string(filepath.Separator)) ||
 		strings.HasPrefix(path, ArchiveDir+"/")
 }
 
-// findBeanLocked finds an issue by exact ID match.
-// Must be called with lock held.
-func (c *Core) findBeanLocked(id string) (*issue.Issue, string, error) {
-	if b, ok := c.beans[id]; ok {
+// findIssueLocked finds an issue by exact ID match. Must be called with lock held.
+func (c *Core) findIssueLocked(id string) (*issue.Issue, string, error) {
+	if b, ok := c.issues[id]; ok {
 		return b, id, nil
 	}
 
@@ -603,7 +602,7 @@ func (c *Core) findBeanLocked(id string) (*issue.Issue, string, error) {
 
 // GetFromArchive loads an issue directly from the archive directory.
 // This is used when an issue isn't in the main loaded set but might be archived.
-// Returns nil, nil if the archive directory doesn't exist or bean not found.
+// Returns nil, nil if the archive directory doesn't exist or issue not found.
 func (c *Core) GetFromArchive(id string) (*issue.Issue, error) {
 	archiveDir := filepath.Join(c.root, ArchiveDir)
 	if _, err := os.Stat(archiveDir); os.IsNotExist(err) {
@@ -624,7 +623,7 @@ func (c *Core) GetFromArchive(id string) (*issue.Issue, error) {
 		fileID, _ := issue.ParseFilename(entry.Name())
 		if fileID == id {
 			path := filepath.Join(archiveDir, entry.Name())
-			return c.loadBean(path)
+			return c.loadIssue(path)
 		}
 	}
 
@@ -638,7 +637,7 @@ func (c *Core) LoadAndUnarchive(id string) (*issue.Issue, error) {
 	defer c.mu.Unlock()
 
 	// Find the issue (always loaded since we now include archived issues)
-	b, targetID, err := c.findBeanLocked(id)
+	b, targetID, err := c.findIssueLocked(id)
 	if err != nil {
 		return nil, ErrNotFound
 	}
@@ -659,12 +658,12 @@ func (c *Core) LoadAndUnarchive(id string) (*issue.Issue, error) {
 	}
 
 	if err := os.Rename(oldPath, newPath); err != nil {
-		return nil, fmt.Errorf("moving bean from archive: %w", err)
+		return nil, fmt.Errorf("moving issue from archive: %w", err)
 	}
 
-	// Update bean's path
+	// Update issue's path
 	b.Path = newRelPath
-	c.beans[targetID] = b
+	c.issues[targetID] = b
 
 	return b, nil
 }

@@ -36,13 +36,13 @@ func NormalizeTag(tag string) string {
 	return strings.ToLower(strings.TrimSpace(tag))
 }
 
-// HasTag returns true if the bean has the specified tag.
+// HasTag returns true if the issue has the specified tag.
 func (b *Issue) HasTag(tag string) bool {
 	normalized := NormalizeTag(tag)
 	return slices.Contains(b.Tags, normalized)
 }
 
-// AddTag adds a tag to the bean if it doesn't already exist.
+// AddTag adds a tag to the issue if it doesn't already exist.
 // Returns an error if the tag is invalid.
 func (b *Issue) AddTag(tag string) error {
 	normalized := NormalizeTag(tag)
@@ -55,52 +55,52 @@ func (b *Issue) AddTag(tag string) error {
 	return nil
 }
 
-// RemoveTag removes a tag from the bean.
+// RemoveTag removes a tag from the issue.
 func (b *Issue) RemoveTag(tag string) {
 	normalized := NormalizeTag(tag)
 	b.Tags = slices.DeleteFunc(b.Tags, func(s string) bool { return s == normalized })
 }
 
-// HasParent returns true if the bean has a parent.
+// HasParent returns true if the issue has a parent.
 func (b *Issue) HasParent() bool {
 	return b.Parent != ""
 }
 
-// IsBlocking returns true if this bean is blocking the given bean ID.
+// IsBlocking returns true if this issue is blocking the given issue ID.
 func (b *Issue) IsBlocking(id string) bool {
 	return slices.Contains(b.Blocking, id)
 }
 
-// AddBlocking adds a bean ID to the blocking list if not already present.
+// AddBlocking adds an issue ID to the blocking list if not already present.
 func (b *Issue) AddBlocking(id string) {
 	if !b.IsBlocking(id) {
 		b.Blocking = append(b.Blocking, id)
 	}
 }
 
-// RemoveBlocking removes a bean ID from the blocking list.
+// RemoveBlocking removes an issue ID from the blocking list.
 func (b *Issue) RemoveBlocking(id string) {
 	b.Blocking = slices.DeleteFunc(b.Blocking, func(s string) bool { return s == id })
 }
 
-// IsBlockedBy returns true if this bean is blocked by the given bean ID.
+// IsBlockedBy returns true if this issue is blocked by the given issue ID.
 func (b *Issue) IsBlockedBy(id string) bool {
 	return slices.Contains(b.BlockedBy, id)
 }
 
-// AddBlockedBy adds a bean ID to the blocked-by list if not already present.
+// AddBlockedBy adds an issue ID to the blocked-by list if not already present.
 func (b *Issue) AddBlockedBy(id string) {
 	if !b.IsBlockedBy(id) {
 		b.BlockedBy = append(b.BlockedBy, id)
 	}
 }
 
-// RemoveBlockedBy removes a bean ID from the blocked-by list.
+// RemoveBlockedBy removes an issue ID from the blocked-by list.
 func (b *Issue) RemoveBlockedBy(id string) {
 	b.BlockedBy = slices.DeleteFunc(b.BlockedBy, func(s string) bool { return s == id })
 }
 
-// HasSync returns true if the bean has sync data for the given name.
+// HasSync returns true if the issue has sync data for the given name.
 func (b *Issue) HasSync(name string) bool {
 	if b.Sync == nil {
 		return false
@@ -200,7 +200,7 @@ type Issue struct {
 	ID string `yaml:"-" json:"id"`
 	// Slug is the optional human-readable part of the filename.
 	Slug string `yaml:"-" json:"slug,omitempty"`
-	// Path is the relative path from .beans/ root (e.g., "epic-auth/abc123-login.md").
+	// Path is the relative path from the issues root (e.g., "a/abc-def--login.md").
 	Path string `yaml:"-" json:"path"`
 
 	// Front matter fields
@@ -216,13 +216,13 @@ type Issue struct {
 	// Body is the markdown content after the front matter.
 	Body string `yaml:"-" json:"body,omitempty"`
 
-	// Parent is the optional parent bean ID (milestone, epic, or feature).
+	// Parent is the optional parent issue ID (milestone, epic, or feature).
 	Parent string `yaml:"parent,omitempty" json:"parent,omitempty"`
 
-	// Blocking is a list of bean IDs that this bean is blocking.
+	// Blocking is a list of issue IDs that this issue is blocking.
 	Blocking []string `yaml:"blocking,omitempty" json:"blocking,omitempty"`
 
-	// BlockedBy is a list of bean IDs that are blocking this bean.
+	// BlockedBy is a list of issue IDs that are blocking this issue.
 	BlockedBy []string `yaml:"blocked_by,omitempty" json:"blocked_by,omitempty"`
 
 	// Sync holds sync integration metadata keyed by integration name.
@@ -245,7 +245,7 @@ type frontMatter struct {
 	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
-// Parse reads a bean from a reader (markdown with YAML front matter).
+// Parse reads an issue from a reader (markdown with YAML front matter).
 func Parse(r io.Reader) (*Issue, error) {
 	var fm frontMatter
 	body, err := frontmatter.Parse(r, &fm)
@@ -289,7 +289,7 @@ type renderFrontMatter struct {
 	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
-// Render serializes the bean back to markdown with YAML front matter.
+// Render serializes the issue back to markdown with YAML front matter.
 func (b *Issue) Render() ([]byte, error) {
 	fm := renderFrontMatter{
 		Title:     b.Title,
@@ -338,9 +338,9 @@ func (b *Issue) Render() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ETag returns a hash of the bean's rendered content for optimistic concurrency control.
+// ETag returns a hash of the issue's rendered content for optimistic concurrency control.
 // Uses FNV-1a 64-bit hash, producing a 16-character hex string.
-// Returns "0000000000000000" if rendering fails (should never happen for valid beans).
+// Returns "0000000000000000" if rendering fails (should never happen for valid issues).
 func (b *Issue) ETag() string {
 	content, err := b.Render()
 	if err != nil {
@@ -355,12 +355,12 @@ func (b *Issue) ETag() string {
 
 // MarshalJSON implements json.Marshaler to include computed etag field.
 func (b *Issue) MarshalJSON() ([]byte, error) {
-	type BeanAlias Issue // Avoid infinite recursion
+	type IssueAlias Issue // Avoid infinite recursion
 	return json.Marshal(&struct {
-		*BeanAlias
+		*IssueAlias
 		ETag string `json:"etag"`
 	}{
-		BeanAlias: (*BeanAlias)(b),
+		IssueAlias: (*IssueAlias)(b),
 		ETag:      b.ETag(),
 	})
 }

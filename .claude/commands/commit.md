@@ -27,7 +27,7 @@ Ask the user whether to:
    - Lowercase, imperative mood (e.g., "add feature" not "Added feature")
    - Focus on "why" not just "what"
    - No need to check git log for style
-   - Include affected bean IDs
+   - Include affected issue IDs
 3. Run `git status` to confirm the commit succeeded
 4. If output contains "PUSH_AFTER_COMMIT":
    a. Tag a version bump using `mise release:<level>` (see Version Bumps below)

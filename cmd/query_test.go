@@ -37,7 +37,7 @@ func setupQueryTestCore(t *testing.T) (*core.Core, func()) {
 	return testCore, cleanup
 }
 
-func createQueryTestBean(t *testing.T, c *core.Core, id, title, status string) *issue.Issue {
+func createQueryTestIssue(t *testing.T, c *core.Core, id, title, status string) *issue.Issue {
 	t.Helper()
 	b := &issue.Issue{
 		ID:     id,
@@ -46,7 +46,7 @@ func createQueryTestBean(t *testing.T, c *core.Core, id, title, status string) *
 		Status: status,
 	}
 	if err := c.Create(b); err != nil {
-		t.Fatalf("failed to create test bean: %v", err)
+		t.Fatalf("failed to create test issue: %v", err)
 	}
 	return b
 }
@@ -55,10 +55,10 @@ func TestExecuteQuery(t *testing.T) {
 	testCore, cleanup := setupQueryTestCore(t)
 	defer cleanup()
 
-	// Create test beans
-	createQueryTestBean(t, testCore, "test-1", "First Bean", "todo")
-	createQueryTestBean(t, testCore, "test-2", "Second Bean", "in-progress")
-	createQueryTestBean(t, testCore, "test-3", "Third Bean", "completed")
+	// Create test issues
+	createQueryTestIssue(t, testCore, "test-1", "First Issue", "todo")
+	createQueryTestIssue(t, testCore, "test-2", "Second Issue", "in-progress")
+	createQueryTestIssue(t, testCore, "test-3", "Third Issue", "completed")
 
 	t.Run("basic query all issues", func(t *testing.T) {
 		query := `{ issues { id title status } }`
@@ -80,11 +80,11 @@ func TestExecuteQuery(t *testing.T) {
 		}
 
 		if len(data.Issues) != 3 {
-			t.Errorf("expected 3 beans, got %d", len(data.Issues))
+			t.Errorf("expected 3 issues, got %d", len(data.Issues))
 		}
 	})
 
-	t.Run("query single bean by id", func(t *testing.T) {
+	t.Run("query single issue by id", func(t *testing.T) {
 		query := `{ issue(id: "test-1") { id title } }`
 		result, err := executeQuery(query, nil, "")
 		if err != nil {
@@ -105,8 +105,8 @@ func TestExecuteQuery(t *testing.T) {
 		if data.Issue.ID != "test-1" {
 			t.Errorf("expected id 'test-1', got %q", data.Issue.ID)
 		}
-		if data.Issue.Title != "First Bean" {
-			t.Errorf("expected title 'First Bean', got %q", data.Issue.Title)
+		if data.Issue.Title != "First Issue" {
+			t.Errorf("expected title 'First Issue', got %q", data.Issue.Title)
 		}
 	})
 
@@ -128,7 +128,7 @@ func TestExecuteQuery(t *testing.T) {
 		}
 
 		if len(data.Issues) != 1 {
-			t.Errorf("expected 1 bean with status 'todo', got %d", len(data.Issues))
+			t.Errorf("expected 1 issue with status 'todo', got %d", len(data.Issues))
 		}
 		if len(data.Issues) > 0 && data.Issues[0].ID != "test-1" {
 			t.Errorf("expected issue ID 'test-1', got %q", data.Issues[0].ID)
@@ -136,11 +136,11 @@ func TestExecuteQuery(t *testing.T) {
 	})
 
 	t.Run("query with variables", func(t *testing.T) {
-		query := `query GetBean($id: ID!) { issue(id: $id) { id title } }`
+		query := `query GetIssue($id: ID!) { issue(id: $id) { id title } }`
 		variables := map[string]any{
 			"id": "test-2",
 		}
-		result, err := executeQuery(query, variables, "GetBean")
+		result, err := executeQuery(query, variables, "GetIssue")
 		if err != nil {
 			t.Fatalf("executeQuery() error = %v", err)
 		}
@@ -161,7 +161,7 @@ func TestExecuteQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("query nonexistent bean returns null", func(t *testing.T) {
+	t.Run("query nonexistent issue returns null", func(t *testing.T) {
 		query := `{ issue(id: "nonexistent") { id } }`
 		result, err := executeQuery(query, nil, "")
 		if err != nil {
@@ -179,7 +179,7 @@ func TestExecuteQuery(t *testing.T) {
 		}
 
 		if data.Issue != nil {
-			t.Errorf("expected null bean, got %+v", data.Issue)
+			t.Errorf("expected null issue, got %+v", data.Issue)
 		}
 	})
 
@@ -202,31 +202,31 @@ func TestExecuteQueryWithRelationships(t *testing.T) {
 	// Create parent issue
 	parent := &issue.Issue{
 		ID:     "parent-1",
-		Slug:   "parent-bean",
-		Title:  "Parent Bean",
+		Slug:   "parent-issue",
+		Title:  "Parent Issue",
 		Status: "todo",
 	}
 	if err := testCore.Create(parent); err != nil {
 		t.Fatalf("failed to create parent issue: %v", err)
 	}
 
-	// Create child bean with parent link
+	// Create child issue with parent link
 	child := &issue.Issue{
 		ID:     "child-1",
-		Slug:   "child-bean",
-		Title:  "Child Bean",
+		Slug:   "child-issue",
+		Title:  "Child Issue",
 		Status: "todo",
 		Parent: "parent-1",
 	}
 	if err := testCore.Create(child); err != nil {
-		t.Fatalf("failed to create child bean: %v", err)
+		t.Fatalf("failed to create child issue: %v", err)
 	}
 
 	// Create blocker issue
 	blocker := &issue.Issue{
 		ID:     "blocker-1",
-		Slug:   "blocker-bean",
-		Title:  "Blocker Bean",
+		Slug:   "blocker-issue",
+		Title:  "Blocker Issue",
 		Status: "todo",
 		Blocking: []string{"child-1"},
 	}
@@ -343,7 +343,7 @@ func TestExecuteQueryWithRelationships(t *testing.T) {
 		}
 
 		if len(data.Issue.Blocking) != 1 {
-			t.Errorf("expected 1 blocked bean, got %d", len(data.Issue.Blocking))
+			t.Errorf("expected 1 blocked issue, got %d", len(data.Issue.Blocking))
 		}
 		if len(data.Issue.Blocking) > 0 && data.Issue.Blocking[0].ID != "child-1" {
 			t.Errorf("expected blocked id 'child-1', got %q", data.Issue.Blocking[0].ID)
@@ -355,7 +355,7 @@ func TestExecuteQueryWithFilters(t *testing.T) {
 	testCore, cleanup := setupQueryTestCore(t)
 	defer cleanup()
 
-	// Create beans with different types and priorities
+	// Create issues with different types and priorities
 	b1 := &issue.Issue{
 		ID:       "bug-1",
 		Slug:     "bug-one",
@@ -407,7 +407,7 @@ func TestExecuteQueryWithFilters(t *testing.T) {
 		}
 
 		if len(data.Issues) != 1 {
-			t.Errorf("expected 1 bean with type 'bug', got %d", len(data.Issues))
+			t.Errorf("expected 1 issue with type 'bug', got %d", len(data.Issues))
 		}
 	})
 
@@ -430,7 +430,7 @@ func TestExecuteQueryWithFilters(t *testing.T) {
 		}
 
 		if len(data.Issues) != 2 {
-			t.Errorf("expected 2 beans with priority 'critical' or 'high', got %d", len(data.Issues))
+			t.Errorf("expected 2 issues with priority 'critical' or 'high', got %d", len(data.Issues))
 		}
 	})
 
@@ -476,11 +476,11 @@ func TestExecuteQueryWithFilters(t *testing.T) {
 		}
 
 		if len(data.Issues) != 2 {
-			t.Errorf("expected 2 beans (excluding completed), got %d", len(data.Issues))
+			t.Errorf("expected 2 issues (excluding completed), got %d", len(data.Issues))
 		}
 		for _, b := range data.Issues {
 			if b.Status == "completed" {
-				t.Errorf("should not include completed beans, got bean with status %q", b.Status)
+				t.Errorf("should not include completed issues, got issue with status %q", b.Status)
 			}
 		}
 	})
@@ -503,7 +503,7 @@ func TestExecuteQueryWithFilters(t *testing.T) {
 		}
 
 		if len(data.Issues) != 2 {
-			t.Errorf("expected 2 beans matching combined filters, got %d", len(data.Issues))
+			t.Errorf("expected 2 issues matching combined filters, got %d", len(data.Issues))
 		}
 	})
 }

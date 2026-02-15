@@ -70,7 +70,7 @@ func TestSuccess(t *testing.T) {
 		t.Errorf("message = %q, want %q", resp.Message, "Issue created")
 	}
 	if resp.Issue == nil {
-		t.Fatal("expected bean to be present")
+		t.Fatal("expected issue to be present")
 	}
 	if resp.Issue.ID != "test-1" {
 		t.Errorf("issue.ID = %q, want %q", resp.Issue.ID, "test-1")
@@ -101,7 +101,7 @@ func TestSuccessWithWarnings(t *testing.T) {
 }
 
 func TestSuccessSingle(t *testing.T) {
-	b := &issue.Issue{ID: "test-1", Title: "Direct Bean", Status: "todo"}
+	b := &issue.Issue{ID: "test-1", Title: "Direct Issue", Status: "todo"}
 
 	output := captureStdout(t, func() {
 		_ = SuccessSingle(b)
@@ -115,8 +115,8 @@ func TestSuccessSingle(t *testing.T) {
 	if result["id"] != "test-1" {
 		t.Errorf("id = %v, want %q", result["id"], "test-1")
 	}
-	if result["title"] != "Direct Bean" {
-		t.Errorf("title = %v, want %q", result["title"], "Direct Bean")
+	if result["title"] != "Direct Issue" {
+		t.Errorf("title = %v, want %q", result["title"], "Direct Issue")
 	}
 	// Should NOT have the Response wrapper fields
 	if _, ok := result["success"]; ok {
@@ -125,13 +125,13 @@ func TestSuccessSingle(t *testing.T) {
 }
 
 func TestSuccessMultiple(t *testing.T) {
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "b1", Title: "First", Status: "todo"},
 		{ID: "b2", Title: "Second", Status: "todo"},
 	}
 
 	output := captureStdout(t, func() {
-		_ = SuccessMultiple(beans)
+		_ = SuccessMultiple(issues)
 	})
 
 	// SuccessMultiple outputs a JSON array directly
@@ -180,13 +180,13 @@ func TestSuccessMessage(t *testing.T) {
 		t.Errorf("message = %q, want %q", resp.Message, "All done")
 	}
 	if resp.Issue != nil {
-		t.Error("expected no bean in message-only response")
+		t.Error("expected no issue in message-only response")
 	}
 }
 
 func TestSuccessInit(t *testing.T) {
 	output := captureStdout(t, func() {
-		_ = SuccessInit("/path/to/.beans")
+		_ = SuccessInit("/path/to/.issues")
 	})
 
 	var resp Response
@@ -196,8 +196,8 @@ func TestSuccessInit(t *testing.T) {
 	if !resp.Success {
 		t.Error("expected success=true")
 	}
-	if resp.Path != "/path/to/.beans" {
-		t.Errorf("path = %q, want %q", resp.Path, "/path/to/.beans")
+	if resp.Path != "/path/to/.issues" {
+		t.Errorf("path = %q, want %q", resp.Path, "/path/to/.issues")
 	}
 	if resp.Message != "Initialized data directory" {
 		t.Errorf("message = %q, want %q", resp.Message, "Initialized data directory")
@@ -209,15 +209,15 @@ func TestError(t *testing.T) {
 	var returnedErr error
 
 	output = captureStdout(t, func() {
-		returnedErr = Error(ErrNotFound, "bean not found")
+		returnedErr = Error(ErrNotFound, "issue not found")
 	})
 
 	// Should return an error
 	if returnedErr == nil {
 		t.Fatal("Error() should return a non-nil error")
 	}
-	if returnedErr.Error() != "bean not found" {
-		t.Errorf("returned error = %q, want %q", returnedErr.Error(), "bean not found")
+	if returnedErr.Error() != "issue not found" {
+		t.Errorf("returned error = %q, want %q", returnedErr.Error(), "issue not found")
 	}
 
 	// Should output JSON with success=false
@@ -231,8 +231,8 @@ func TestError(t *testing.T) {
 	if resp.Code != ErrNotFound {
 		t.Errorf("code = %q, want %q", resp.Code, ErrNotFound)
 	}
-	if resp.Error != "bean not found" {
-		t.Errorf("error = %q, want %q", resp.Error, "bean not found")
+	if resp.Error != "issue not found" {
+		t.Errorf("error = %q, want %q", resp.Error, "issue not found")
 	}
 }
 
@@ -274,10 +274,10 @@ func TestResponseOmitsEmptyFields(t *testing.T) {
 		t.Fatalf("invalid JSON: %v", err)
 	}
 	if _, ok := raw["issue"]; ok {
-		t.Error("expected 'bean' field to be omitted when nil")
+		t.Error("expected 'issue' field to be omitted when nil")
 	}
-	if _, ok := raw["beans"]; ok {
-		t.Error("expected 'beans' field to be omitted when nil")
+	if _, ok := raw["issues"]; ok {
+		t.Error("expected 'issues' field to be omitted when nil")
 	}
 	if _, ok := raw["warnings"]; ok {
 		t.Error("expected 'warnings' field to be omitted when nil")

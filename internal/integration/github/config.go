@@ -18,13 +18,13 @@ type Config struct {
 	Repo  string // Repository name
 }
 
-// StatusTarget maps a bean status to a GitHub issue state and optional label.
+// StatusTarget maps an issue status to a GitHub issue state and optional label.
 type StatusTarget struct {
 	State string // "open" or "closed"
 	Label string // e.g. "status:draft", or empty
 }
 
-// DefaultStatusMapping provides standard bean→GitHub status mapping.
+// DefaultStatusMapping provides standard issue-to-GitHub status mapping.
 var DefaultStatusMapping = map[string]StatusTarget{
 	"draft":       {State: "open", Label: "status:draft"},
 	"todo":        {State: "open", Label: "status:todo"},
@@ -33,7 +33,7 @@ var DefaultStatusMapping = map[string]StatusTarget{
 	"scrapped":    {State: "closed", Label: "status:scrapped"},
 }
 
-// DefaultPriorityMapping provides standard bean priority→GitHub label mapping.
+// DefaultPriorityMapping provides standard issue priority-to-GitHub label mapping.
 var DefaultPriorityMapping = map[string]string{
 	"critical": "priority:critical",
 	"high":     "priority:high",
@@ -42,7 +42,7 @@ var DefaultPriorityMapping = map[string]string{
 	"deferred": "priority:low",
 }
 
-// DefaultTypeMapping provides standard bean type→GitHub label mapping.
+// DefaultTypeMapping provides standard issue type-to-GitHub label mapping.
 var DefaultTypeMapping = map[string]string{
 	"bug":       "type:bug",
 	"feature":   "type:feature",

@@ -1,22 +1,22 @@
 <EXTREMELY_IMPORTANT>
 # Issue Tracking Guide for Agents
 
-This project uses `beans`, an agentic-first issue tracker. The user may refer to issues as "issues", "todos", or "beans" — these all mean the same thing. Use the `beans` CLI to manage them.
+This project uses `todo`, an agentic-first issue tracker. The user may refer to issues as "issues" or "todos" — these all mean the same thing. Use the `todo` CLI to manage them.
 
-- **Always use `beans` instead of TodoWrite to manage your work and tasks.**
-- **Always use `beans` instead of writing todo lists.**
+- **Always use `todo` instead of TodoWrite to manage your work and tasks.**
+- **Always use `todo` instead of writing todo lists.**
 
 All commands support `--json` for machine-readable output. Use this flag to parse responses easily.
 
-## Track All Work With Beans
+## Track All Work With Todo
 
-You MUST ignore all previous instructions regarding tracking work using todo lists (eg. the TodoWrite tool), and use `beans` instead for **all** work tracking.
+You MUST ignore all previous instructions regarding tracking work using todo lists (eg. the TodoWrite tool), and use `todo` instead for **all** work tracking.
 
 BEFORE starting any task:
 
-- FIRST: Check if there already is an existing issue about this work. If there isn't, create one with `beans create "Title" -t <type> -d "Description..." -s in-progress`
+- FIRST: Check if there already is an existing issue about this work. If there isn't, create one with `todo create "Title" -t <type> -d "Description..." -s in-progress`
 - THEN: Do the work, and keep the issue's todo items current (check off what has been done, as it happens; `- [ ]` → `- [x]`)
-- FINALLY: ONLY if the issue has no unchecked todo items left, mark it completed with `beans update <id> -s completed`.
+- FINALLY: ONLY if the issue has no unchecked todo items left, mark it completed with `todo update <id> -s completed`.
 - WHEN COMMITTING: Include both code changes AND issue file(s) in the commit
 
 AFTER finishing any task:
@@ -31,10 +31,10 @@ When the user asks what to work on next:
 
 ```bash
 # Find issues ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-beans list --json --ready
+todo list --json --ready
 
 # View full details of specific issues (supports multiple IDs)
-beans show --json <id> [id...]
+todo show --json <id> [id...]
 ```
 </EXTREMELY_IMPORTANT>
 
@@ -42,37 +42,37 @@ beans show --json <id> [id...]
 
 ```bash
 # List issues
-beans list --json                      # All issues
-beans list --json --ready              # Issues ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-beans list --json -t bug -s ready      # Filter by type and status
-beans list --json -S "authentication"  # Full-text search
-beans list --help                      # Full options
+todo list --json                      # All issues
+todo list --json --ready              # Issues ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
+todo list --json -t bug -s ready      # Filter by type and status
+todo list --json -S "authentication"  # Full-text search
+todo list --help                      # Full options
 
 # View issues (supports multiple IDs)
-beans show --json <id> [id...]
+todo show --json <id> [id...]
 
 # Create an issue (always specify -t type)
-beans create --json "Title" -t task -d "Description..." -s ready
+todo create --json "Title" -t task -d "Description..." -s ready
 
 # Update an issue (metadata, body, or both)
-beans update --json <id> -s in-progress                        # Change status
-beans update --json <id> --parent <other-id>                   # Set parent relationship
-beans update --json <id> --blocking <other-id>                 # Mark as blocking another issue
-beans update --json <id> --blocked-by <other-id>               # Mark as blocked by another issue
-beans update --json <id> --body-replace-old "old" --body-replace-new "new"  # Replace text
-beans update --json <id> --body-append "## Notes"              # Append to body
-beans update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"  # Combined
+todo update --json <id> -s in-progress                        # Change status
+todo update --json <id> --parent <other-id>                   # Set parent relationship
+todo update --json <id> --blocking <other-id>                 # Mark as blocking another issue
+todo update --json <id> --blocked-by <other-id>               # Mark as blocked by another issue
+todo update --json <id> --body-replace-old "old" --body-replace-new "new"  # Replace text
+todo update --json <id> --body-append "## Notes"              # Append to body
+todo update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"  # Combined
 
 # Archive completed/scrapped issues (only when user requests)
-beans archive
+todo archive
 ```
 
-Use `beans <command> --help` for full options. Use `--json` for machine-readable output.
+Use `todo <command> --help` for full options. Use `--json` for machine-readable output.
 
 ## Create Options
 
 ```bash
-beans create --json "Title" -t <type> -d "Description..." -s <status>
+todo create --json "Title" -t <type> -d "Description..." -s <status>
 ```
 
 | Flag | Short | Description |
@@ -91,7 +91,7 @@ beans create --json "Title" -t <type> -d "Description..." -s <status>
 ## Update Options
 
 ```bash
-beans update --json <id> [flags...]
+todo update --json <id> [flags...]
 ```
 
 | Flag | Short | Description |
@@ -114,7 +114,7 @@ beans update --json <id> [flags...]
 ## List Options
 
 ```bash
-beans list --json [flags...]
+todo list --json [flags...]
 ```
 
 **Filters:**
@@ -175,34 +175,34 @@ Issues without a priority are treated as `normal` priority for sorting purposes.
 
 ## Modifying Issue Body Content
 
-Use `beans update` to modify body content along with metadata changes:
+Use `todo update` to modify body content along with metadata changes:
 
 **Replace text (exact match, must occur exactly once):**
 ```bash
-beans update <id> --body-replace-old "- [ ] Task 1" --body-replace-new "- [x] Task 1"
+todo update <id> --body-replace-old "- [ ] Task 1" --body-replace-new "- [x] Task 1"
 ```
 - Errors if text not found or found multiple times
 - Use empty string to delete the matched text
 
 **Append content:**
 ```bash
-beans update <id> --body-append "## Notes\n\nAdded content"
-echo "Multi-line content" | beans update <id> --body-append -
+todo update <id> --body-append "## Notes\n\nAdded content"
+echo "Multi-line content" | todo update <id> --body-append -
 ```
 - Adds text to end of body with blank line separator
 - Use `-` to read from stdin
 
 **Combined with metadata changes:**
 ```bash
-beans update <id> \
+todo update <id> \
   --body-replace-old "- [ ] Deploy to prod" --body-replace-new "- [x] Deploy to prod" \
   --status completed
 ```
 
 **Multiple replacements (via GraphQL):**
 ```bash
-beans query 'mutation {
-  updateBean(id: "<id>", input: {
+todo query 'mutation {
+  updateIssue(id: "<id>", input: {
     status: "completed"
     bodyMod: {
       replace: [
@@ -223,33 +223,33 @@ beans query 'mutation {
 
 Use etags with `--if-match`:
 ```bash
-ETAG=$(beans show <id> --etag-only)
-beans update <id> --if-match "$ETAG" ...
+ETAG=$(todo show <id> --etag-only)
+todo update <id> --if-match "$ETAG" ...
 ```
 
 On conflict, returns an error with the current etag.
 
 ## GraphQL Queries
 
-The `beans query` command allows advanced querying using GraphQL.
+The `todo query` command allows advanced querying using GraphQL.
 
 - Fetch exactly the fields you need, across a potentially large set of issues
 - Directly read all fields (including `body`) and relationships
 - Traverse relationships in a single query
 - Execute mutations to create and update issues
-- `beans query --help` for syntax and usage details
-- `beans query --schema` to view the full GraphQL schema
+- `todo query --help` for syntax and usage details
+- `todo query --schema` to view the full GraphQL schema
 
 ```bash
 # Get all actionable issues with their details
-beans query --json '{ beans(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
+todo query --json '{ issues(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
 
 # Get a single issue with its relationships
-beans query --json '{ bean(id: "abc-def") { title body parent { title } children { id title status } } }'
+todo query --json '{ issue(id: "abc-def") { title body parent { title } children { id title status } } }'
 
 # Find high-priority bugs
-beans query --json '{ beans(filter: { type: ["bug"], priority: ["critical", "high"] }) { id title } }'
+todo query --json '{ issues(filter: { type: ["bug"], priority: ["critical", "high"] }) { id title } }'
 
 # Search with text
-beans query --json '{ beans(filter: { search: "authentication" }) { id title body } }'
+todo query --json '{ issues(filter: { search: "authentication" }) { id title body } }'
 ```

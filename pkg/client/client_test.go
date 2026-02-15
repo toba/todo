@@ -28,9 +28,9 @@ func TestNew_Defaults(t *testing.T) {
 }
 
 func TestNew_WithOptions(t *testing.T) {
-	c := New(WithBinPath("/usr/local/bin/beans"), WithDataPath("/tmp/test"))
-	if c.binPath != "/usr/local/bin/beans" {
-		t.Errorf("binPath = %q, want %q", c.binPath, "/usr/local/bin/beans")
+	c := New(WithBinPath("/usr/local/bin/todo"), WithDataPath("/tmp/test"))
+	if c.binPath != "/usr/local/bin/todo" {
+		t.Errorf("binPath = %q, want %q", c.binPath, "/usr/local/bin/todo")
 	}
 	if c.dataPath != "/tmp/test" {
 		t.Errorf("dataPath = %q, want %q", c.dataPath, "/tmp/test")
@@ -42,7 +42,7 @@ func TestQuery_BasicArgs(t *testing.T) {
 	c := New()
 	c.newCmd = fn
 
-	_, err := c.Query(`{ beans { id } }`, nil)
+	_, err := c.Query(`{ issues { id } }`, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestQuery_BasicArgs(t *testing.T) {
 	if args[1] != "graphql" || args[2] != "--json" {
 		t.Errorf("args[1:3] = %v, want [graphql --json]", args[1:3])
 	}
-	if args[len(args)-1] != `{ beans { id } }` {
+	if args[len(args)-1] != `{ issues { id } }` {
 		t.Errorf("last arg = %q, want query string", args[len(args)-1])
 	}
 }
@@ -68,7 +68,7 @@ func TestQuery_NoVariables(t *testing.T) {
 	c := New()
 	c.newCmd = fn
 
-	_, _ = c.Query(`{ beans { id } }`, nil)
+	_, _ = c.Query(`{ issues { id } }`, nil)
 
 	args := (*calls)[0]
 	for _, a := range args {
@@ -83,7 +83,7 @@ func TestQuery_WithDataPath(t *testing.T) {
 	c := New(WithDataPath("/tmp/test"))
 	c.newCmd = fn
 
-	_, _ = c.Query(`{ beans { id } }`, nil)
+	_, _ = c.Query(`{ issues { id } }`, nil)
 
 	args := (*calls)[0]
 	found := false
@@ -100,13 +100,13 @@ func TestQuery_WithDataPath(t *testing.T) {
 
 func TestQuery_WithBinPath(t *testing.T) {
 	fn, calls := mockCmd(`{}`)
-	c := New(WithBinPath("/opt/beans"))
+	c := New(WithBinPath("/opt/todo"))
 	c.newCmd = fn
 
-	_, _ = c.Query(`{ beans { id } }`, nil)
+	_, _ = c.Query(`{ issues { id } }`, nil)
 
-	if (*calls)[0][0] != "/opt/beans" {
-		t.Errorf("binary = %q, want %q", (*calls)[0][0], "/opt/beans")
+	if (*calls)[0][0] != "/opt/todo" {
+		t.Errorf("binary = %q, want %q", (*calls)[0][0], "/opt/todo")
 	}
 }
 
@@ -116,7 +116,7 @@ func TestQuery_WithVariables(t *testing.T) {
 	c.newCmd = fn
 
 	vars := map[string]any{"id": "abc", "name": "test"}
-	_, err := c.Query(`query ($id: ID!) { bean(id: $id) { id } }`, vars)
+	_, err := c.Query(`query ($id: ID!) { issue(id: $id) { id } }`, vars)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,18 +147,18 @@ func TestQuery_WithVariables(t *testing.T) {
 
 func TestQuery_ErrorHandling(t *testing.T) {
 	c := New(WithBinPath("false")) // "false" exits with code 1
-	_, err := c.Query(`{ beans { id } }`, nil)
+	_, err := c.Query(`{ issues { id } }`, nil)
 	if err == nil {
 		t.Fatal("expected error from failing command")
 	}
 }
 
 func TestSetSyncData(t *testing.T) {
-	fn, calls := mockCmd(`{"setSyncData":{"id":"beans-abc"}}`)
+	fn, calls := mockCmd(`{"setSyncData":{"id":"test-abc"}}`)
 	c := New()
 	c.newCmd = fn
 
-	err := c.SetSyncData("beans-abc", "myext", map[string]any{"key": "val"})
+	err := c.SetSyncData("test-abc", "myext", map[string]any{"key": "val"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,8 +176,8 @@ func TestSetSyncData(t *testing.T) {
 
 	// Verify variables are correct
 	vars := extractVars(t, args)
-	if vars["id"] != "beans-abc" {
-		t.Errorf("vars[id] = %v, want beans-abc", vars["id"])
+	if vars["id"] != "test-abc" {
+		t.Errorf("vars[id] = %v, want test-abc", vars["id"])
 	}
 	if vars["name"] != "myext" {
 		t.Errorf("vars[name] = %v, want myext", vars["name"])
@@ -241,11 +241,11 @@ func TestSetSyncDataBatch(t *testing.T) {
 }
 
 func TestRemoveSyncData(t *testing.T) {
-	fn, calls := mockCmd(`{"removeSyncData":{"id":"beans-abc"}}`)
+	fn, calls := mockCmd(`{"removeSyncData":{"id":"test-abc"}}`)
 	c := New()
 	c.newCmd = fn
 
-	err := c.RemoveSyncData("beans-abc", "myext")
+	err := c.RemoveSyncData("test-abc", "myext")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,20 +265,20 @@ func TestRemoveSyncData(t *testing.T) {
 	}
 
 	vars := extractVars(t, args)
-	if vars["id"] != "beans-abc" {
-		t.Errorf("vars[id] = %v, want beans-abc", vars["id"])
+	if vars["id"] != "test-abc" {
+		t.Errorf("vars[id] = %v, want test-abc", vars["id"])
 	}
 	if vars["name"] != "myext" {
 		t.Errorf("vars[name] = %v, want myext", vars["name"])
 	}
 }
 
-func TestBean_JSONRoundtrip(t *testing.T) {
+func TestIssue_JSONRoundtrip(t *testing.T) {
 	// Verify the issue struct decodes CLI JSON output correctly.
 	input := `{
-		"id": "beans-abc",
-		"slug": "my-bean",
-		"path": "beans-abc--my-issue.md",
+		"id": "test-abc",
+		"slug": "my-issue",
+		"path": "test-abc--my-issue.md",
 		"title": "My Issue",
 		"status": "todo",
 		"type": "task",
@@ -287,8 +287,8 @@ func TestBean_JSONRoundtrip(t *testing.T) {
 		"created_at": "2025-01-01T00:00:00Z",
 		"updated_at": "2025-01-02T00:00:00Z",
 		"body": "Some body content",
-		"parent": "beans-xyz",
-		"blocked_by": ["beans-123"],
+		"parent": "test-xyz",
+		"blocked_by": ["test-123"],
 		"sync": {"myext": {"key": "val"}},
 		"etag": "abcdef1234567890"
 	}`
@@ -298,8 +298,8 @@ func TestBean_JSONRoundtrip(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 
-	if b.ID != "beans-abc" {
-		t.Errorf("ID = %q", b.ID)
+	if b.ID != "test-abc" {
+		t.Errorf("ID = %q, want test-abc", b.ID)
 	}
 	if b.Title != "My Issue" {
 		t.Errorf("Title = %q", b.Title)
@@ -310,10 +310,10 @@ func TestBean_JSONRoundtrip(t *testing.T) {
 	if len(b.Tags) != 2 || b.Tags[0] != "cli" {
 		t.Errorf("Tags = %v", b.Tags)
 	}
-	if b.Parent != "beans-xyz" {
-		t.Errorf("Parent = %q", b.Parent)
+	if b.Parent != "test-xyz" {
+		t.Errorf("Parent = %q, want test-xyz", b.Parent)
 	}
-	if len(b.BlockedBy) != 1 || b.BlockedBy[0] != "beans-123" {
+	if len(b.BlockedBy) != 1 || b.BlockedBy[0] != "test-123" {
 		t.Errorf("BlockedBy = %v", b.BlockedBy)
 	}
 	if b.Sync["myext"]["key"] != "val" {

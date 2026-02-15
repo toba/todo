@@ -7,7 +7,7 @@ import (
 )
 
 func TestBuildTree(t *testing.T) {
-	// Create test beans with parent relationships:
+	// Create test issues with parent relationships:
 	// milestone1
 	//   └── epic1
 	//       └── task1
@@ -18,13 +18,13 @@ func TestBuildTree(t *testing.T) {
 	task1 := &issue.Issue{ID: "t1", Title: "Task 1", Type: "task", Parent: "e1"}
 	task2 := &issue.Issue{ID: "t2", Title: "Task 2", Type: "task"} // orphan
 
-	allBeans := []*issue.Issue{milestone1, epic1, task1, task2}
+	allIssues := []*issue.Issue{milestone1, epic1, task1, task2}
 
 	// Identity sort function (no sorting)
 	noSort := func(b []*issue.Issue) {}
 
 	t.Run("all issues matched", func(t *testing.T) {
-		tree := BuildTree(allBeans, allBeans, noSort)
+		tree := BuildTree(allIssues, allIssues, noSort)
 
 		// Should have 2 root nodes: milestone1 and task2
 		if len(tree) != 2 {
@@ -67,8 +67,8 @@ func TestBuildTree(t *testing.T) {
 
 	t.Run("filter leaf only - ancestors included", func(t *testing.T) {
 		// Only task1 matched, but ancestors should be included
-		matchedBeans := []*issue.Issue{task1}
-		tree := BuildTree(matchedBeans, allBeans, noSort)
+		matchedIssues := []*issue.Issue{task1}
+		tree := BuildTree(matchedIssues, allIssues, noSort)
 
 		// Should have 1 root: milestone (as ancestor)
 		if len(tree) != 1 {
@@ -104,8 +104,8 @@ func TestBuildTree(t *testing.T) {
 
 	t.Run("filter middle - ancestors included", func(t *testing.T) {
 		// Only epic1 matched
-		matchedBeans := []*issue.Issue{epic1}
-		tree := BuildTree(matchedBeans, allBeans, noSort)
+		matchedIssues := []*issue.Issue{epic1}
+		tree := BuildTree(matchedIssues, allIssues, noSort)
 
 		// Should have 1 root: milestone (ancestor)
 		if len(tree) != 1 {
@@ -128,9 +128,9 @@ func TestBuildTree(t *testing.T) {
 		}
 	})
 
-	t.Run("orphan bean", func(t *testing.T) {
-		matchedBeans := []*issue.Issue{task2}
-		tree := BuildTree(matchedBeans, allBeans, noSort)
+	t.Run("orphan issue", func(t *testing.T) {
+		matchedIssues := []*issue.Issue{task2}
+		tree := BuildTree(matchedIssues, allIssues, noSort)
 
 		if len(tree) != 1 {
 			t.Errorf("expected 1 root node, got %d", len(tree))
@@ -144,19 +144,19 @@ func TestBuildTree(t *testing.T) {
 	})
 
 	t.Run("broken parent link", func(t *testing.T) {
-		// Bean with parent that doesn't exist
-		brokenBean := &issue.Issue{ID: "broken", Title: "Broken", Parent: "nonexistent"}
-		matchedBeans := []*issue.Issue{brokenBean}
-		allBeansWithBroken := append(allBeans, brokenBean)
+		// Issue with parent that doesn't exist
+		brokenIssue := &issue.Issue{ID: "broken", Title: "Broken", Parent: "nonexistent"}
+		matchedIssues := []*issue.Issue{brokenIssue}
+		allIssuesWithBroken := append(allIssues, brokenIssue)
 
-		tree := BuildTree(matchedBeans, allBeansWithBroken, noSort)
+		tree := BuildTree(matchedIssues, allIssuesWithBroken, noSort)
 
 		// Should be treated as root (parent not found)
 		if len(tree) != 1 {
 			t.Errorf("expected 1 root node, got %d", len(tree))
 		}
 		if tree[0].Issue.ID != "broken" {
-			t.Errorf("expected broken bean as root, got %s", tree[0].Issue.ID)
+			t.Errorf("expected broken issue as root, got %s", tree[0].Issue.ID)
 		}
 	})
 }

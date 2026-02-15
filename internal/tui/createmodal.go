@@ -7,8 +7,8 @@ import (
 	"github.com/toba/todo/internal/ui"
 )
 
-// beanCreatedMsg is sent when a new bean is created
-type beanCreatedMsg struct {
+// issueCreatedMsg is sent when a new issue is created
+type issueCreatedMsg struct {
 	title string
 }
 
@@ -18,7 +18,7 @@ type closeCreateModalMsg struct{}
 // openCreateModalMsg requests opening the create modal
 type openCreateModalMsg struct{}
 
-// createModalModel is the model for the create bean modal
+// createModalModel is the model for the create issue modal
 type createModalModel struct {
 	textInput textinput.Model
 	width     int
@@ -61,7 +61,7 @@ func (m createModalModel) Update(msg tea.Msg) (createModalModel, tea.Cmd) {
 			title := m.textInput.Value()
 			if title != "" {
 				return m, func() tea.Msg {
-					return beanCreatedMsg{title: title}
+					return issueCreatedMsg{title: title}
 				}
 			}
 			// Empty title - just close

@@ -55,41 +55,41 @@ func (n *TreeNode) ToJSON(includeFull bool) *TreeNodeJSON {
 	return json
 }
 
-// BuildTree builds a tree structure from filtered beans, including ancestors for context.
-// matchedBeans: beans that matched the filter
-// allBeans: all issues (needed to find ancestors)
-// sortFn: function to sort beans at each level
-func BuildTree(matchedBeans []*issue.Issue, allBeans []*issue.Issue, sortFn func([]*issue.Issue)) []*TreeNode {
+// BuildTree builds a tree structure from filtered issues, including ancestors for context.
+// matchedIssues: issues that matched the filter
+// allIssues: all issues (needed to find ancestors)
+// sortFn: function to sort issues at each level
+func BuildTree(matchedIssues []*issue.Issue, allIssues []*issue.Issue, sortFn func([]*issue.Issue)) []*TreeNode {
 	// Build index of all issues by ID
-	beanByID := make(map[string]*issue.Issue)
-	for _, b := range allBeans {
-		beanByID[b.ID] = b
+	issueByID := make(map[string]*issue.Issue)
+	for _, b := range allIssues {
+		issueByID[b.ID] = b
 	}
 
 	// Build set of matched issue IDs
 	matchedSet := make(map[string]bool)
-	for _, b := range matchedBeans {
+	for _, b := range matchedIssues {
 		matchedSet[b.ID] = true
 	}
 
 	// Find all ancestors needed for context
 	// Start with matched issues, then walk up parent links
-	neededBeans := make(map[string]*issue.Issue)
-	for _, b := range matchedBeans {
-		neededBeans[b.ID] = b
+	neededIssues := make(map[string]*issue.Issue)
+	for _, b := range matchedIssues {
+		neededIssues[b.ID] = b
 	}
 
 	// Add ancestors of matched issues
-	for _, b := range matchedBeans {
-		addAncestors(b, beanByID, neededBeans)
+	for _, b := range matchedIssues {
+		addAncestors(b, issueByID, neededIssues)
 	}
 
 	// Build children index (parent ID -> children)
 	children := make(map[string][]*issue.Issue)
-	for _, b := range neededBeans {
+	for _, b := range neededIssues {
 		if b.Parent != "" {
 			// Only add as child if parent is in our needed set
-			if _, ok := neededBeans[b.Parent]; ok {
+			if _, ok := neededIssues[b.Parent]; ok {
 				children[b.Parent] = append(children[b.Parent], b)
 			}
 		}
@@ -100,14 +100,14 @@ func BuildTree(matchedBeans []*issue.Issue, allBeans []*issue.Issue, sortFn func
 		sortFn(children[parentID])
 	}
 
-	// Find root beans (no parent or parent not in needed set)
+	// Find root issues (no parent or parent not in needed set)
 	var roots []*issue.Issue
-	for _, b := range neededBeans {
+	for _, b := range neededIssues {
 		if b.Parent == "" {
 			roots = append(roots, b)
 		} else {
 			// Check if parent is in the tree
-			if _, ok := neededBeans[b.Parent]; !ok {
+			if _, ok := neededIssues[b.Parent]; !ok {
 				roots = append(roots, b)
 			}
 		}
@@ -119,11 +119,11 @@ func BuildTree(matchedBeans []*issue.Issue, allBeans []*issue.Issue, sortFn func
 }
 
 // addAncestors recursively adds all ancestors of an issue to the needed set.
-func addAncestors(b *issue.Issue, beanByID map[string]*issue.Issue, needed map[string]*issue.Issue) {
+func addAncestors(b *issue.Issue, issueByID map[string]*issue.Issue, needed map[string]*issue.Issue) {
 	if b.Parent == "" {
 		return
 	}
-	parent, ok := beanByID[b.Parent]
+	parent, ok := issueByID[b.Parent]
 	if !ok {
 		return // parent doesn't exist (broken link)
 	}
@@ -131,13 +131,13 @@ func addAncestors(b *issue.Issue, beanByID map[string]*issue.Issue, needed map[s
 		return // already processed
 	}
 	needed[b.Parent] = parent
-	addAncestors(parent, beanByID, needed)
+	addAncestors(parent, issueByID, needed)
 }
 
-// buildNodes recursively builds TreeNodes from beans.
-func buildNodes(beans []*issue.Issue, children map[string][]*issue.Issue, matchedSet map[string]bool) []*TreeNode {
-	nodes := make([]*TreeNode, len(beans))
-	for i, b := range beans {
+// buildNodes recursively builds TreeNodes from issues.
+func buildNodes(issues []*issue.Issue, children map[string][]*issue.Issue, matchedSet map[string]bool) []*TreeNode {
+	nodes := make([]*TreeNode, len(issues))
+	for i, b := range issues {
 		nodes[i] = &TreeNode{
 			Issue:     b,
 			Matched:  matchedSet[b.ID],

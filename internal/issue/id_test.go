@@ -56,12 +56,12 @@ func TestParseFilename(t *testing.T) {
 	}{
 		// New format with double-dash
 		{"new format basic", "abc--my-slug.md", "abc", "my-slug"},
-		{"new format with prefix", "beans-z5r9--add-unit-tests.md", "beans-z5r9", "add-unit-tests"},
+		{"new format with prefix", "todo-z5r9--add-unit-tests.md", "todo-z5r9", "add-unit-tests"},
 		{"new format long slug", "xyz--this-is-a-longer-slug.md", "xyz", "this-is-a-longer-slug"},
 
 		// Dot format
 		{"dot format basic", "abc.my-slug.md", "abc", "my-slug"},
-		{"dot format with prefix", "beans-z5r9.add-unit-tests.md", "beans-z5r9", "add-unit-tests"},
+		{"dot format with prefix", "todo-z5r9.add-unit-tests.md", "todo-z5r9", "add-unit-tests"},
 
 		// Legacy format with single dash
 		{"legacy format basic", "abc-my-slug.md", "abc", "my-slug"},
@@ -69,7 +69,7 @@ func TestParseFilename(t *testing.T) {
 
 		// ID only
 		{"id only with md", "abc.md", "abc", ""},
-		{"id only with prefix", "beans-z5r9.md", "beans", "z5r9"}, // legacy format interpretation
+		{"id only with prefix", "todo-z5r9.md", "todo", "z5r9"}, // legacy format interpretation
 		{"id only no extension", "abc", "abc", ""},
 
 		// Edge cases
@@ -97,7 +97,7 @@ func TestBuildFilename(t *testing.T) {
 	}{
 		{"with slug", "abc", "my-slug", "abc--my-slug.md"},
 		{"empty slug", "abc", "", "abc.md"},
-		{"with prefix id", "beans-z5r9", "add-tests", "beans-z5r9--add-tests.md"},
+		{"with prefix id", "todo-z5r9", "add-tests", "todo-z5r9--add-tests.md"},
 		{"long slug", "xyz", "this-is-a-longer-slug", "xyz--this-is-a-longer-slug.md"},
 	}
 

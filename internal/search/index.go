@@ -1,4 +1,4 @@
-// Package search provides full-text search functionality for beans using Bleve.
+// Package search provides full-text search functionality for issues using Bleve.
 package search
 
 import (
@@ -7,13 +7,13 @@ import (
 	"github.com/toba/todo/internal/issue"
 )
 
-// Index wraps a Bleve in-memory index for searching beans.
+// Index wraps a Bleve in-memory index for searching issues.
 type Index struct {
 	index bleve.Index
 }
 
-// beanDocument is the structure stored in the Bleve index.
-type beanDocument struct {
+// issueDocument is the structure stored in the Bleve index.
+type issueDocument struct {
 	ID    string `json:"id"`
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
@@ -31,7 +31,7 @@ func NewIndex() (*Index, error) {
 	return &Index{index: idx}, nil
 }
 
-// buildIndexMapping creates the Bleve index mapping for bean documents.
+// buildIndexMapping creates the Bleve index mapping for issue documents.
 func buildIndexMapping() mapping.IndexMapping {
 	// Create a text field mapping with the standard analyzer
 	textFieldMapping := bleve.NewTextFieldMapping()
@@ -41,15 +41,15 @@ func buildIndexMapping() mapping.IndexMapping {
 	keywordFieldMapping := bleve.NewKeywordFieldMapping()
 
 	// Create the document mapping
-	beanMapping := bleve.NewDocumentMapping()
-	beanMapping.AddFieldMappingsAt("id", keywordFieldMapping)
-	beanMapping.AddFieldMappingsAt("slug", textFieldMapping)
-	beanMapping.AddFieldMappingsAt("title", textFieldMapping)
-	beanMapping.AddFieldMappingsAt("body", textFieldMapping)
+	issueMapping := bleve.NewDocumentMapping()
+	issueMapping.AddFieldMappingsAt("id", keywordFieldMapping)
+	issueMapping.AddFieldMappingsAt("slug", textFieldMapping)
+	issueMapping.AddFieldMappingsAt("title", textFieldMapping)
+	issueMapping.AddFieldMappingsAt("body", textFieldMapping)
 
 	// Create the index mapping with BM25 scoring for better relevance ranking
 	indexMapping := bleve.NewIndexMapping()
-	indexMapping.DefaultMapping = beanMapping
+	indexMapping.DefaultMapping = issueMapping
 	indexMapping.DefaultAnalyzer = "standard"
 	indexMapping.IndexDynamic = false
 	indexMapping.StoreDynamic = false
@@ -70,7 +70,7 @@ func (idx *Index) Close() error {
 
 // IndexIssue adds or updates an issue in the search index.
 func (idx *Index) IndexIssue(b *issue.Issue) error {
-	doc := beanDocument{
+	doc := issueDocument{
 		ID:    b.ID,
 		Slug:  b.Slug,
 		Title: b.Title,
@@ -119,11 +119,11 @@ func (idx *Index) Search(queryStr string, limit int) ([]string, error) {
 	return ids, nil
 }
 
-// IndexIssues indexes multiple beans in a batch for efficiency.
-func (idx *Index) IndexIssues(beans []*issue.Issue) error {
+// IndexIssues indexes multiple issues in a batch for efficiency.
+func (idx *Index) IndexIssues(issues []*issue.Issue) error {
 	batch := idx.index.NewBatch()
-	for _, b := range beans {
-		doc := beanDocument{
+	for _, b := range issues {
+		doc := issueDocument{
 			ID:    b.ID,
 			Slug:  b.Slug,
 			Title: b.Title,

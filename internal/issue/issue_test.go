@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "basic bean",
+			name: "basic issue",
 			input: `---
 title: Test Issue
 status: todo
@@ -81,7 +81,7 @@ Paragraph text.`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -92,14 +92,14 @@ Paragraph text.`,
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if bean.Title != tt.expectedTitle {
-				t.Errorf("Title = %q, want %q", bean.Title, tt.expectedTitle)
+			if parsed.Title != tt.expectedTitle {
+				t.Errorf("Title = %q, want %q", parsed.Title, tt.expectedTitle)
 			}
-			if bean.Status != tt.expectedStatus {
-				t.Errorf("Status = %q, want %q", bean.Status, tt.expectedStatus)
+			if parsed.Status != tt.expectedStatus {
+				t.Errorf("Status = %q, want %q", parsed.Status, tt.expectedStatus)
 			}
-			if bean.Body != tt.expectedBody {
-				t.Errorf("Body = %q, want %q", bean.Body, tt.expectedBody)
+			if parsed.Body != tt.expectedBody {
+				t.Errorf("Body = %q, want %q", parsed.Body, tt.expectedBody)
 			}
 		})
 	}
@@ -133,7 +133,7 @@ No type specified.`,
 			expectedType: "",
 		},
 		{
-			// Backwards compatibility: beans with types not in current config
+			// Backwards compatibility: issues with types not in current config
 			// should still be readable without error
 			name: "with unknown type (backwards compatibility)",
 			input: `---
@@ -147,13 +147,13 @@ type: deprecated-type-no-longer-in-config
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if bean.Type != tt.expectedType {
-				t.Errorf("Type = %q, want %q", bean.Type, tt.expectedType)
+			if parsed.Type != tt.expectedType {
+				t.Errorf("Type = %q, want %q", parsed.Type, tt.expectedType)
 			}
 		})
 	}
@@ -209,13 +209,13 @@ priority: deferred
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if bean.Priority != tt.expectedPriority {
-				t.Errorf("Priority = %q, want %q", bean.Priority, tt.expectedPriority)
+			if parsed.Priority != tt.expectedPriority {
+				t.Errorf("Priority = %q, want %q", parsed.Priority, tt.expectedPriority)
 			}
 		})
 	}
@@ -224,12 +224,12 @@ priority: deferred
 func TestRenderWithPriority(t *testing.T) {
 	tests := []struct {
 		name     string
-		bean     *Issue
+		issue    *Issue
 		contains []string
 	}{
 		{
 			name: "with priority",
-			bean: &Issue{
+			issue: &Issue{
 				Title:    "High Priority",
 				Status:   "todo",
 				Priority: "high",
@@ -242,7 +242,7 @@ func TestRenderWithPriority(t *testing.T) {
 		},
 		{
 			name: "without priority",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "No Priority",
 				Status: "todo",
 			},
@@ -255,7 +255,7 @@ func TestRenderWithPriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rendered, err := tt.bean.Render()
+			rendered, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -268,7 +268,7 @@ func TestRenderWithPriority(t *testing.T) {
 			}
 
 			// Verify priority is NOT in output when empty
-			if tt.bean.Priority == "" && strings.Contains(content, "priority:") {
+			if tt.issue.Priority == "" && strings.Contains(content, "priority:") {
 				t.Errorf("Render() should not contain 'priority:' when priority is empty:\n%s", content)
 			}
 		})
@@ -308,12 +308,12 @@ func TestRender(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		bean     *Issue
+		issue    *Issue
 		contains []string
 	}{
 		{
-			name: "basic bean",
-			bean: &Issue{
+			name: "basic issue",
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -325,7 +325,7 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name: "with body",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "With Body",
 				Status: "completed",
 				Body:   "This is content.",
@@ -338,7 +338,7 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name: "with timestamps",
-			bean: &Issue{
+			issue: &Issue{
 				Title:     "Timed",
 				Status:    "todo",
 				CreatedAt: &now,
@@ -352,7 +352,7 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name: "with type",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Typed Issue",
 				Status: "todo",
 				Type:   "bug",
@@ -367,7 +367,7 @@ func TestRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -388,18 +388,18 @@ func TestParseRenderRoundtrip(t *testing.T) {
 
 	tests := []struct {
 		name string
-		bean *Issue
+		issue *Issue
 	}{
 		{
 			name: "basic",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Basic Issue",
 				Status: "todo",
 			},
 		},
 		{
 			name: "with body",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Issue With Body",
 				Status: "in-progress",
 				Body:   "This is the body content.\n\nWith multiple paragraphs.",
@@ -407,7 +407,7 @@ func TestParseRenderRoundtrip(t *testing.T) {
 		},
 		{
 			name: "with timestamps",
-			bean: &Issue{
+			issue: &Issue{
 				Title:     "Timestamped Issue",
 				Status:    "completed",
 				CreatedAt: &now,
@@ -417,7 +417,7 @@ func TestParseRenderRoundtrip(t *testing.T) {
 		},
 		{
 			name: "with type",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Typed Issue",
 				Status: "todo",
 				Type:   "bug",
@@ -429,7 +429,7 @@ func TestParseRenderRoundtrip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Render to bytes
-			rendered, err := tt.bean.Render()
+			rendered, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("Render error: %v", err)
 			}
@@ -441,18 +441,18 @@ func TestParseRenderRoundtrip(t *testing.T) {
 			}
 
 			// Compare fields
-			if parsed.Title != tt.bean.Title {
-				t.Errorf("Title roundtrip: got %q, want %q", parsed.Title, tt.bean.Title)
+			if parsed.Title != tt.issue.Title {
+				t.Errorf("Title roundtrip: got %q, want %q", parsed.Title, tt.issue.Title)
 			}
-			if parsed.Status != tt.bean.Status {
-				t.Errorf("Status roundtrip: got %q, want %q", parsed.Status, tt.bean.Status)
+			if parsed.Status != tt.issue.Status {
+				t.Errorf("Status roundtrip: got %q, want %q", parsed.Status, tt.issue.Status)
 			}
-			if parsed.Type != tt.bean.Type {
-				t.Errorf("Type roundtrip: got %q, want %q", parsed.Type, tt.bean.Type)
+			if parsed.Type != tt.issue.Type {
+				t.Errorf("Type roundtrip: got %q, want %q", parsed.Type, tt.issue.Type)
 			}
 
 			// Body comparison (parse adds newline prefix for non-empty body)
-			wantBody := tt.bean.Body
+			wantBody := tt.issue.Body
 			if wantBody != "" {
 				wantBody = "\n" + wantBody
 			}
@@ -461,34 +461,34 @@ func TestParseRenderRoundtrip(t *testing.T) {
 			}
 
 			// Timestamp comparison
-			if tt.bean.CreatedAt != nil {
+			if tt.issue.CreatedAt != nil {
 				if parsed.CreatedAt == nil {
 					t.Error("CreatedAt: got nil, want non-nil")
-				} else if !parsed.CreatedAt.Equal(*tt.bean.CreatedAt) {
-					t.Errorf("CreatedAt: got %v, want %v", parsed.CreatedAt, tt.bean.CreatedAt)
+				} else if !parsed.CreatedAt.Equal(*tt.issue.CreatedAt) {
+					t.Errorf("CreatedAt: got %v, want %v", parsed.CreatedAt, tt.issue.CreatedAt)
 				}
 			}
-			if tt.bean.UpdatedAt != nil {
+			if tt.issue.UpdatedAt != nil {
 				if parsed.UpdatedAt == nil {
 					t.Error("UpdatedAt: got nil, want non-nil")
-				} else if !parsed.UpdatedAt.Equal(*tt.bean.UpdatedAt) {
-					t.Errorf("UpdatedAt: got %v, want %v", parsed.UpdatedAt, tt.bean.UpdatedAt)
+				} else if !parsed.UpdatedAt.Equal(*tt.issue.UpdatedAt) {
+					t.Errorf("UpdatedAt: got %v, want %v", parsed.UpdatedAt, tt.issue.UpdatedAt)
 				}
 			}
 		})
 	}
 }
 
-func TestBeanJSONSerialization(t *testing.T) {
+func TestIssueJSONSerialization(t *testing.T) {
 	t.Run("body omitted when empty", func(t *testing.T) {
-		bean := &Issue{
+		b := &Issue{
 			ID:     "test-123",
 			Title:  "Test Issue",
 			Status: "todo",
 			Body:   "",
 		}
 
-		data, err := json.Marshal(bean)
+		data, err := json.Marshal(b)
 		if err != nil {
 			t.Fatalf("failed to marshal: %v", err)
 		}
@@ -500,14 +500,14 @@ func TestBeanJSONSerialization(t *testing.T) {
 	})
 
 	t.Run("body included when non-empty", func(t *testing.T) {
-		bean := &Issue{
+		b := &Issue{
 			ID:     "test-123",
 			Title:  "Test Issue",
 			Status: "todo",
 			Body:   "This is the body content.",
 		}
 
-		data, err := json.Marshal(bean)
+		data, err := json.Marshal(b)
 		if err != nil {
 			t.Fatalf("failed to marshal: %v", err)
 		}
@@ -573,27 +573,27 @@ status: todo
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if bean.Parent != tt.expectedParent {
-				t.Errorf("Parent = %q, want %q", bean.Parent, tt.expectedParent)
+			if parsed.Parent != tt.expectedParent {
+				t.Errorf("Parent = %q, want %q", parsed.Parent, tt.expectedParent)
 			}
 
-			if len(tt.expectedBlocking) == 0 && len(bean.Blocking) == 0 {
+			if len(tt.expectedBlocking) == 0 && len(parsed.Blocking) == 0 {
 				return // Both empty, OK
 			}
 
-			if len(bean.Blocking) != len(tt.expectedBlocking) {
-				t.Errorf("Blocking count = %d, want %d", len(bean.Blocking), len(tt.expectedBlocking))
+			if len(parsed.Blocking) != len(tt.expectedBlocking) {
+				t.Errorf("Blocking count = %d, want %d", len(parsed.Blocking), len(tt.expectedBlocking))
 				return
 			}
 
 			for i, expected := range tt.expectedBlocking {
-				if bean.Blocking[i] != expected {
-					t.Errorf("Blocking[%d] = %q, want %q", i, bean.Blocking[i], expected)
+				if parsed.Blocking[i] != expected {
+					t.Errorf("Blocking[%d] = %q, want %q", i, parsed.Blocking[i], expected)
 				}
 			}
 		})
@@ -603,12 +603,12 @@ status: todo
 func TestRenderWithParentAndBlocking(t *testing.T) {
 	tests := []struct {
 		name     string
-		bean     *Issue
+		issue    *Issue
 		contains []string
 	}{
 		{
 			name: "with parent only",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Parent: "xyz789",
@@ -619,7 +619,7 @@ func TestRenderWithParentAndBlocking(t *testing.T) {
 		},
 		{
 			name: "with blocking only",
-			bean: &Issue{
+			issue: &Issue{
 				Title:    "Test Issue",
 				Status:   "todo",
 				Blocking: []string{"abc123", "def456"},
@@ -632,7 +632,7 @@ func TestRenderWithParentAndBlocking(t *testing.T) {
 		},
 		{
 			name: "with parent and blocking",
-			bean: &Issue{
+			issue: &Issue{
 				Title:    "Test Issue",
 				Status:   "todo",
 				Parent:   "xyz789",
@@ -646,7 +646,7 @@ func TestRenderWithParentAndBlocking(t *testing.T) {
 		},
 		{
 			name: "without relationships",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -658,7 +658,7 @@ func TestRenderWithParentAndBlocking(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -671,10 +671,10 @@ func TestRenderWithParentAndBlocking(t *testing.T) {
 			}
 
 			// Check that empty parent/blocking don't appear in output
-			if tt.bean.Parent == "" && strings.Contains(result, "parent:") {
+			if tt.issue.Parent == "" && strings.Contains(result, "parent:") {
 				t.Errorf("output should not contain 'parent:' when no parent\ngot:\n%s", result)
 			}
-			if len(tt.bean.Blocking) == 0 && strings.Contains(result, "blocking:") {
+			if len(tt.issue.Blocking) == 0 && strings.Contains(result, "blocking:") {
 				t.Errorf("output should not contain 'blocking:' when no blocking\ngot:\n%s", result)
 			}
 		})
@@ -787,23 +787,23 @@ blocked_by:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if len(tt.expectedBlockedBy) == 0 && len(bean.BlockedBy) == 0 {
+			if len(tt.expectedBlockedBy) == 0 && len(parsed.BlockedBy) == 0 {
 				return // Both empty, OK
 			}
 
-			if len(bean.BlockedBy) != len(tt.expectedBlockedBy) {
-				t.Errorf("BlockedBy count = %d, want %d", len(bean.BlockedBy), len(tt.expectedBlockedBy))
+			if len(parsed.BlockedBy) != len(tt.expectedBlockedBy) {
+				t.Errorf("BlockedBy count = %d, want %d", len(parsed.BlockedBy), len(tt.expectedBlockedBy))
 				return
 			}
 
 			for i, expected := range tt.expectedBlockedBy {
-				if bean.BlockedBy[i] != expected {
-					t.Errorf("BlockedBy[%d] = %q, want %q", i, bean.BlockedBy[i], expected)
+				if parsed.BlockedBy[i] != expected {
+					t.Errorf("BlockedBy[%d] = %q, want %q", i, parsed.BlockedBy[i], expected)
 				}
 			}
 		})
@@ -813,12 +813,12 @@ blocked_by:
 func TestRenderWithBlockedBy(t *testing.T) {
 	tests := []struct {
 		name     string
-		bean     *Issue
+		issue    *Issue
 		contains []string
 	}{
 		{
 			name: "with blocked_by only",
-			bean: &Issue{
+			issue: &Issue{
 				Title:     "Test Issue",
 				Status:    "todo",
 				BlockedBy: []string{"abc123", "def456"},
@@ -831,7 +831,7 @@ func TestRenderWithBlockedBy(t *testing.T) {
 		},
 		{
 			name: "with blocking and blocked_by",
-			bean: &Issue{
+			issue: &Issue{
 				Title:     "Test Issue",
 				Status:    "todo",
 				Blocking:  []string{"xyz789"},
@@ -846,7 +846,7 @@ func TestRenderWithBlockedBy(t *testing.T) {
 		},
 		{
 			name: "without blocked_by",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -858,7 +858,7 @@ func TestRenderWithBlockedBy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -871,7 +871,7 @@ func TestRenderWithBlockedBy(t *testing.T) {
 			}
 
 			// Check that empty blocked_by doesn't appear in output
-			if len(tt.bean.BlockedBy) == 0 && strings.Contains(result, "blocked_by:") {
+			if len(tt.issue.BlockedBy) == 0 && strings.Contains(result, "blocked_by:") {
 				t.Errorf("output should not contain 'blocked_by:' when no blocked_by\ngot:\n%s", result)
 			}
 		})
@@ -929,7 +929,7 @@ func TestBlockedByRoundtrip(t *testing.T) {
 	}
 }
 
-func TestBeanRelationshipMethods(t *testing.T) {
+func TestIssueRelationshipMethods(t *testing.T) {
 	t.Run("HasParent", func(t *testing.T) {
 		withParent := &Issue{Parent: "xyz789"}
 		if !withParent.HasParent() {
@@ -1109,7 +1109,7 @@ func TestNormalizeTag(t *testing.T) {
 	}
 }
 
-func TestBeanTagMethods(t *testing.T) {
+func TestIssueTagMethods(t *testing.T) {
 	t.Run("HasTag", func(t *testing.T) {
 		b := &Issue{Tags: []string{"frontend", "urgent"}}
 		if !b.HasTag("frontend") {
@@ -1229,23 +1229,23 @@ status: todo
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if len(tt.expectedTags) == 0 && len(bean.Tags) == 0 {
+			if len(tt.expectedTags) == 0 && len(parsed.Tags) == 0 {
 				return // Both empty, OK
 			}
 
-			if len(bean.Tags) != len(tt.expectedTags) {
-				t.Errorf("Tags count = %d, want %d", len(bean.Tags), len(tt.expectedTags))
+			if len(parsed.Tags) != len(tt.expectedTags) {
+				t.Errorf("Tags count = %d, want %d", len(parsed.Tags), len(tt.expectedTags))
 				return
 			}
 
 			for i, expected := range tt.expectedTags {
-				if bean.Tags[i] != expected {
-					t.Errorf("Tags[%d] = %q, want %q", i, bean.Tags[i], expected)
+				if parsed.Tags[i] != expected {
+					t.Errorf("Tags[%d] = %q, want %q", i, parsed.Tags[i], expected)
 				}
 			}
 		})
@@ -1255,12 +1255,12 @@ status: todo
 func TestRenderWithTags(t *testing.T) {
 	tests := []struct {
 		name     string
-		bean     *Issue
+		issue    *Issue
 		contains []string
 	}{
 		{
 			name: "with single tag",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Tags:   []string{"frontend"},
@@ -1272,7 +1272,7 @@ func TestRenderWithTags(t *testing.T) {
 		},
 		{
 			name: "with multiple tags",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Tags:   []string{"frontend", "urgent", "tech-debt"},
@@ -1286,7 +1286,7 @@ func TestRenderWithTags(t *testing.T) {
 		},
 		{
 			name: "without tags",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -1298,7 +1298,7 @@ func TestRenderWithTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -1311,7 +1311,7 @@ func TestRenderWithTags(t *testing.T) {
 			}
 
 			// Check that empty tags don't appear in output
-			if len(tt.bean.Tags) == 0 && strings.Contains(result, "tags:") {
+			if len(tt.issue.Tags) == 0 && strings.Contains(result, "tags:") {
 				t.Errorf("output should not contain 'tags:' when no tags\ngot:\n%s", result)
 			}
 		})
@@ -1372,21 +1372,21 @@ func TestTagsRoundtrip(t *testing.T) {
 func TestRenderWithIDComment(t *testing.T) {
 	tests := []struct {
 		name          string
-		bean          *Issue
+		issue         *Issue
 		expectComment string
 	}{
 		{
 			name: "with ID",
-			bean: &Issue{
-				ID:     "beans-abc123",
+			issue: &Issue{
+				ID:     "todo-abc123",
 				Title:  "Test Issue",
 				Status: "todo",
 			},
-			expectComment: "# beans-abc123",
+			expectComment: "# todo-abc123",
 		},
 		{
 			name: "without ID",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -1396,7 +1396,7 @@ func TestRenderWithIDComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -1423,7 +1423,7 @@ func TestRenderWithIDComment(t *testing.T) {
 func TestRenderWithIDCommentRoundtrip(t *testing.T) {
 	// Verify that the ID comment doesn't interfere with parsing
 	original := &Issue{
-		ID:     "beans-xyz789",
+		ID:     "todo-xyz789",
 		Title:  "Test Issue",
 		Status: "in-progress",
 		Body:   "Some body content.",
@@ -1435,7 +1435,7 @@ func TestRenderWithIDCommentRoundtrip(t *testing.T) {
 	}
 
 	// Verify the comment is present
-	if !strings.Contains(string(rendered), "# beans-xyz789") {
+	if !strings.Contains(string(rendered), "# todo-xyz789") {
 		t.Errorf("rendered output should contain ID comment\ngot:\n%s", rendered)
 	}
 
@@ -1456,11 +1456,11 @@ func TestRenderWithIDCommentRoundtrip(t *testing.T) {
 func TestRenderTrailingNewline(t *testing.T) {
 	tests := []struct {
 		name string
-		bean *Issue
+		issue *Issue
 	}{
 		{
 			name: "with body",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Body:   "Some content without trailing newline",
@@ -1468,7 +1468,7 @@ func TestRenderTrailingNewline(t *testing.T) {
 		},
 		{
 			name: "with body ending in newline",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Body:   "Some content with trailing newline\n",
@@ -1476,7 +1476,7 @@ func TestRenderTrailingNewline(t *testing.T) {
 		},
 		{
 			name: "without body",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -1485,7 +1485,7 @@ func TestRenderTrailingNewline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rendered, err := tt.bean.Render()
+			rendered, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("Render error: %v", err)
 			}
@@ -1633,7 +1633,7 @@ func TestETag(t *testing.T) {
 		}
 		etag := b.ETag()
 		if etag == "" {
-			t.Error("ETag should not be empty for valid bean")
+			t.Error("ETag should not be empty for valid issue")
 		}
 	})
 }
@@ -1728,20 +1728,20 @@ status: todo
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bean, err := Parse(strings.NewReader(tt.input))
+			parsed, err := Parse(strings.NewReader(tt.input))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
 			if tt.expectedSync == nil {
-				if bean.Sync != nil {
-					t.Errorf("Sync = %v, want nil", bean.Sync)
+				if parsed.Sync != nil {
+					t.Errorf("Sync = %v, want nil", parsed.Sync)
 				}
 				return
 			}
 
 			for name, expectedData := range tt.expectedSync {
-				data, ok := bean.Sync[name]
+				data, ok := parsed.Sync[name]
 				if !ok {
 					t.Errorf("Sync[%q] missing", name)
 					continue
@@ -1764,13 +1764,13 @@ status: todo
 func TestRenderWithSync(t *testing.T) {
 	tests := []struct {
 		name        string
-		bean        *Issue
+		issue       *Issue
 		contains    []string
 		notContains []string
 	}{
 		{
 			name: "with sync data",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Sync: map[string]map[string]any{
@@ -1788,7 +1788,7 @@ func TestRenderWithSync(t *testing.T) {
 		},
 		{
 			name: "without sync data",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -1796,7 +1796,7 @@ func TestRenderWithSync(t *testing.T) {
 		},
 		{
 			name: "with nil sync",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Sync:   nil,
@@ -1807,7 +1807,7 @@ func TestRenderWithSync(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -2022,13 +2022,13 @@ func TestRenderWithDueDate(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		bean        *Issue
+		issue       *Issue
 		contains    []string
 		notContains []string
 	}{
 		{
 			name: "with due date",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 				Due:    due,
@@ -2037,7 +2037,7 @@ func TestRenderWithDueDate(t *testing.T) {
 		},
 		{
 			name: "without due date",
-			bean: &Issue{
+			issue: &Issue{
 				Title:  "Test Issue",
 				Status: "todo",
 			},
@@ -2047,7 +2047,7 @@ func TestRenderWithDueDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output, err := tt.bean.Render()
+			output, err := tt.issue.Render()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -2179,7 +2179,7 @@ func TestETagChangesAfterModification(t *testing.T) {
 
 	etag1 := b.ETag()
 
-	// Modify the bean
+	// Modify the issue
 	b.Title = "Modified"
 	b.Body = "Modified body"
 

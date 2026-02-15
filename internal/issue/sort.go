@@ -9,7 +9,7 @@ import (
 // CompareByStatusPriorityAndType returns true if a should sort before b,
 // using status order, then priority, then type, then title.
 // Unrecognized statuses, priorities, and types are sorted last within their category.
-// Beans without priority are treated as "normal" priority for sorting purposes.
+// Issues without priority are treated as "normal" priority for sorting purposes.
 func CompareByStatusPriorityAndType(a, b *Issue, statusNames, priorityNames, typeNames []string) bool {
 	statusOrder := make(map[string]int)
 	for i, s := range statusNames {
@@ -24,7 +24,7 @@ func CompareByStatusPriorityAndType(a, b *Issue, statusNames, priorityNames, typ
 		typeOrder[t] = i
 	}
 
-	// Find the index of "normal" priority for beans without priority set
+	// Find the index of "normal" priority for issues without priority set
 	normalPriorityOrder := len(priorityNames) // default to last if "normal" not found
 	for i, p := range priorityNames {
 		if p == "normal" {
@@ -75,23 +75,23 @@ func CompareByStatusPriorityAndType(a, b *Issue, statusNames, priorityNames, typ
 	return strings.ToLower(a.Title) < strings.ToLower(b.Title)
 }
 
-// SortByStatusPriorityAndType sorts beans by status order, then priority, then type, then title.
+// SortByStatusPriorityAndType sorts issues by status order, then priority, then type, then title.
 // This is the default sorting used by both CLI and TUI.
-func SortByStatusPriorityAndType(beans []*Issue, statusNames, priorityNames, typeNames []string) {
-	sort.Slice(beans, func(i, j int) bool {
-		return CompareByStatusPriorityAndType(beans[i], beans[j], statusNames, priorityNames, typeNames)
+func SortByStatusPriorityAndType(issues []*Issue, statusNames, priorityNames, typeNames []string) {
+	sort.Slice(issues, func(i, j int) bool {
+		return CompareByStatusPriorityAndType(issues[i], issues[j], statusNames, priorityNames, typeNames)
 	})
 }
 
-// ComputeEffectiveDates builds a map of bean ID to effective date for sorting.
-// The effective date for a bean is the maximum of its own date and all descendants' dates.
+// ComputeEffectiveDates builds a map of issue ID to effective date for sorting.
+// The effective date for an issue is the maximum of its own date and all descendants' dates.
 // field must be "created_at" or "updated_at".
-func ComputeEffectiveDates(allBeans []*Issue, field string) map[string]time.Time {
+func ComputeEffectiveDates(allIssues []*Issue, field string) map[string]time.Time {
 	// Build parent→children index
 	children := map[string][]string{}
-	beanByID := map[string]*Issue{}
-	for _, b := range allBeans {
-		beanByID[b.ID] = b
+	issueByID := map[string]*Issue{}
+	for _, b := range allIssues {
+		issueByID[b.ID] = b
 		if b.Parent != "" {
 			children[b.Parent] = append(children[b.Parent], b.ID)
 		}
@@ -104,7 +104,7 @@ func ComputeEffectiveDates(allBeans []*Issue, field string) map[string]time.Time
 		if t, ok := cache[id]; ok {
 			return t
 		}
-		b := beanByID[id]
+		b := issueByID[id]
 		var best time.Time
 		if b != nil {
 			switch field {
@@ -127,20 +127,20 @@ func ComputeEffectiveDates(allBeans []*Issue, field string) map[string]time.Time
 		return best
 	}
 
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		compute(b.ID)
 	}
 	return cache
 }
 
-// SortByEffectiveDate sorts beans by effective date, newest first.
-// Beans without dates sort last. Ties are broken by title for stability.
-func SortByEffectiveDate(beans []*Issue, effectiveDates map[string]time.Time) {
-	sort.Slice(beans, func(i, j int) bool {
-		di := effectiveDates[beans[i].ID]
-		dj := effectiveDates[beans[j].ID]
+// SortByEffectiveDate sorts issues by effective date, newest first.
+// Issues without dates sort last. Ties are broken by title for stability.
+func SortByEffectiveDate(issues []*Issue, effectiveDates map[string]time.Time) {
+	sort.Slice(issues, func(i, j int) bool {
+		di := effectiveDates[issues[i].ID]
+		dj := effectiveDates[issues[j].ID]
 		if di.IsZero() && dj.IsZero() {
-			return strings.ToLower(beans[i].Title) < strings.ToLower(beans[j].Title)
+			return strings.ToLower(issues[i].Title) < strings.ToLower(issues[j].Title)
 		}
 		if di.IsZero() {
 			return false // no date sorts last
@@ -151,28 +151,28 @@ func SortByEffectiveDate(beans []*Issue, effectiveDates map[string]time.Time) {
 		if !di.Equal(dj) {
 			return di.After(dj) // newest first
 		}
-		return strings.ToLower(beans[i].Title) < strings.ToLower(beans[j].Title)
+		return strings.ToLower(issues[i].Title) < strings.ToLower(issues[j].Title)
 	})
 }
 
-// SortByCreatedAt sorts beans by effective created_at date, newest first.
-func SortByCreatedAt(beans []*Issue, effectiveDates map[string]time.Time) {
-	SortByEffectiveDate(beans, effectiveDates)
+// SortByCreatedAt sorts issues by effective created_at date, newest first.
+func SortByCreatedAt(issues []*Issue, effectiveDates map[string]time.Time) {
+	SortByEffectiveDate(issues, effectiveDates)
 }
 
-// SortByUpdatedAt sorts beans by effective updated_at date, newest first.
-func SortByUpdatedAt(beans []*Issue, effectiveDates map[string]time.Time) {
-	SortByEffectiveDate(beans, effectiveDates)
+// SortByUpdatedAt sorts issues by effective updated_at date, newest first.
+func SortByUpdatedAt(issues []*Issue, effectiveDates map[string]time.Time) {
+	SortByEffectiveDate(issues, effectiveDates)
 }
 
-// SortByDueDate sorts beans by due date, soonest first.
-// Beans without a due date sort last. Ties are broken by title for stability.
-func SortByDueDate(beans []*Issue) {
-	sort.Slice(beans, func(i, j int) bool {
-		di := beans[i].Due
-		dj := beans[j].Due
+// SortByDueDate sorts issues by due date, soonest first.
+// Issues without a due date sort last. Ties are broken by title for stability.
+func SortByDueDate(issues []*Issue) {
+	sort.Slice(issues, func(i, j int) bool {
+		di := issues[i].Due
+		dj := issues[j].Due
 		if di == nil && dj == nil {
-			return strings.ToLower(beans[i].Title) < strings.ToLower(beans[j].Title)
+			return strings.ToLower(issues[i].Title) < strings.ToLower(issues[j].Title)
 		}
 		if di == nil {
 			return false // no due date sorts last
@@ -183,6 +183,6 @@ func SortByDueDate(beans []*Issue) {
 		if !di.Time.Equal(dj.Time) {
 			return di.Time.Before(dj.Time) // soonest first
 		}
-		return strings.ToLower(beans[i].Title) < strings.ToLower(beans[j].Title)
+		return strings.ToLower(issues[i].Title) < strings.ToLower(issues[j].Title)
 	})
 }

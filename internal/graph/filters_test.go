@@ -8,13 +8,13 @@ import (
 )
 
 func TestFilterByHasSync(t *testing.T) {
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "a", Sync: map[string]map[string]any{"clickup": {"id": "1"}}},
 		{ID: "b", Sync: map[string]map[string]any{"jira": {"key": "X"}}},
 		{ID: "c"},
 	}
 
-	got := filterByHasSync(beans, "clickup")
+	got := filterByHasSync(issues, "clickup")
 	if len(got) != 1 {
 		t.Fatalf("filterByHasSync(clickup) count = %d, want 1", len(got))
 	}
@@ -24,13 +24,13 @@ func TestFilterByHasSync(t *testing.T) {
 }
 
 func TestFilterByNoSync(t *testing.T) {
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "a", Sync: map[string]map[string]any{"clickup": {"id": "1"}}},
 		{ID: "b", Sync: map[string]map[string]any{"jira": {"key": "X"}}},
 		{ID: "c"},
 	}
 
-	got := filterByNoSync(beans, "clickup")
+	got := filterByNoSync(issues, "clickup")
 	if len(got) != 2 {
 		t.Fatalf("filterByNoSync(clickup) count = %d, want 2", len(got))
 	}
@@ -48,7 +48,7 @@ func TestFilterBySyncStale(t *testing.T) {
 	earlier := now.Add(-1 * time.Hour)
 	later := now.Add(1 * time.Hour)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		// Stale: updatedAt > synced_at
 		{
 			ID:        "stale",
@@ -92,7 +92,7 @@ func TestFilterBySyncStale(t *testing.T) {
 		},
 	}
 
-	got := filterBySyncStale(beans, "clickup")
+	got := filterBySyncStale(issues, "clickup")
 	ids := map[string]bool{}
 	for _, b := range got {
 		ids[b.ID] = true
@@ -123,14 +123,14 @@ func TestFilterByChangedSince(t *testing.T) {
 	earlier := now.Add(-2 * time.Hour)
 	since := now.Add(-1 * time.Hour)
 
-	beans := []*issue.Issue{
+	issues := []*issue.Issue{
 		{ID: "recent", UpdatedAt: &now},
 		{ID: "old", UpdatedAt: &earlier},
 		{ID: "no-updated"},
 		{ID: "exact", UpdatedAt: &since}, // exactly at threshold (should include)
 	}
 
-	got := filterByChangedSince(beans, since)
+	got := filterByChangedSince(issues, since)
 	ids := map[string]bool{}
 	for _, b := range got {
 		ids[b.ID] = true

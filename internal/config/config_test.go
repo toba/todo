@@ -571,7 +571,7 @@ func TestLoadFromDirectory(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `issues:
-  path: custom-beans
+  path: custom-issues
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -581,8 +581,8 @@ func TestLoadFromDirectory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LoadFromDirectory() error = %v", err)
 		}
-		if cfg.Issues.Path != "custom-beans" {
-			t.Errorf("Issues.Path = %q, want \"custom-beans\"", cfg.Issues.Path)
+		if cfg.Issues.Path != "custom-issues" {
+			t.Errorf("Issues.Path = %q, want \"custom-issues\"", cfg.Issues.Path)
 		}
 	})
 
@@ -594,7 +594,7 @@ func TestLoadFromDirectory(t *testing.T) {
 			t.Fatalf("LoadFromDirectory() error = %v", err)
 		}
 		if cfg.Issues.Path != DefaultDataPath {
-			t.Errorf("Beans.Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
+			t.Errorf("Issues.Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
 		}
 		if cfg.ConfigDir() != tmpDir {
 			t.Errorf("ConfigDir() = %q, want %q", cfg.ConfigDir(), tmpDir)
@@ -641,7 +641,7 @@ func TestResolveDataPath(t *testing.T) {
 	})
 }
 
-func TestDefaultHasBeansPath(t *testing.T) {
+func TestDefaultHasIssuesPath(t *testing.T) {
 	cfg := Default()
 	if cfg.Issues.Path != DefaultDataPath {
 		t.Errorf("Default().Issues.Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)

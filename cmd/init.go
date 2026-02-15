@@ -22,7 +22,7 @@ var initCmd = &cobra.Command{
 		var dataDir string
 
 		if dataPath != "" {
-			// Use explicit path for beans directory
+			// Use explicit path for data directory
 			dataDir = dataPath
 			projectDir = filepath.Dir(dataDir)
 			// Create the directory using Core.Init to set up .gitignore

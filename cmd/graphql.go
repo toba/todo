@@ -43,7 +43,7 @@ Examples:
   # Filter issues by status
   todo graphql '{ issues(filter: { status: ["todo", "in-progress"] }) { id title } }'
 
-  # Get beans with relationships
+  # Get issues with relationships
   todo graphql '{ issues { id title blockedBy { id title } children { id title } } }'
 
   # Use variables

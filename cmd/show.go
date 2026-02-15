@@ -24,13 +24,13 @@ var (
 var showCmd = &cobra.Command{
 	Use:   "show <id> [id...]",
 	Short: "Show an issue's contents",
-	Long:  `Displays the full contents of one or more beans, including front matter and body.`,
+	Long:  `Displays the full contents of one or more issues, including front matter and body.`,
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		resolver := &graph.Resolver{Core: store}
 
 		// Collect all issues
-		var beans []*issue.Issue
+		var issues []*issue.Issue
 		for _, id := range args {
 			b, err := resolver.Query().Issue(context.Background(), id)
 			if err != nil {
@@ -45,20 +45,20 @@ var showCmd = &cobra.Command{
 				}
 				return fmt.Errorf("issue not found: %s", id)
 			}
-			beans = append(beans, b)
+			issues = append(issues, b)
 		}
 
 		// JSON output
 		if showJSON {
-			if len(beans) == 1 {
-				return output.SuccessSingle(beans[0])
+			if len(issues) == 1 {
+				return output.SuccessSingle(issues[0])
 			}
-			return output.SuccessMultiple(beans)
+			return output.SuccessMultiple(issues)
 		}
 
 		// Raw markdown output (frontmatter + body)
 		if showRaw {
-			for i, b := range beans {
+			for i, b := range issues {
 				if i > 0 {
 					fmt.Print("\n---\n\n")
 				}
@@ -73,7 +73,7 @@ var showCmd = &cobra.Command{
 
 		// Body only (no header, no styling)
 		if showBodyOnly {
-			for i, b := range beans {
+			for i, b := range issues {
 				if i > 0 {
 					fmt.Print("\n---\n\n")
 				}
@@ -84,7 +84,7 @@ var showCmd = &cobra.Command{
 
 		// ETag only (for easy extraction in scripts)
 		if showETagOnly {
-			for i, b := range beans {
+			for i, b := range issues {
 				if i > 0 {
 					fmt.Println()
 				}
@@ -94,21 +94,21 @@ var showCmd = &cobra.Command{
 		}
 
 		// Default: styled human-friendly output
-		for i, b := range beans {
+		for i, b := range issues {
 			if i > 0 {
 				fmt.Println()
 				fmt.Println(ui.Muted.Render(strings.Repeat("═", 60)))
 				fmt.Println()
 			}
-			showStyledBean(b)
+			showStyledIssue(b)
 		}
 
 		return nil
 	},
 }
 
-// showStyledBean displays a single bean with styled output.
-func showStyledBean(b *issue.Issue) {
+// showStyledIssue displays a single issue with styled output.
+func showStyledIssue(b *issue.Issue) {
 	statusCfg := cfg.GetStatus(b.Status)
 	statusColor := "gray"
 	if statusCfg != nil {

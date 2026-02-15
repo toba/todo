@@ -291,21 +291,21 @@ func (s *Syncer) buildIssueBody(b *issue.Issue) string {
 	if b.Body != "" {
 		parts = append(parts, b.Body)
 	}
-	parts = append(parts, fmt.Sprintf("<!-- bean:%s -->", b.ID))
+	parts = append(parts, fmt.Sprintf("<!-- todo:%s -->", b.ID))
 	return strings.Join(parts, "\n\n")
 }
 
-// getGitHubState maps a bean status to a GitHub issue state.
-func (s *Syncer) getGitHubState(beanStatus string) string {
-	if target, ok := DefaultStatusMapping[beanStatus]; ok {
+// getGitHubState maps an issue status to a GitHub issue state.
+func (s *Syncer) getGitHubState(issueStatus string) string {
+	if target, ok := DefaultStatusMapping[issueStatus]; ok {
 		return target.State
 	}
 	return "open"
 }
 
-// getStatusLabel returns the status label for a bean status, or empty string.
-func (s *Syncer) getStatusLabel(beanStatus string) string {
-	if target, ok := DefaultStatusMapping[beanStatus]; ok {
+// getStatusLabel returns the status label for an issue status, or empty string.
+func (s *Syncer) getStatusLabel(issueStatus string) string {
+	if target, ok := DefaultStatusMapping[issueStatus]; ok {
 		return target.Label
 	}
 	return ""
@@ -334,7 +334,7 @@ func (s *Syncer) computeLabels(b *issue.Issue) []string {
 		}
 	}
 
-	// Bean tags directly as labels
+	// Issue tags directly as labels
 	labels = append(labels, b.Tags...)
 
 	return labels
@@ -451,8 +451,8 @@ func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
 	}
 	newBody = strings.Join(filtered, "\n")
 
-	// Append before the bean ID comment
-	if idx := strings.Index(newBody, "<!-- bean:"); idx >= 0 {
+	// Append before the issue ID comment
+	if idx := strings.Index(newBody, "<!-- todo:"); idx >= 0 {
 		newBody = newBody[:idx] + blockingLine + "\n\n" + newBody[idx:]
 	} else {
 		newBody = newBody + "\n\n" + blockingLine

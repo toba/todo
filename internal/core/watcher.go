@@ -18,7 +18,7 @@ const debounceDelay = 100 * time.Millisecond
 type EventType int
 
 const (
-	// EventCreated indicates a new bean was created.
+	// EventCreated indicates a new issue was created.
 	EventCreated EventType = iota
 	// EventUpdated indicates an existing issue was modified.
 	EventUpdated
@@ -47,13 +47,13 @@ type IssueEvent struct {
 	IssueID string     // Always set, useful for Deleted when Issue is nil
 }
 
-// subscription represents a subscriber to bean events.
+// subscription represents a subscriber to issue events.
 type subscription struct {
 	ch chan []IssueEvent
 	id uint64
 }
 
-// Subscribe creates a new subscription to bean change events.
+// Subscribe creates a new subscription to issue change events.
 // Returns the event channel and an unsubscribe function.
 // The channel receives batches of events after debouncing.
 // Callers should use defer to call the unsubscribe function.
@@ -100,14 +100,14 @@ func (c *Core) fanOut(events []IssueEvent) {
 }
 
 // StartWatching begins filesystem monitoring.
-// Use Subscribe() to receive bean change events via a channel.
+// Use Subscribe() to receive issue change events via a channel.
 // This is the preferred API for new code; Watch() is kept for backward compatibility.
 func (c *Core) StartWatching() error {
 	return c.Watch(nil)
 }
 
-// Watch starts watching the .beans directory for changes.
-// The onChange callback is invoked (after debouncing) whenever beans are created, modified, or deleted.
+// Watch starts watching the issues directory for changes.
+// The onChange callback is invoked (after debouncing) whenever issues are created, modified, or deleted.
 // The internal state is automatically reloaded before the callback is invoked.
 // Deprecated: Use StartWatching() + Subscribe() for new code.
 func (c *Core) Watch(onChange func()) error {
@@ -149,7 +149,7 @@ func (c *Core) Watch(onChange func()) error {
 	return nil
 }
 
-// Unwatch stops watching the .beans directory.
+// Unwatch stops watching the issues directory.
 func (c *Core) Unwatch() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -199,12 +199,12 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 				return
 			}
 
-			// Only care about .md files within the .beans directory tree
+			// Only care about .md files within the issues directory tree
 			if !strings.HasSuffix(event.Name, ".md") {
 				continue
 			}
 
-			// Verify the file is within the .beans directory
+			// Verify the file is within the issues directory
 			relPath, err := filepath.Rel(c.root, event.Name)
 			if err != nil || strings.HasPrefix(relPath, "..") {
 				continue
@@ -272,15 +272,15 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 		// Handle removes/renames (file is gone)
 		if op&fsnotify.Remove != 0 || op&fsnotify.Rename != 0 {
 			// Check if the file actually exists (rename might be followed by create)
-			if _, exists := c.beans[id]; exists {
+			if _, exists := c.issues[id]; exists {
 				// Only delete if it was in our map and file is actually gone
 				if !c.fileExists(path) {
-					delete(c.beans, id)
+					delete(c.issues, id)
 
 					// Update search index
 					if c.searchIndex != nil {
 						if err := c.searchIndex.DeleteIssue(id); err != nil {
-							c.logWarn("failed to remove bean %s from search index: %v", id, err)
+							c.logWarn("failed to remove issue %s from search index: %v", id, err)
 						}
 					}
 
@@ -296,33 +296,33 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 
 		// Handle creates/writes (file exists or was created)
 		if op&fsnotify.Create != 0 || op&fsnotify.Write != 0 {
-			newBean, err := c.loadBean(path)
+			newIssue, err := c.loadIssue(path)
 			if err != nil {
-				c.logWarn("failed to load bean from %s: %v", path, err)
+				c.logWarn("failed to load issue from %s: %v", path, err)
 				continue
 			}
 
-			_, existed := c.beans[newBean.ID]
-			c.beans[newBean.ID] = newBean
+			_, existed := c.issues[newIssue.ID]
+			c.issues[newIssue.ID] = newIssue
 
 			// Update search index
 			if c.searchIndex != nil {
-				if err := c.searchIndex.IndexIssue(newBean); err != nil {
-					c.logWarn("failed to index bean %s: %v", newBean.ID, err)
+				if err := c.searchIndex.IndexIssue(newIssue); err != nil {
+					c.logWarn("failed to index issue %s: %v", newIssue.ID, err)
 				}
 			}
 
 			if existed {
 				events = append(events, IssueEvent{
 					Type:   EventUpdated,
-					Issue:   newBean,
-					IssueID: newBean.ID,
+					Issue:   newIssue,
+					IssueID: newIssue.ID,
 				})
 			} else {
 				events = append(events, IssueEvent{
 					Type:   EventCreated,
-					Issue:   newBean,
-					IssueID: newBean.ID,
+					Issue:   newIssue,
+					IssueID: newIssue.ID,
 				})
 			}
 		}

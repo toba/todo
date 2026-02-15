@@ -57,7 +57,7 @@ func SuccessWithWarnings(b *issue.Issue, message string, warnings []string) erro
 	})
 }
 
-// SuccessSingle outputs a single bean directly (no wrapper).
+// SuccessSingle outputs a single issue directly (no wrapper).
 // This allows intuitive jq usage: todo show --json <id> | jq '.title'
 func SuccessSingle(b *issue.Issue) error {
 	enc := json.NewEncoder(os.Stdout)
@@ -67,10 +67,10 @@ func SuccessSingle(b *issue.Issue) error {
 
 // SuccessMultiple outputs an issue array directly (no wrapper).
 // This allows intuitive jq usage: todo list --json | jq '.[]'
-func SuccessMultiple(beans []*issue.Issue) error {
+func SuccessMultiple(issues []*issue.Issue) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	return enc.Encode(beans)
+	return enc.Encode(issues)
 }
 
 // SuccessMessage outputs a success response with just a message.

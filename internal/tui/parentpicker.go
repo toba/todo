@@ -20,7 +20,7 @@ import (
 
 // parentSelectedMsg is sent when a parent is selected from the picker
 type parentSelectedMsg struct {
-	beanIDs  []string // the issues being modified
+	issueIDs  []string // the issues being modified
 	parentID string   // the new parent ID (empty string to clear parent)
 }
 
@@ -85,19 +85,19 @@ func (d parentItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 // parentPickerModel is the model for the parent picker view
 type parentPickerModel struct {
 	list          list.Model
-	beanIDs       []string // the issues we're setting the parent for
-	beanTitle     string   // display title (single title or "N selected beans")
-	beanTypes     []string // types of the issues (to filter eligible parents)
-	currentParent string   // current parent ID (to highlight, only for single bean)
+	issueIDs       []string // the issues we're setting the parent for
+	issueTitle     string   // display title (single title or "N selected issues")
+	issueTypes     []string // types of the issues (to filter eligible parents)
+	currentParent string   // current parent ID (to highlight, only for single issue)
 	width         int
 	height        int
 }
 
-func newParentPickerModel(beanIDs []string, beanTitle string, beanTypes []string, currentParent string, resolver *graph.Resolver, cfg *config.Config, width, height int) parentPickerModel {
+func newParentPickerModel(issueIDs []string, issueTitle string, issueTypes []string, currentParent string, resolver *graph.Resolver, cfg *config.Config, width, height int) parentPickerModel {
 	// Get valid parent types - for multi-select, find types valid for all issues
 	var validParentTypes []string
-	for i, beanType := range beanTypes {
-		typeParents := core.ValidParentTypes(beanType)
+	for i, issueType := range issueTypes {
+		typeParents := core.ValidParentTypes(issueType)
 		if i == 0 {
 			validParentTypes = typeParents
 		} else {
@@ -107,29 +107,29 @@ func newParentPickerModel(beanIDs []string, beanTitle string, beanTypes []string
 	}
 
 	// Fetch all issues and filter to eligible parents
-	allBeans, _ := resolver.Query().Issues(context.Background(), nil)
+	allIssues, _ := resolver.Query().Issues(context.Background(), nil)
 
-	// Collect all descendants of all selected beans (to prevent cycles)
+	// Collect all descendants of all selected issues (to prevent cycles)
 	allDescendants := make(map[string]bool)
-	for _, beanID := range beanIDs {
-		for descID := range collectDescendants(beanID, allBeans) {
+	for _, issueID := range issueIDs {
+		for descID := range collectDescendants(issueID, allIssues) {
 			allDescendants[descID] = true
 		}
 	}
 
 	// Create set of selected issue IDs for quick lookup
 	selectedSet := make(map[string]bool)
-	for _, id := range beanIDs {
+	for _, id := range issueIDs {
 		selectedSet[id] = true
 	}
 
 	// Filter to eligible parents:
-	// 1. Must be of a valid parent type for ALL selected beans
-	// 2. Must not be any of the selected beans
-	// 3. Must not be a descendant of any selected bean (to prevent cycles)
-	var eligibleBeans []*issue.Issue
-	for _, b := range allBeans {
-		// Skip selected beans
+	// 1. Must be of a valid parent type for ALL selected issues
+	// 2. Must not be any of the selected issues
+	// 3. Must not be a descendant of any selected issue (to prevent cycles)
+	var eligibleIssues []*issue.Issue
+	for _, b := range allIssues {
+		// Skip selected issues
 		if selectedSet[b.ID] {
 			continue
 		}
@@ -142,7 +142,7 @@ func newParentPickerModel(beanIDs []string, beanTitle string, beanTypes []string
 		if !isValidType {
 			continue
 		}
-		eligibleBeans = append(eligibleBeans, b)
+		eligibleIssues = append(eligibleIssues, b)
 	}
 
 	// Sort by type order (milestone > epic > feature), then by title
@@ -151,24 +151,24 @@ func newParentPickerModel(beanIDs []string, beanTitle string, beanTypes []string
 	for i, t := range typeNames {
 		typeOrder[t] = i
 	}
-	sort.Slice(eligibleBeans, func(i, j int) bool {
+	sort.Slice(eligibleIssues, func(i, j int) bool {
 		// Primary: type order
-		ti, tj := typeOrder[eligibleBeans[i].Type], typeOrder[eligibleBeans[j].Type]
+		ti, tj := typeOrder[eligibleIssues[i].Type], typeOrder[eligibleIssues[j].Type]
 		if ti != tj {
 			return ti < tj
 		}
 		// Secondary: title (case-insensitive)
-		return strings.ToLower(eligibleBeans[i].Title) < strings.ToLower(eligibleBeans[j].Title)
+		return strings.ToLower(eligibleIssues[i].Title) < strings.ToLower(eligibleIssues[j].Title)
 	})
 
 	delegate := parentItemDelegate{cfg: cfg}
 
 	// Build items list - start with "clear parent" option
-	items := make([]list.Item, 0, len(eligibleBeans)+1)
+	items := make([]list.Item, 0, len(eligibleIssues)+1)
 	items = append(items, clearParentItem{})
 
 	selectedIndex := 0 // default to "No Parent"
-	for i, b := range eligibleBeans {
+	for i, b := range eligibleIssues {
 		items = append(items, parentItem{issue: b, cfg: cfg})
 		// If this is the current parent, remember its index (+1 for the clear option)
 		if b.ID == currentParent {
@@ -202,9 +202,9 @@ func newParentPickerModel(beanIDs []string, beanTitle string, beanTypes []string
 
 	return parentPickerModel{
 		list:          l,
-		beanIDs:       beanIDs,
-		beanTitle:     beanTitle,
-		beanTypes:     beanTypes,
+		issueIDs:       issueIDs,
+		issueTitle:     issueTitle,
+		issueTypes:     issueTypes,
 		currentParent: currentParent,
 		width:         width,
 		height:        height,
@@ -227,19 +227,19 @@ func intersectStrings(a, b []string) []string {
 }
 
 // collectDescendants returns a set of all issue IDs that are descendants of the given issue
-func collectDescendants(beanID string, allBeans []*issue.Issue) map[string]bool {
+func collectDescendants(issueID string, allIssues []*issue.Issue) map[string]bool {
 	descendants := make(map[string]bool)
 
 	// Build parent->children map
 	children := make(map[string][]string)
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		if b.Parent != "" {
 			children[b.Parent] = append(children[b.Parent], b.ID)
 		}
 	}
 
 	// BFS to collect all descendants
-	queue := children[beanID]
+	queue := children[issueID]
 	for len(queue) > 0 {
 		childID := queue[0]
 		queue = queue[1:]
@@ -277,11 +277,11 @@ func (m parentPickerModel) Update(msg tea.Msg) (parentPickerModel, tea.Cmd) {
 				switch item := m.list.SelectedItem().(type) {
 				case clearParentItem:
 					return m, func() tea.Msg {
-						return parentSelectedMsg{beanIDs: m.beanIDs, parentID: ""}
+						return parentSelectedMsg{issueIDs: m.issueIDs, parentID: ""}
 					}
 				case parentItem:
 					return m, func() tea.Msg {
-						return parentSelectedMsg{beanIDs: m.beanIDs, parentID: item.issue.ID}
+						return parentSelectedMsg{issueIDs: m.issueIDs, parentID: item.issue.ID}
 					}
 				}
 			case "esc", "backspace":
@@ -303,15 +303,15 @@ func (m parentPickerModel) View() string {
 	}
 
 	// For multi-select, don't show individual issue ID
-	var beanID string
-	if len(m.beanIDs) == 1 {
-		beanID = m.beanIDs[0]
+	var issueID string
+	if len(m.issueIDs) == 1 {
+		issueID = m.issueIDs[0]
 	}
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Select Parent",
-		BeanTitle:   m.beanTitle,
-		IssueID:      beanID,
+		IssueTitle:   m.issueTitle,
+		IssueID:      issueID,
 		ListContent: m.list.View(),
 		Width:       m.width,
 		WidthPct:    60,

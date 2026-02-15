@@ -73,7 +73,7 @@ func (r *issueResolver) BlockedBy(ctx context.Context, obj *issue.Issue, filter 
 	var result []*issue.Issue
 	for _, link := range incoming {
 		if link.LinkType == issue.LinkTypeBlocking {
-			result = append(result, link.FromBean)
+			result = append(result, link.FromIssue)
 		}
 	}
 	return ApplyFilter(result, filter, r.Core), nil
@@ -110,13 +110,13 @@ func (r *issueResolver) Children(ctx context.Context, obj *issue.Issue, filter *
 	var result []*issue.Issue
 	for _, link := range incoming {
 		if link.LinkType == issue.LinkTypeParent {
-			result = append(result, link.FromBean)
+			result = append(result, link.FromIssue)
 		}
 	}
 	return ApplyFilter(result, filter, r.Core), nil
 }
 
-// CreateIssue is the resolver for the createBean field.
+// CreateIssue is the resolver for the createIssue field.
 func (r *mutationResolver) CreateIssue(ctx context.Context, input model.CreateIssueInput) (*issue.Issue, error) {
 	b := &issue.Issue{
 		Slug:     issue.Slugify(input.Title),
@@ -185,10 +185,10 @@ func (r *mutationResolver) CreateIssue(ctx context.Context, input model.CreateIs
 			}
 		}
 		// Check for cycles with blocking relationships
-		// (new bean being blocked_by X means X→newBean, check if newBean→X exists via blocking)
+		// (new issue being blocked_by X means X→newIssue, check if newIssue→X exists via blocking)
 		for _, blockerID := range normalizedBlockedBy {
 			if slices.Contains(b.Blocking, blockerID) {
-				return nil, fmt.Errorf("would create cycle: new bean both blocks and is blocked by %s", blockerID)
+				return nil, fmt.Errorf("would create cycle: new issue both blocks and is blocked by %s", blockerID)
 			}
 		}
 		b.BlockedBy = normalizedBlockedBy
@@ -201,7 +201,7 @@ func (r *mutationResolver) CreateIssue(ctx context.Context, input model.CreateIs
 	return b, nil
 }
 
-// UpdateIssue is the resolver for the updateBean field.
+// UpdateIssue is the resolver for the updateIssue field.
 func (r *mutationResolver) UpdateIssue(ctx context.Context, id string, input model.UpdateIssueInput) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
 	if err != nil {
@@ -333,9 +333,9 @@ func (r *mutationResolver) UpdateIssue(ctx context.Context, id string, input mod
 	return b, nil
 }
 
-// DeleteIssue is the resolver for the deleteBean field.
+// DeleteIssue is the resolver for the deleteIssue field.
 func (r *mutationResolver) DeleteIssue(ctx context.Context, id string) (bool, error) {
-	// Verify bean exists
+	// Verify issue exists
 	_, err := r.Core.Get(id)
 	if err != nil {
 		return false, err
@@ -530,7 +530,7 @@ func (r *mutationResolver) RemoveSyncData(ctx context.Context, id string, name s
 	return b, nil
 }
 
-// Bean is the resolver for the issue field.
+// Issue is the resolver for the issue field.
 func (r *queryResolver) Issue(ctx context.Context, id string) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
 	if err == core.ErrNotFound {
@@ -539,9 +539,9 @@ func (r *queryResolver) Issue(ctx context.Context, id string) (*issue.Issue, err
 	return b, err
 }
 
-// Beans is the resolver for the issues field.
+// Issues is the resolver for the issues field.
 func (r *queryResolver) Issues(ctx context.Context, filter *model.IssueFilter) ([]*issue.Issue, error) {
-	var beans []*issue.Issue
+	var issues []*issue.Issue
 
 	// If search filter is provided, start with search results
 	if filter != nil && filter.Search != nil && *filter.Search != "" {
@@ -549,12 +549,12 @@ func (r *queryResolver) Issues(ctx context.Context, filter *model.IssueFilter) (
 		if err != nil {
 			return nil, err
 		}
-		beans = searchResults
+		issues = searchResults
 	} else {
-		beans = r.Core.All()
+		issues = r.Core.All()
 	}
 
-	return ApplyFilter(beans, filter, r.Core), nil
+	return ApplyFilter(issues, filter, r.Core), nil
 }
 
 // Issue returns IssueResolver implementation.

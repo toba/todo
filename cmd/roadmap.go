@@ -62,13 +62,13 @@ var roadmapCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Query all issues via GraphQL resolver
 		resolver := &graph.Resolver{Core: store}
-		allBeans, err := resolver.Query().Issues(context.Background(), nil)
+		allIssues, err := resolver.Query().Issues(context.Background(), nil)
 		if err != nil {
 			return fmt.Errorf("querying issues: %w", err)
 		}
 
 		// Build the roadmap
-		data := buildRoadmap(allBeans, roadmapIncludeDone, roadmapStatus, roadmapNoStatus)
+		data := buildRoadmap(allIssues, roadmapIncludeDone, roadmapStatus, roadmapNoStatus)
 
 		// JSON output
 		if roadmapJSON {
@@ -90,18 +90,18 @@ var roadmapCmd = &cobra.Command{
 	},
 }
 
-// buildRoadmap constructs the roadmap data structure from beans.
-func buildRoadmap(allBeans []*issue.Issue, includeDone bool, statusFilter, noStatusFilter []string) *roadmapData {
+// buildRoadmap constructs the roadmap data structure from issues.
+func buildRoadmap(allIssues []*issue.Issue, includeDone bool, statusFilter, noStatusFilter []string) *roadmapData {
 	// Index all issues by ID for lookups
 	byID := make(map[string]*issue.Issue)
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		byID[b.ID] = b
 	}
 
 	// Build children index: parent ID -> children
 	// This maps each issue ID to the issues that have it as a parent
 	children := make(map[string][]*issue.Issue)
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		if b.Parent != "" {
 			children[b.Parent] = append(children[b.Parent], b)
 		}
@@ -109,7 +109,7 @@ func buildRoadmap(allBeans []*issue.Issue, includeDone bool, statusFilter, noSta
 
 	// Find milestones, applying status filters
 	var milestones []*issue.Issue
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		if b.Type != config.TypeMilestone {
 			continue
 		}
@@ -137,7 +137,7 @@ func buildRoadmap(allBeans []*issue.Issue, includeDone bool, statusFilter, noSta
 	}
 
 	// Build unscheduled group: items not under any milestone
-	// Track which beans are under a milestone (directly or via epic)
+	// Track which issues are under a milestone (directly or via epic)
 	underMilestone := make(map[string]bool)
 	for _, m := range milestones {
 		underMilestone[m.ID] = true
@@ -154,7 +154,7 @@ func buildRoadmap(allBeans []*issue.Issue, includeDone bool, statusFilter, noSta
 
 	// Find unscheduled epics (epics not under a milestone)
 	var unscheduledEpics []epicGroup
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		if b.Type != config.TypeEpic {
 			continue
 		}
@@ -176,7 +176,7 @@ func buildRoadmap(allBeans []*issue.Issue, includeDone bool, statusFilter, noSta
 
 	// Find orphan items (not milestone, not epic, no parent or parent is not milestone/epic)
 	var orphanItems []*issue.Issue
-	for _, b := range allBeans {
+	for _, b := range allIssues {
 		// Skip milestones and epics
 		if b.Type == config.TypeMilestone || b.Type == config.TypeEpic {
 			continue
@@ -287,28 +287,28 @@ func containsStatus(statuses []string, status string) bool {
 	return slices.Contains(statuses, status)
 }
 
-// sortByStatusThenCreated sorts beans by status order, then by created date.
-func sortByStatusThenCreated(beans []*issue.Issue, cfg interface{ StatusNames() []string }) {
+// sortByStatusThenCreated sorts issues by status order, then by created date.
+func sortByStatusThenCreated(issues []*issue.Issue, cfg interface{ StatusNames() []string }) {
 	statusOrder := make(map[string]int)
 	for i, s := range cfg.StatusNames() {
 		statusOrder[s] = i
 	}
 
-	sort.Slice(beans, func(i, j int) bool {
-		oi, oj := statusOrder[beans[i].Status], statusOrder[beans[j].Status]
+	sort.Slice(issues, func(i, j int) bool {
+		oi, oj := statusOrder[issues[i].Status], statusOrder[issues[j].Status]
 		if oi != oj {
 			return oi < oj
 		}
 		// Then by created date (oldest first for milestones)
-		if beans[i].CreatedAt != nil && beans[j].CreatedAt != nil {
-			return beans[i].CreatedAt.Before(*beans[j].CreatedAt)
+		if issues[i].CreatedAt != nil && issues[j].CreatedAt != nil {
+			return issues[i].CreatedAt.Before(*issues[j].CreatedAt)
 		}
-		return beans[i].ID < beans[j].ID
+		return issues[i].ID < issues[j].ID
 	})
 }
 
-// sortByTypeThenStatus sorts beans by type order, then status order, then by ID.
-func sortByTypeThenStatus(beans []*issue.Issue, cfg interface {
+// sortByTypeThenStatus sorts issues by type order, then status order, then by ID.
+func sortByTypeThenStatus(issues []*issue.Issue, cfg interface {
 	StatusNames() []string
 	TypeNames() []string
 }) {
@@ -321,18 +321,18 @@ func sortByTypeThenStatus(beans []*issue.Issue, cfg interface {
 		typeOrder[t] = i
 	}
 
-	sort.Slice(beans, func(i, j int) bool {
+	sort.Slice(issues, func(i, j int) bool {
 		// First by type
-		ti, tj := typeOrder[beans[i].Type], typeOrder[beans[j].Type]
+		ti, tj := typeOrder[issues[i].Type], typeOrder[issues[j].Type]
 		if ti != tj {
 			return ti < tj
 		}
 		// Then by status
-		si, sj := statusOrder[beans[i].Status], statusOrder[beans[j].Status]
+		si, sj := statusOrder[issues[i].Status], statusOrder[issues[j].Status]
 		if si != sj {
 			return si < sj
 		}
-		return beans[i].ID < beans[j].ID
+		return issues[i].ID < issues[j].ID
 	})
 }
 

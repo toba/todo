@@ -9,10 +9,10 @@ import (
 	"github.com/toba/todo/internal/config"
 )
 
-// IncomingLink represents a link from another issue to a target bean.
+// IncomingLink represents a link from another issue to a target issue.
 type IncomingLink struct {
-	FromBean *issue.Issue
-	LinkType string
+	FromIssue *issue.Issue
+	LinkType  string
 }
 
 // BrokenLink represents a link to a non-existent issue.
@@ -57,11 +57,11 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 	defer c.mu.RUnlock()
 
 	var result []IncomingLink
-	for _, b := range c.beans {
+	for _, b := range c.issues {
 		// Check parent link
 		if b.Parent == targetID {
 			result = append(result, IncomingLink{
-				FromBean: b,
+				FromIssue: b,
 				LinkType: issue.LinkTypeParent,
 			})
 		}
@@ -69,7 +69,7 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 		for _, blocked := range b.Blocking {
 			if blocked == targetID {
 				result = append(result, IncomingLink{
-					FromBean: b,
+					FromIssue: b,
 					LinkType: issue.LinkTypeBlocking,
 				})
 			}
@@ -78,7 +78,7 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 		for _, blocker := range b.BlockedBy {
 			if blocker == targetID {
 				result = append(result, IncomingLink{
-					FromBean: b,
+					FromIssue: b,
 					LinkType: issue.LinkTypeBlockedBy,
 				})
 			}
@@ -120,7 +120,7 @@ func (c *Core) findPathToTarget(current, target, linkType string, visited map[st
 	}
 	visited[current] = true
 
-	b, ok := c.beans[current]
+	b, ok := c.issues[current]
 	if !ok {
 		return nil
 	}
@@ -160,7 +160,7 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 	}
 
 	// Check for broken links and self-references
-	for _, b := range c.beans {
+	for _, b := range c.issues {
 		// Check parent link
 		if b.Parent != "" {
 			if b.Parent == b.ID {
@@ -168,7 +168,7 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeParent,
 				})
-			} else if _, ok := c.beans[b.Parent]; !ok {
+			} else if _, ok := c.issues[b.Parent]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeParent,
@@ -184,7 +184,7 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeBlocking,
 				})
-			} else if _, ok := c.beans[blocked]; !ok {
+			} else if _, ok := c.issues[blocked]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeBlocking,
@@ -200,7 +200,7 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeBlockedBy,
 				})
-			} else if _, ok := c.beans[blocker]; !ok {
+			} else if _, ok := c.issues[blocker]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
 					IssueID:   b.ID,
 					LinkType: issue.LinkTypeBlockedBy,
@@ -259,7 +259,7 @@ func (c *Core) findCycles(linkType string) []Cycle {
 		visited[id] = true
 		inStack[id] = true
 
-		b, ok := c.beans[id]
+		b, ok := c.issues[id]
 		if ok {
 			// Get targets based on link type
 			var targets []string
@@ -286,7 +286,7 @@ func (c *Core) findCycles(linkType string) []Cycle {
 		inStack[id] = false
 	}
 
-	for id := range c.beans {
+	for id := range c.issues {
 		if !visited[id] {
 			dfs(id, nil)
 		}
@@ -333,7 +333,7 @@ func (c *Core) RemoveLinksTo(targetID string) (int, error) {
 	defer c.mu.Unlock()
 
 	removed := 0
-	for _, b := range c.beans {
+	for _, b := range c.issues {
 		changed := false
 
 		// Remove parent link
@@ -376,7 +376,7 @@ func (c *Core) FixBrokenLinks() (int, error) {
 	defer c.mu.Unlock()
 
 	fixed := 0
-	for _, b := range c.beans {
+	for _, b := range c.issues {
 		changed := false
 
 		// Fix parent link
@@ -386,7 +386,7 @@ func (c *Core) FixBrokenLinks() (int, error) {
 				b.Parent = ""
 				changed = true
 				fixed++
-			} else if _, ok := c.beans[b.Parent]; !ok {
+			} else if _, ok := c.issues[b.Parent]; !ok {
 				b.Parent = ""
 				changed = true
 				fixed++
@@ -402,7 +402,7 @@ func (c *Core) FixBrokenLinks() (int, error) {
 				continue
 			}
 			// Skip broken links (target doesn't exist)
-			if _, ok := c.beans[blocked]; !ok {
+			if _, ok := c.issues[blocked]; !ok {
 				continue
 			}
 			newBlocking = append(newBlocking, blocked)
@@ -422,7 +422,7 @@ func (c *Core) FixBrokenLinks() (int, error) {
 				continue
 			}
 			// Skip broken links (target doesn't exist)
-			if _, ok := c.beans[blocker]; !ok {
+			if _, ok := c.issues[blocker]; !ok {
 				continue
 			}
 			newBlockedBy = append(newBlockedBy, blocker)
@@ -445,8 +445,8 @@ func (c *Core) FixBrokenLinks() (int, error) {
 
 // ValidParentTypes returns the valid parent types for a given issue type.
 // Returns nil if the issue type cannot have a parent.
-func ValidParentTypes(beanType string) []string {
-	switch beanType {
+func ValidParentTypes(issueType string) []string {
+	switch issueType {
 	case config.TypeMilestone:
 		return nil // milestones cannot have parents
 	case config.TypeEpic:
@@ -469,19 +469,19 @@ func (c *Core) ValidateParent(b *issue.Issue, parentID string) error {
 
 	validTypes := ValidParentTypes(b.Type)
 	if validTypes == nil {
-		return fmt.Errorf("%s beans cannot have a parent", b.Type)
+		return fmt.Errorf("%s issues cannot have a parent", b.Type)
 	}
 
 	parent, err := c.Get(parentID)
 	if err != nil {
-		return fmt.Errorf("parent bean not found: %s", parentID)
+		return fmt.Errorf("parent issue not found: %s", parentID)
 	}
 
 	if slices.Contains(validTypes, parent.Type) {
 		return nil
 	}
 
-	return fmt.Errorf("%s beans can only have %s as parent, not %s",
+	return fmt.Errorf("%s issues can only have %s as parent, not %s",
 		b.Type, joinWithOr(validTypes), parent.Type)
 }
 
@@ -506,19 +506,19 @@ func isResolvedStatus(status string) bool {
 }
 
 // IsBlocked returns true if the issue with the given ID is blocked by any
-// active (non-completed, non-scrapped) beans.
-func (c *Core) IsBlocked(beanID string) bool {
-	return len(c.FindActiveBlockers(beanID)) > 0
+// active (non-completed, non-scrapped) issues.
+func (c *Core) IsBlocked(issueID string) bool {
+	return len(c.FindActiveBlockers(issueID)) > 0
 }
 
 // FindActiveBlockers returns all issues that are actively blocking the given issue.
 // A blocker is "active" if its status is NOT "completed" or "scrapped".
 // This includes blockers from both the blocked_by field and incoming blocking links.
-func (c *Core) FindActiveBlockers(beanID string) []*issue.Issue {
+func (c *Core) FindActiveBlockers(issueID string) []*issue.Issue {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	b, ok := c.beans[beanID]
+	b, ok := c.issues[issueID]
 	if !ok {
 		return nil
 	}
@@ -528,7 +528,7 @@ func (c *Core) FindActiveBlockers(beanID string) []*issue.Issue {
 
 	// Check direct blocked_by field
 	for _, blockerID := range b.BlockedBy {
-		if blocker, ok := c.beans[blockerID]; ok {
+		if blocker, ok := c.issues[blockerID]; ok {
 			if !isResolvedStatus(blocker.Status) && !seen[blockerID] {
 				seen[blockerID] = true
 				blockers = append(blockers, blocker)
@@ -537,9 +537,9 @@ func (c *Core) FindActiveBlockers(beanID string) []*issue.Issue {
 	}
 
 	// Check incoming blocking links (other issues that have this issue in their Blocking list)
-	for _, other := range c.beans {
+	for _, other := range c.issues {
 		for _, blocked := range other.Blocking {
-			if blocked == beanID && !isResolvedStatus(other.Status) && !seen[other.ID] {
+			if blocked == issueID && !isResolvedStatus(other.Status) && !seen[other.ID] {
 				seen[other.ID] = true
 				blockers = append(blockers, other)
 			}
