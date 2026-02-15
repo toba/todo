@@ -23,6 +23,7 @@ type Syncer struct {
 	syncStore SyncStateProvider
 
 	// Tracking for relationship pass
+	mu              sync.RWMutex
 	issueToGHNumber map[string]int // local issue ID -> GitHub issue number
 }
 
@@ -90,15 +91,14 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	total := len(issues)
 
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 	var completed int
 
 	reportProgress := func(result SyncResult) {
 		if s.opts.OnProgress != nil {
-			mu.Lock()
+			s.mu.Lock()
 			completed++
 			current := completed
-			mu.Unlock()
+			s.mu.Unlock()
 			s.opts.OnProgress(result, current, total)
 		}
 	}
@@ -111,12 +111,12 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			results[idx] = result
 
 			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
-				mu.Lock()
+				s.mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
 					s.issueToGHNumber[b.ID] = n
 				}
-				mu.Unlock()
+				s.mu.Unlock()
 			}
 			reportProgress(result)
 		})
@@ -131,12 +131,12 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			results[idx] = result
 
 			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
-				mu.Lock()
+				s.mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
 					s.issueToGHNumber[b.ID] = n
 				}
-				mu.Unlock()
+				s.mu.Unlock()
 			}
 			reportProgress(result)
 		})
@@ -244,7 +244,9 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	result.ExternalID = fmt.Sprintf("%d", ghIssue.Number)
 	result.ExternalURL = ghIssue.HTMLURL
+	s.mu.Lock()
 	s.issueToGHNumber[b.ID] = ghIssue.Number
+	s.mu.Unlock()
 
 	// Close issue if state should be closed (can't create closed issues directly)
 	if state == "closed" {
@@ -257,7 +259,10 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	// Link as sub-issue if parent is synced
 	if b.Parent != "" {
-		if parentNumber, ok := s.issueToGHNumber[b.Parent]; ok {
+		s.mu.RLock()
+		parentNumber, ok := s.issueToGHNumber[b.Parent]
+		s.mu.RUnlock()
+		if ok {
 			if err := s.client.AddSubIssue(ctx, parentNumber, ghIssue.Number); err != nil {
 				_ = err // Best-effort
 			}
