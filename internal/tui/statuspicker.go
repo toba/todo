@@ -13,7 +13,7 @@ import (
 // statusSelectedMsg is sent when a status is selected from the picker
 type statusSelectedMsg struct {
 	issueIDs []string
-	status  string
+	status   string
 }
 
 // closeStatusPickerMsg is sent when the status picker is cancelled
@@ -21,8 +21,8 @@ type closeStatusPickerMsg struct{}
 
 // openStatusPickerMsg requests opening the status picker for issue(s)
 type openStatusPickerMsg struct {
-	issueIDs       []string // IDs of issues to update
-	issueTitle     string   // Display title (single title or "N issues")
+	issueIDs      []string // IDs of issues to update
+	issueTitle    string   // Display title (single title or "N issues")
 	currentStatus string   // Only meaningful for single issue
 }
 
@@ -53,15 +53,15 @@ func (d statusItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 	}
 
 	cursor := renderPickerCursor(index, &m)
-	statusText := ui.RenderStatusTextWithColor(item.name, item.color, item.isArchive)
+	statusText := ui.RenderStatusIconAndLabel(item.name, item.color, item.isArchive)
 	renderPickerItem(w, cursor, statusText, item.isCurrent)
 }
 
 // statusPickerModel is the model for the status picker view
 type statusPickerModel struct {
 	list          list.Model
-	issueIDs       []string
-	issueTitle     string
+	issueIDs      []string
+	issueTitle    string
 	currentStatus string
 	width         int
 	height        int
@@ -113,8 +113,8 @@ func newStatusPickerModel(issueIDs []string, issueTitle, currentStatus string, c
 
 	return statusPickerModel{
 		list:          l,
-		issueIDs:       issueIDs,
-		issueTitle:     issueTitle,
+		issueIDs:      issueIDs,
+		issueTitle:    issueTitle,
 		currentStatus: currentStatus,
 		width:         width,
 		height:        height,
@@ -175,8 +175,8 @@ func (m statusPickerModel) View() string {
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Select Status",
-		IssueTitle:   m.issueTitle,
-		IssueID:      issueID,
+		IssueTitle:  m.issueTitle,
+		IssueID:     issueID,
 		ListContent: m.list.View(),
 		Description: description,
 		Width:       m.width,

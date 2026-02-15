@@ -243,6 +243,19 @@ func RenderStatusTextWithColor(status, color string, isArchiveStatus bool) strin
 	return style.Render(StatusIcon(status))
 }
 
+// RenderStatusIconAndLabel returns a styled status icon followed by the status name.
+// Used in contexts like the status picker where the label should be visible.
+func RenderStatusIconAndLabel(status, color string, isArchiveStatus bool) string {
+	c := ResolveColor(color)
+	style := lipgloss.NewStyle().Foreground(c)
+
+	if !isArchiveStatus {
+		style = style.Bold(true)
+	}
+
+	return style.Render(StatusIcon(status) + " " + status)
+}
+
 // RenderTypeText returns styled type text using the specified color.
 // If color is empty, uses muted styling.
 func RenderTypeText(typeName, color string) string {
