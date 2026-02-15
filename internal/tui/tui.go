@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -629,8 +630,20 @@ func (a *App) getBackgroundView() string {
 	}
 }
 
+// systemEditor returns the OS default application opener command and flags.
+// On macOS, it returns "open" with flags to wait for the app to close (-W),
+// open a new instance (-n), and keep the GUI app focused (-g).
+// On other platforms, it returns empty values (e.g. xdg-open doesn't support blocking).
+func systemEditor() (cmd string, args []string, ok bool) {
+	if runtime.GOOS == "darwin" {
+		return "open", []string{"-W", "-n", "-g"}, true
+	}
+	return "", nil, false
+}
+
 // getEditor returns the user's preferred editor command and any extra arguments.
-// Fallback chain: config editor -> $VISUAL -> $EDITOR -> vi -> nano.
+// Fallback chain: config editor -> $VISUAL -> $EDITOR -> OS default -> vi -> nano.
+// The special value "system" resolves to the OS default application opener.
 // Multi-word editor values (e.g. "code --wait") are split on whitespace.
 // Relative paths from config are resolved relative to the config directory.
 func getEditor(cfg *config.Config) (string, []string) {
@@ -641,7 +654,21 @@ func getEditor(cfg *config.Config) (string, []string) {
 	if editor == "" {
 		editor = os.Getenv("EDITOR")
 	}
+
+	// Handle the "system" keyword — resolve to OS default app opener
+	if strings.EqualFold(editor, "system") {
+		if cmd, args, ok := systemEditor(); ok {
+			return cmd, args
+		}
+		// Unsupported platform — fall through to vi/nano
+		editor = ""
+	}
+
 	if editor == "" {
+		// Try OS default app opener before falling back to terminal editors
+		if cmd, args, ok := systemEditor(); ok {
+			return cmd, args
+		}
 		if _, err := exec.LookPath("vi"); err == nil {
 			editor = "vi"
 		} else {

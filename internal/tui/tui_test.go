@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/toba/todo/internal/config"
@@ -130,6 +131,103 @@ func TestGetEditor(t *testing.T) {
 		}
 		if len(args) != 0 {
 			t.Errorf("args = %v, want empty", args)
+		}
+	})
+
+	t.Run("system keyword resolves to OS default opener", func(t *testing.T) {
+		os.Unsetenv("VISUAL")
+		os.Unsetenv("EDITOR")
+
+		cfg := config.Default()
+		cfg.Issues.Editor = "system"
+
+		cmd, args := getEditor(cfg)
+		if runtime.GOOS == "darwin" {
+			if cmd != "open" {
+				t.Errorf("cmd = %q, want \"open\"", cmd)
+			}
+			wantArgs := []string{"-W", "-n", "-g"}
+			if len(args) != len(wantArgs) {
+				t.Fatalf("args = %v, want %v", args, wantArgs)
+			}
+			for i, a := range wantArgs {
+				if args[i] != a {
+					t.Errorf("args[%d] = %q, want %q", i, args[i], a)
+				}
+			}
+		} else {
+			// On non-darwin, "system" falls through to vi/nano
+			if cmd != "vi" && cmd != "nano" {
+				t.Errorf("cmd = %q, want \"vi\" or \"nano\" on non-darwin", cmd)
+			}
+		}
+	})
+
+	t.Run("system keyword is case-insensitive", func(t *testing.T) {
+		os.Unsetenv("VISUAL")
+		os.Unsetenv("EDITOR")
+
+		cfg := config.Default()
+		cfg.Issues.Editor = "System"
+
+		cmd, _ := getEditor(cfg)
+		if runtime.GOOS == "darwin" {
+			if cmd != "open" {
+				t.Errorf("cmd = %q, want \"open\"", cmd)
+			}
+		}
+	})
+
+	t.Run("VISUAL=system resolves to OS default opener", func(t *testing.T) {
+		os.Setenv("VISUAL", "system")
+		os.Unsetenv("EDITOR")
+
+		cfg := config.Default()
+
+		cmd, args := getEditor(cfg)
+		if runtime.GOOS == "darwin" {
+			if cmd != "open" {
+				t.Errorf("cmd = %q, want \"open\"", cmd)
+			}
+			wantArgs := []string{"-W", "-n", "-g"}
+			if len(args) != len(wantArgs) {
+				t.Fatalf("args = %v, want %v", args, wantArgs)
+			}
+			for i, a := range wantArgs {
+				if args[i] != a {
+					t.Errorf("args[%d] = %q, want %q", i, args[i], a)
+				}
+			}
+		}
+	})
+
+	t.Run("no env vars falls back to system editor before vi/nano", func(t *testing.T) {
+		os.Unsetenv("VISUAL")
+		os.Unsetenv("EDITOR")
+
+		cfg := config.Default()
+
+		cmd, _ := getEditor(cfg)
+		if runtime.GOOS == "darwin" {
+			if cmd != "open" {
+				t.Errorf("cmd = %q, want \"open\" on darwin", cmd)
+			}
+		} else {
+			if cmd != "vi" && cmd != "nano" {
+				t.Errorf("cmd = %q, want \"vi\" or \"nano\" on non-darwin", cmd)
+			}
+		}
+	})
+
+	t.Run("explicit editor takes priority over system fallback", func(t *testing.T) {
+		os.Unsetenv("VISUAL")
+		os.Setenv("EDITOR", "vim")
+
+		cfg := config.Default()
+
+		cmd, _ := getEditor(cfg)
+		if cmd != "vim" {
+			t.Errorf("cmd = %q, want \"vim\"", cmd)
 		}
 	})
 }
