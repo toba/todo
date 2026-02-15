@@ -1,15 +1,21 @@
 // Package github provides GitHub Issues API integration.
 package github
 
+// IssueType represents a GitHub issue type.
+type IssueType struct {
+	Name string `json:"name"`
+}
+
 // Issue represents a GitHub issue.
 type Issue struct {
-	Number    int     `json:"number"`
-	Title     string  `json:"title"`
-	Body      string  `json:"body"`
-	State     string  `json:"state"` // "open" or "closed"
-	HTMLURL   string  `json:"html_url"`
-	Labels    []Label `json:"labels"`
-	Assignees []User  `json:"assignees"`
+	Number    int        `json:"number"`
+	Title     string     `json:"title"`
+	Body      string     `json:"body"`
+	State     string     `json:"state"` // "open" or "closed"
+	HTMLURL   string     `json:"html_url"`
+	Labels    []Label    `json:"labels"`
+	Assignees []User     `json:"assignees"`
+	Type      *IssueType `json:"type,omitempty"`
 }
 
 // Label represents a GitHub label.
@@ -37,6 +43,7 @@ type CreateIssueRequest struct {
 	Body      string   `json:"body,omitempty"`
 	Labels    []string `json:"labels,omitempty"`
 	Assignees []string `json:"assignees,omitempty"`
+	Type      string   `json:"type,omitempty"`
 }
 
 // UpdateIssueRequest is the request body for updating an issue.
@@ -46,6 +53,7 @@ type UpdateIssueRequest struct {
 	State     *string  `json:"state,omitempty"`
 	Labels    []string `json:"labels,omitempty"`
 	Assignees []string `json:"assignees,omitempty"`
+	Type      *string  `json:"type,omitempty"`
 }
 
 // hasChanges returns true if any field in the update request is set.
@@ -54,7 +62,8 @@ func (u *UpdateIssueRequest) hasChanges() bool {
 		u.Body != nil ||
 		u.State != nil ||
 		u.Labels != nil ||
-		u.Assignees != nil
+		u.Assignees != nil ||
+		u.Type != nil
 }
 
 // SubIssueRequest is the request body for adding a sub-issue.

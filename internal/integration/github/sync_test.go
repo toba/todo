@@ -88,24 +88,24 @@ func TestComputeLabels(t *testing.T) {
 		wantLabels []string
 	}{
 		{
-			name: "all labels",
+			name: "only tags become labels",
 			issue: &issue.Issue{
-				Status:   "todo",
+				Status:   "ready",
 				Priority: "high",
 				Type:     "bug",
 				Tags:     []string{"urgent"},
 			},
-			wantLabels: []string{"status:todo", "priority:high", "type:bug", "urgent"},
+			wantLabels: []string{"urgent"},
 		},
 		{
-			name: "no status label when mapping has empty label",
+			name: "no tags means no labels",
 			issue: &issue.Issue{
 				Status: "completed",
 			},
 			wantLabels: nil,
 		},
 		{
-			name: "only tags",
+			name: "multiple tags",
 			issue: &issue.Issue{
 				Status: "unknown",
 				Tags:   []string{"a", "b"},
@@ -113,18 +113,12 @@ func TestComputeLabels(t *testing.T) {
 			wantLabels: []string{"a", "b"},
 		},
 		{
-			name: "draft status",
+			name: "status and priority do not produce labels",
 			issue: &issue.Issue{
-				Status: "draft",
+				Status:   "draft",
+				Priority: "critical",
 			},
-			wantLabels: []string{"status:draft"},
-		},
-		{
-			name: "in-progress status",
-			issue: &issue.Issue{
-				Status: "in-progress",
-			},
-			wantLabels: []string{"status:in-progress"},
+			wantLabels: nil,
 		},
 	}
 
@@ -192,7 +186,7 @@ func TestGetGitHubState(t *testing.T) {
 		status string
 		want   string
 	}{
-		{"todo", "open"},
+		{"ready", "open"},
 		{"draft", "open"},
 		{"in-progress", "open"},
 		{"completed", "closed"},
@@ -248,7 +242,7 @@ func TestSyncIssue_Create(t *testing.T) {
 	b := &issue.Issue{
 		ID:        "test-1",
 		Title:     "Test issue",
-		Status:    "todo",
+		Status:    "ready",
 		Type:      "task",
 		Tags:      []string{"frontend"},
 		CreatedAt: &now,
@@ -277,7 +271,6 @@ func TestSyncIssue_Update(t *testing.T) {
 				Body:    "old body\n\n<!-- todo:test-1 -->",
 				State:   "open",
 				HTMLURL: "https://github.com/test/repo/issues/42",
-				Labels:  []Label{{Name: "status:todo"}},
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(resp)
@@ -322,7 +315,7 @@ func TestSyncIssue_Update(t *testing.T) {
 	b := &issue.Issue{
 		ID:        "test-1",
 		Title:     "Updated issue",
-		Status:    "todo",
+		Status:    "ready",
 		Type:      "task",
 		CreatedAt: &now,
 		UpdatedAt: &now,
@@ -337,11 +330,13 @@ func TestSyncIssue_Update(t *testing.T) {
 
 func TestSyncIssue_CreateWithLabels(t *testing.T) {
 	var receivedLabels []string
+	var receivedType string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/issues") {
 			var req CreateIssueRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			receivedLabels = req.Labels
+			receivedType = req.Type
 
 			resp := Issue{
 				Number:  1,
@@ -384,7 +379,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 	b := &issue.Issue{
 		ID:        "test-1",
 		Title:     "Test bug",
-		Status:    "todo",
+		Status:    "ready",
 		Priority:  "high",
 		Type:      "bug",
 		Tags:      []string{"frontend"},
@@ -398,12 +393,15 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 		t.Fatalf("expected action 'created', got %q", result.Action)
 	}
 
-	sort.Strings(receivedLabels)
-	expected := []string{"frontend", "priority:high", "status:todo", "type:bug"}
-	sort.Strings(expected)
-
+	// Only tags should appear as labels
+	expected := []string{"frontend"}
 	if !labelsMatch(receivedLabels, expected) {
 		t.Errorf("labels = %v, want %v", receivedLabels, expected)
+	}
+
+	// Type should use GitHub's native type field
+	if receivedType != "Bug" {
+		t.Errorf("type = %q, want %q", receivedType, "Bug")
 	}
 }
 
@@ -470,7 +468,7 @@ func TestSyncIssue_DryRun_Create(t *testing.T) {
 	b := &issue.Issue{
 		ID:     "test-1",
 		Title:  "Test issue",
-		Status: "todo",
+		Status: "ready",
 	}
 
 	result := syncer.syncIssue(context.Background(), b)
@@ -479,6 +477,96 @@ func TestSyncIssue_DryRun_Create(t *testing.T) {
 		t.Fatalf("expected action 'would create', got %q", result.Action)
 	}
 }
+
+func TestGetGitHubType(t *testing.T) {
+	syncer := &Syncer{config: &Config{}}
+
+	tests := []struct {
+		issueType string
+		want      string
+	}{
+		{"bug", "Bug"},
+		{"feature", "Feature"},
+		{"task", "Task"},
+		{"milestone", "Task"},
+		{"epic", "Task"},
+		{"unknown", ""},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.issueType, func(t *testing.T) {
+			got := syncer.getGitHubType(tt.issueType)
+			if got != tt.want {
+				t.Errorf("getGitHubType(%q) = %q, want %q", tt.issueType, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildUpdateRequest_TypeChange(t *testing.T) {
+	syncer := &Syncer{config: &Config{}}
+
+	tests := []struct {
+		name        string
+		currentType *IssueType
+		newType     string
+		wantType    *string
+	}{
+		{
+			name:        "type changed",
+			currentType: &IssueType{Name: "Task"},
+			newType:     "Bug",
+			wantType:    strPtr("Bug"),
+		},
+		{
+			name:        "type unchanged",
+			currentType: &IssueType{Name: "Bug"},
+			newType:     "Bug",
+			wantType:    nil,
+		},
+		{
+			name:        "no current type, setting new",
+			currentType: nil,
+			newType:     "Feature",
+			wantType:    strPtr("Feature"),
+		},
+		{
+			name:        "no current type, no new type",
+			currentType: nil,
+			newType:     "",
+			wantType:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			current := &Issue{
+				Title: "Test",
+				Body:  "body\n\n<!-- todo:test-1 -->",
+				State: "open",
+				Type:  tt.currentType,
+			}
+			b := &issue.Issue{
+				ID:    "test-1",
+				Title: "Test",
+			}
+			update := syncer.buildUpdateRequest(current, b, "body\n\n<!-- todo:test-1 -->", "open", tt.newType, nil)
+			if tt.wantType == nil && update.Type != nil {
+				t.Errorf("expected nil Type, got %q", *update.Type)
+			}
+			if tt.wantType != nil {
+				if update.Type == nil {
+					t.Errorf("expected Type %q, got nil", *tt.wantType)
+				} else if *update.Type != *tt.wantType {
+					t.Errorf("Type = %q, want %q", *update.Type, *tt.wantType)
+				}
+			}
+		})
+	}
+}
+
+func strPtr(s string) *string { return &s }
 
 // redirectTransport redirects all requests to the test server.
 type redirectTransport struct {

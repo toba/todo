@@ -165,9 +165,10 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 		IssueTitle: b.Title,
 	}
 
-	// Compute labels and state
+	// Compute labels, state, and type
 	labels := s.computeLabels(b)
 	state := s.getGitHubState(b.Status)
+	ghType := s.getGitHubType(b.Type)
 	body := s.buildIssueBody(b)
 
 	// Check if already linked (from sync store)
@@ -201,7 +202,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				return result
 			}
 
-			update := s.buildUpdateRequest(ghIssue, b, body, state, labels)
+			update := s.buildUpdateRequest(ghIssue, b, body, state, ghType, labels)
 
 			if update.hasChanges() {
 				updatedIssue, err := s.client.UpdateIssue(ctx, *issueNumber, update)
@@ -233,6 +234,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 		Body:      body,
 		Labels:    labels,
 		Assignees: s.getAssignees(ctx),
+		Type:      ghType,
 	}
 
 	ghIssue, err := s.client.CreateIssue(ctx, createReq)
@@ -302,47 +304,23 @@ func (s *Syncer) buildIssueBody(b *issue.Issue) string {
 
 // getGitHubState maps an issue status to a GitHub issue state.
 func (s *Syncer) getGitHubState(issueStatus string) string {
-	if target, ok := DefaultStatusMapping[issueStatus]; ok {
-		return target.State
+	if state, ok := DefaultStatusMapping[issueStatus]; ok {
+		return state
 	}
 	return "open"
 }
 
-// getStatusLabel returns the status label for an issue status, or empty string.
-func (s *Syncer) getStatusLabel(issueStatus string) string {
-	if target, ok := DefaultStatusMapping[issueStatus]; ok {
-		return target.Label
+// getGitHubType maps a local issue type to a GitHub native issue type name.
+func (s *Syncer) getGitHubType(issueType string) string {
+	if ghType, ok := DefaultTypeMapping[issueType]; ok {
+		return ghType
 	}
 	return ""
 }
 
-// computeLabels computes all labels for an issue.
+// computeLabels returns only tag-based labels for an issue.
 func (s *Syncer) computeLabels(b *issue.Issue) []string {
-	var labels []string
-
-	// Status label
-	if label := s.getStatusLabel(b.Status); label != "" {
-		labels = append(labels, label)
-	}
-
-	// Priority label
-	if b.Priority != "" {
-		if label, ok := DefaultPriorityMapping[b.Priority]; ok && label != "" {
-			labels = append(labels, label)
-		}
-	}
-
-	// Type label
-	if b.Type != "" {
-		if label, ok := DefaultTypeMapping[b.Type]; ok && label != "" {
-			labels = append(labels, label)
-		}
-	}
-
-	// Issue tags directly as labels
-	labels = append(labels, b.Tags...)
-
-	return labels
+	return b.Tags
 }
 
 // ensureAllLabels pre-creates all labels that will be needed.
@@ -377,7 +355,7 @@ func (s *Syncer) getAssignees(ctx context.Context) []string {
 }
 
 // buildUpdateRequest builds an UpdateIssueRequest containing only fields that differ from current.
-func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state string, labels []string) *UpdateIssueRequest {
+func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state, ghType string, labels []string) *UpdateIssueRequest {
 	update := &UpdateIssueRequest{}
 
 	// Only include title if changed
@@ -406,6 +384,15 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state 
 	sort.Strings(sortedNew)
 	if !slices.Equal(currentLabels, sortedNew) {
 		update.Labels = labels
+	}
+
+	// Only include type if changed
+	currentType := ""
+	if current.Type != nil {
+		currentType = current.Type.Name
+	}
+	if ghType != "" && currentType != ghType {
+		update.Type = &ghType
 	}
 
 	return update

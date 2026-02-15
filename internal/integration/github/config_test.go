@@ -126,20 +126,24 @@ func TestParseRepo(t *testing.T) {
 
 func TestDefaultStatusMapping(t *testing.T) {
 	// Verify all expected statuses are present
-	expected := []string{"draft", "todo", "in-progress", "completed", "scrapped"}
+	expected := []string{"draft", "ready", "in-progress", "completed", "scrapped"}
 	for _, status := range expected {
 		if _, ok := DefaultStatusMapping[status]; !ok {
 			t.Errorf("missing status mapping for %q", status)
 		}
 	}
 
-	// Verify completed maps to closed with no label
-	if m := DefaultStatusMapping["completed"]; m.State != "closed" || m.Label != "" {
-		t.Errorf("completed mapping = %+v, want closed with no label", m)
+	// Verify open statuses
+	for _, status := range []string{"draft", "ready", "in-progress"} {
+		if DefaultStatusMapping[status] != "open" {
+			t.Errorf("DefaultStatusMapping[%q] = %q, want %q", status, DefaultStatusMapping[status], "open")
+		}
 	}
 
-	// Verify scrapped maps to closed with label
-	if m := DefaultStatusMapping["scrapped"]; m.State != "closed" || m.Label != "status:scrapped" {
-		t.Errorf("scrapped mapping = %+v, want closed with status:scrapped label", m)
+	// Verify closed statuses
+	for _, status := range []string{"completed", "scrapped"} {
+		if DefaultStatusMapping[status] != "closed" {
+			t.Errorf("DefaultStatusMapping[%q] = %q, want %q", status, DefaultStatusMapping[status], "closed")
+		}
 	}
 }

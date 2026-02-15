@@ -18,37 +18,22 @@ type Config struct {
 	Repo  string // Repository name
 }
 
-// StatusTarget maps an issue status to a GitHub issue state and optional label.
-type StatusTarget struct {
-	State string // "open" or "closed"
-	Label string // e.g. "status:draft", or empty
+// DefaultStatusMapping maps issue statuses to GitHub issue states.
+var DefaultStatusMapping = map[string]string{
+	"draft":       "open",
+	"ready":       "open",
+	"in-progress": "open",
+	"completed":   "closed",
+	"scrapped":    "closed",
 }
 
-// DefaultStatusMapping provides standard issue-to-GitHub status mapping.
-var DefaultStatusMapping = map[string]StatusTarget{
-	"draft":       {State: "open", Label: "status:draft"},
-	"todo":        {State: "open", Label: "status:todo"},
-	"in-progress": {State: "open", Label: "status:in-progress"},
-	"completed":   {State: "closed"},
-	"scrapped":    {State: "closed", Label: "status:scrapped"},
-}
-
-// DefaultPriorityMapping provides standard issue priority-to-GitHub label mapping.
-var DefaultPriorityMapping = map[string]string{
-	"critical": "priority:critical",
-	"high":     "priority:high",
-	"normal":   "priority:normal",
-	"low":      "priority:low",
-	"deferred": "priority:low",
-}
-
-// DefaultTypeMapping provides standard issue type-to-GitHub label mapping.
+// DefaultTypeMapping maps issue types to GitHub native issue type names.
 var DefaultTypeMapping = map[string]string{
-	"bug":       "type:bug",
-	"feature":   "type:feature",
-	"milestone": "type:milestone",
-	"epic":      "type:epic",
-	"task":      "type:task",
+	"bug":       "Bug",
+	"feature":   "Feature",
+	"task":      "Task",
+	"milestone": "Task",
+	"epic":      "Task",
 }
 
 // ParseConfig parses GitHub config from a sync config map.
