@@ -231,8 +231,8 @@ func RenderStatusWithColor(status, color string, isArchiveStatus bool) string {
 	return style.Render(StatusIcon(status) + " " + status)
 }
 
-// RenderStatusTextWithColor returns styled status text (for tables) using the specified color.
-func RenderStatusTextWithColor(status, color string, isArchiveStatus bool) string {
+// RenderStatusIconWithColor returns styled status text (for tables) using the specified color.
+func RenderStatusIconWithColor(status, color string, isArchiveStatus bool) string {
 	c := ResolveColor(color)
 	style := lipgloss.NewStyle().Foreground(c)
 
@@ -496,7 +496,7 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 	if cfg.Dimmed {
 		statusCol = statusStyle.Render(Muted.Render(StatusIcon(status)))
 	} else {
-		statusCol = statusStyle.Render(RenderStatusTextWithColor(status, cfg.StatusColor, cfg.IsArchive))
+		statusCol = statusStyle.Render(RenderStatusIconWithColor(status, cfg.StatusColor, cfg.IsArchive))
 	}
 
 	// Tags column (optional)
