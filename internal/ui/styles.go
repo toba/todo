@@ -198,6 +198,24 @@ func RenderStatusText(status string) string {
 	}
 }
 
+// StatusIcon returns a Unicode icon for the given status.
+func StatusIcon(status string) string {
+	switch status {
+	case "draft":
+		return "◌"
+	case "ready":
+		return "○"
+	case "in-progress":
+		return "◔"
+	case "completed":
+		return "✔"
+	case "scrapped":
+		return "✖"
+	default:
+		return "○"
+	}
+}
+
 // RenderStatusWithColor returns a styled status badge using the specified color.
 func RenderStatusWithColor(status, color string, isArchiveStatus bool) string {
 	c := ResolveColor(color)
@@ -210,7 +228,7 @@ func RenderStatusWithColor(status, color string, isArchiveStatus bool) string {
 		style = style.Bold(true)
 	}
 
-	return style.Render(status)
+	return style.Render(StatusIcon(status) + " " + status)
 }
 
 // RenderStatusTextWithColor returns styled status text (for tables) using the specified color.
@@ -222,7 +240,7 @@ func RenderStatusTextWithColor(status, color string, isArchiveStatus bool) strin
 		style = style.Bold(true)
 	}
 
-	return style.Render(status)
+	return style.Render(StatusIcon(status))
 }
 
 // RenderTypeText returns styled type text using the specified color.
@@ -333,8 +351,8 @@ type IssueRowConfig struct {
 // Base column widths for issue lists (minimum sizes)
 const (
 	ColWidthID     = 12
-	ColWidthStatus = 14
-	ColWidthType   = 12
+	ColWidthStatus = 3
+	ColWidthType   = 10
 	ColWidthTags   = 24
 )
 
@@ -369,7 +387,7 @@ func CalculateResponsiveColumns(totalWidth int, hasTags bool) ResponsiveColumns 
 	}
 
 	// At this point we have at least 140 columns
-	// Base usage: cursor (2) + ID (12) + status (14) + type (12) = 40
+	// Base usage: cursor (2) + ID (12) + status (5) + type (12) = 31
 	cursorWidth := 2
 	baseWidth := cursorWidth + cols.ID + cols.Status + cols.Type
 	available := totalWidth - baseWidth
@@ -462,7 +480,7 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 
 	var statusCol string
 	if cfg.Dimmed {
-		statusCol = statusStyle.Render(Muted.Render(status))
+		statusCol = statusStyle.Render(Muted.Render(StatusIcon(status)))
 	} else {
 		statusCol = statusStyle.Render(RenderStatusTextWithColor(status, cfg.StatusColor, cfg.IsArchive))
 	}
