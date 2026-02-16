@@ -13,6 +13,7 @@ import (
 )
 
 const debounceDelay = 100 * time.Millisecond
+const pollInterval = 2 * time.Second
 
 // EventType represents the type of change that occurred to an issue.
 type EventType int
@@ -178,13 +179,19 @@ func (c *Core) unwatchLocked() error {
 	return nil
 }
 
-// watchLoop processes filesystem events with debouncing.
+// watchLoop processes filesystem events with debouncing and polling fallback.
 func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 	defer watcher.Close()
 
 	var debounceTimer *time.Timer
 	var pendingMu sync.Mutex
 	pendingChanges := make(map[string]fsnotify.Op)
+
+	// Seed mtime map for polling fallback
+	mtimes := c.snapshotMtimes()
+
+	pollTicker := time.NewTicker(pollInterval)
+	defer pollTicker.Stop()
 
 	for {
 		select {
@@ -197,6 +204,13 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
+			}
+
+			// Watch newly created subdirectories so fsnotify picks up files in them
+			if event.Op&fsnotify.Create != 0 && !strings.HasSuffix(event.Name, ".md") {
+				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+					_ = watcher.Add(event.Name)
+				}
 			}
 
 			// Only care about .md files within the issues directory tree
@@ -239,6 +253,10 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 				c.handleChanges(changes)
 			})
 
+		case <-pollTicker.C:
+			changes := c.pollForChanges(mtimes, watcher)
+			c.handleChanges(changes)
+
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
@@ -247,6 +265,77 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 			_ = err // In production, you might want to log this
 		}
 	}
+}
+
+// snapshotMtimes walks the issues directory and returns a map of file path to modification time
+// for all .md files.
+func (c *Core) snapshotMtimes() map[string]time.Time {
+	mtimes := make(map[string]time.Time)
+	_ = filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".md") {
+			if info, err := d.Info(); err == nil {
+				mtimes[path] = info.ModTime()
+			}
+		}
+		return nil
+	})
+	return mtimes
+}
+
+// pollForChanges walks the issues directory, compares mtimes against a cached map,
+// and returns a map of changed file paths to fsnotify ops. It also watches any new
+// subdirectories discovered during the walk. The mtimes map is updated in place.
+func (c *Core) pollForChanges(mtimes map[string]time.Time, watcher *fsnotify.Watcher) map[string]fsnotify.Op {
+	changes := make(map[string]fsnotify.Op)
+	seen := make(map[string]bool)
+
+	_ = filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			// Watch new subdirectories
+			if path != c.root {
+				_ = watcher.Add(path)
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".md") {
+			return nil
+		}
+
+		seen[path] = true
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		mtime := info.ModTime()
+
+		prev, exists := mtimes[path]
+		if !exists {
+			// New file
+			mtimes[path] = mtime
+			changes[path] = fsnotify.Create
+		} else if !mtime.Equal(prev) {
+			// Modified file
+			mtimes[path] = mtime
+			changes[path] = fsnotify.Write
+		}
+		return nil
+	})
+
+	// Detect deleted files
+	for path := range mtimes {
+		if !seen[path] {
+			delete(mtimes, path)
+			changes[path] = fsnotify.Remove
+		}
+	}
+
+	return changes
 }
 
 // handleChanges processes only the files that changed, updating state incrementally.

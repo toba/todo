@@ -38,6 +38,9 @@ const (
 // issuesChangedMsg is sent when issues change on disk (via file watcher)
 type issuesChangedMsg struct{}
 
+// tickMsg is sent periodically to refresh the TUI as a safety net
+type tickMsg time.Time
+
 // openTagPickerMsg requests opening the tag picker
 type openTagPickerMsg struct{}
 
@@ -118,9 +121,16 @@ func New(core *core.Core, cfg *config.Config) *App {
 	}
 }
 
+// tickCmd returns a command that sends a tickMsg after 2 seconds.
+func tickCmd() tea.Cmd {
+	return tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
 // Init initializes the application
 func (a *App) Init() tea.Cmd {
-	return a.list.Init()
+	return tea.Batch(a.list.Init(), tickCmd())
 }
 
 // Update handles messages
@@ -199,6 +209,19 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Trigger list refresh
 		return a, a.list.loadIssues
+
+	case tickMsg:
+		// Periodic refresh as safety net for dropped fsnotify events
+		if a.state == viewDetail {
+			updatedIssue, err := a.resolver.Query().Issue(context.Background(), a.detail.issue.ID)
+			if err != nil || updatedIssue == nil {
+				a.state = viewList
+				a.history = nil
+			} else {
+				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
+			}
+		}
+		return a, tea.Batch(tickCmd(), a.list.loadIssues)
 
 	case openTagPickerMsg:
 		// Collect all tags with their counts
