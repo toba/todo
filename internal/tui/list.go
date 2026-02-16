@@ -312,12 +312,12 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				m.hasTags = true
 			}
 		}
-		m.list.SetItems(items)
+		cmd = m.list.SetItems(items)
 		m.idColWidth = msg.idColWidth
 		// Calculate responsive columns based on hasTags and width
 		m.cols = ui.CalculateResponsiveColumns(m.width, m.hasTags)
 		m.updateDelegate()
-		return m, nil
+		return m, cmd
 
 	case errMsg:
 		m.err = msg.err
