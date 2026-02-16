@@ -8,12 +8,20 @@ Like the others, this is a git-diffable **issue tracker** that lives in your pro
 
 That's why I made yet another. The reason for such tooling at all is to encourage (and what more can we really do?) your LLM agent to track its work more reliably and token-efficiently.
 
+## what's different
+
+Everything in [beans](https://github.com/hmans/beans), plus:
+
+- **External sync** — bidirectional sync with ClickUp and GitHub Issues (`todo sync`)
+- **Due dates** — date field with sort support
+- **TUI improvements** — status icons instead of text labels, sort picker (`o` key), substring search instead of fuzzy match (tap `/` twice to search descriptions too), due date indicators
+
 ## Installation
 
 Either download todo from the [Releases section](https://github.com/toba/todo/releases), or install it via Homebrew:
 
 ```bash
-brew install toba/todo
+brew install toba/todo/todo
 ```
 
 Alternatively, install directly via Go:
@@ -39,21 +47,6 @@ This creates a `.issues/` directory and a `.todo.yml` configuration file at the 
 issues:
   path: .issues
   editor: "code --wait"
-
-sync:
-  # ClickUp integration (requires CLICKUP_TOKEN env var)
-  clickup:
-    list_id: "123456789"
-    status_mapping:
-      draft: "backlog"
-      ready: "to do"
-      in-progress: "in progress"
-      completed: "complete"
-      scrapped: "closed"
-
-  # GitHub Issues integration (requires GITHUB_TOKEN env var)
-  github:
-    repo: "owner/repo"
 ```
 
 ## Agent Configuration
@@ -63,6 +56,8 @@ The most basic way to teach your agent about todo is to add the following instru
 ```
 **IMPORTANT**: before you do anything else, run the `todo prime` command and heed its output.
 ```
+
+The `prime` output is designed to be token-efficient — about 680 words of rendered output — so it doesn't eat your context window alive every time a session starts or compacts.
 
 ### Claude Code
 
@@ -123,6 +118,36 @@ todo sync --dry-run        # Preview changes without applying
 todo sync --force          # Force update even if unchanged
 ```
 
+Per-issue sync state is stored in frontmatter:
+
+```yaml
+---
+title: Fix login bug
+status: ready
+sync:
+  clickup:
+    task_id: "868h4hd05"
+    synced_at: "2026-01-18T00:07:02Z"
+  github:
+    issue_number: "42"
+    synced_at: "2026-01-18T00:07:02Z"
+---
+```
+
+Sync data is readable and writable via the GraphQL API:
+
+```graphql
+# Read sync data
+{ issue(id: "abc-def") { sync { name data } } }
+
+# Write sync data
+mutation { setSyncData(id: "abc-def", name: "clickup", data: { task_id: "xyz" }) { id } }
+
+# Filter by sync
+{ issues(filter: { hasSync: "clickup" }) { id title } }
+{ issues(filter: { syncStale: "clickup" }) { id title } }
+```
+
 ### ClickUp
 
 Requires `CLICKUP_TOKEN` environment variable. Syncs statuses, priorities, types, and blocking relationships as ClickUp task dependencies.
@@ -144,7 +169,7 @@ sync:
       normal: 3
       low: 4
     custom_fields:
-      bean_id: "cf-field-uuid"
+      issue_id: "cf-field-uuid"
       created_at: "cf-field-uuid"
       updated_at: "cf-field-uuid"
     sync_filter:
@@ -161,38 +186,6 @@ Requires `GITHUB_TOKEN` environment variable. Maps statuses, priorities, and typ
 sync:
   github:
     repo: "owner/repo"   # Required
-```
-
-## Sync
-
-todo supports sync integrations for syncing with external systems. Per-issue sync state is stored in frontmatter:
-
-```yaml
----
-title: Fix login bug
-status: ready
-sync:
-  clickup:
-    task_id: "868h4hd05"
-    synced_at: "2026-01-18T00:07:02Z"
-  github:
-    issue_number: "42"
-    synced_at: "2026-01-18T00:07:02Z"
----
-```
-
-Sync data is readable and writable via the GraphQL API:
-
-```graphql
-# Read sync data
-{ bean(id: "abc-def") { sync { name data } } }
-
-# Write sync data
-mutation { setSyncData(id: "abc-def", name: "clickup", data: { task_id: "xyz" }) { id } }
-
-# Filter by sync
-{ beans(filter: { hasSync: "clickup" }) { id title } }
-{ beans(filter: { syncStale: "clickup" }) { id title } }
 ```
 
 ## License

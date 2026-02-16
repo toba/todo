@@ -14,10 +14,9 @@ var agentPromptTemplate string
 
 // promptData holds all data needed to render the prompt template.
 type promptData struct {
-	GraphQLSchema string
-	Types         []config.TypeConfig
-	Statuses      []config.StatusConfig
-	Priorities    []config.PriorityConfig
+	Types      []config.TypeConfig
+	Statuses   []config.StatusConfig
+	Priorities []config.PriorityConfig
 }
 
 var primeCmd = &cobra.Command{
@@ -46,10 +45,9 @@ var primeCmd = &cobra.Command{
 		}
 
 		data := promptData{
-			GraphQLSchema: GetGraphQLSchema(),
-			Types:         config.DefaultTypes,
-			Statuses:      config.DefaultStatuses,
-			Priorities:    config.DefaultPriorities,
+			Types:      config.DefaultTypes,
+			Statuses:   config.DefaultStatuses,
+			Priorities: config.DefaultPriorities,
 		}
 
 		return tmpl.Execute(os.Stdout, data)

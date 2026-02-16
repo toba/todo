@@ -396,20 +396,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.list.loadIssues
 
 	case blockingConfirmedMsg:
-		// Apply all blocking changes via GraphQL mutations
-		for _, targetID := range msg.toAdd {
-			_, err := a.resolver.Mutation().AddBlocking(context.Background(), msg.issueID, targetID, nil)
-			if err != nil {
-				// Continue with other changes even if one fails
-				continue
+		// Apply all blocking changes via updateIssue mutation
+		if len(msg.toAdd) > 0 || len(msg.toRemove) > 0 {
+			input := model.UpdateIssueInput{
+				AddBlocking:    msg.toAdd,
+				RemoveBlocking: msg.toRemove,
 			}
-		}
-		for _, targetID := range msg.toRemove {
-			_, err := a.resolver.Mutation().RemoveBlocking(context.Background(), msg.issueID, targetID, nil)
-			if err != nil {
-				// Continue with other changes even if one fails
-				continue
-			}
+			a.resolver.Mutation().UpdateIssue(context.Background(), msg.issueID, input)
 		}
 		// Return to previous view and refresh
 		a.state = a.previousState
@@ -492,13 +485,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case parentSelectedMsg:
-		// Set the new parent via GraphQL mutation for all issues
-		var parentID *string
-		if msg.parentID != "" {
-			parentID = &msg.parentID
+		// Set the new parent via updateIssue mutation for all issues
+		parentValue := msg.parentID
+		input := model.UpdateIssueInput{
+			Parent: &parentValue,
 		}
 		for _, issueID := range msg.issueIDs {
-			_, err := a.resolver.Mutation().SetParent(context.Background(), issueID, parentID, nil)
+			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, input)
 			if err != nil {
 				// Continue with other issues even if one fails
 				continue

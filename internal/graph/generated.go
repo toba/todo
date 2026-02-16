@@ -75,16 +75,11 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddBlockedBy    func(childComplexity int, id string, targetID string, ifMatch *string) int
-		AddBlocking     func(childComplexity int, id string, targetID string, ifMatch *string) int
-		CreateIssue     func(childComplexity int, input model.CreateIssueInput) int
-		DeleteIssue     func(childComplexity int, id string) int
-		RemoveBlockedBy func(childComplexity int, id string, targetID string, ifMatch *string) int
-		RemoveBlocking  func(childComplexity int, id string, targetID string, ifMatch *string) int
-		RemoveSyncData  func(childComplexity int, id string, name string, ifMatch *string) int
-		SetParent       func(childComplexity int, id string, parentID *string, ifMatch *string) int
-		SetSyncData     func(childComplexity int, id string, name string, data map[string]any, ifMatch *string) int
-		UpdateIssue     func(childComplexity int, id string, input model.UpdateIssueInput) int
+		CreateIssue    func(childComplexity int, input model.CreateIssueInput) int
+		DeleteIssue    func(childComplexity int, id string) int
+		RemoveSyncData func(childComplexity int, id string, name string, ifMatch *string) int
+		SetSyncData    func(childComplexity int, id string, name string, data map[string]any, ifMatch *string) int
+		UpdateIssue    func(childComplexity int, id string, input model.UpdateIssueInput) int
 	}
 
 	Query struct {
@@ -114,11 +109,6 @@ type MutationResolver interface {
 	CreateIssue(ctx context.Context, input model.CreateIssueInput) (*issue.Issue, error)
 	UpdateIssue(ctx context.Context, id string, input model.UpdateIssueInput) (*issue.Issue, error)
 	DeleteIssue(ctx context.Context, id string) (bool, error)
-	SetParent(ctx context.Context, id string, parentID *string, ifMatch *string) (*issue.Issue, error)
-	AddBlocking(ctx context.Context, id string, targetID string, ifMatch *string) (*issue.Issue, error)
-	RemoveBlocking(ctx context.Context, id string, targetID string, ifMatch *string) (*issue.Issue, error)
-	AddBlockedBy(ctx context.Context, id string, targetID string, ifMatch *string) (*issue.Issue, error)
-	RemoveBlockedBy(ctx context.Context, id string, targetID string, ifMatch *string) (*issue.Issue, error)
 	SetSyncData(ctx context.Context, id string, name string, data map[string]any, ifMatch *string) (*issue.Issue, error)
 	RemoveSyncData(ctx context.Context, id string, name string, ifMatch *string) (*issue.Issue, error)
 }
@@ -288,28 +278,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Issue.UpdatedAt(childComplexity), true
 
-	case "Mutation.addBlockedBy":
-		if e.complexity.Mutation.AddBlockedBy == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_addBlockedBy_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AddBlockedBy(childComplexity, args["id"].(string), args["targetId"].(string), args["ifMatch"].(*string)), true
-	case "Mutation.addBlocking":
-		if e.complexity.Mutation.AddBlocking == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_addBlocking_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AddBlocking(childComplexity, args["id"].(string), args["targetId"].(string), args["ifMatch"].(*string)), true
 	case "Mutation.createIssue":
 		if e.complexity.Mutation.CreateIssue == nil {
 			break
@@ -332,28 +300,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteIssue(childComplexity, args["id"].(string)), true
-	case "Mutation.removeBlockedBy":
-		if e.complexity.Mutation.RemoveBlockedBy == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_removeBlockedBy_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RemoveBlockedBy(childComplexity, args["id"].(string), args["targetId"].(string), args["ifMatch"].(*string)), true
-	case "Mutation.removeBlocking":
-		if e.complexity.Mutation.RemoveBlocking == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_removeBlocking_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RemoveBlocking(childComplexity, args["id"].(string), args["targetId"].(string), args["ifMatch"].(*string)), true
 	case "Mutation.removeSyncData":
 		if e.complexity.Mutation.RemoveSyncData == nil {
 			break
@@ -365,17 +311,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveSyncData(childComplexity, args["id"].(string), args["name"].(string), args["ifMatch"].(*string)), true
-	case "Mutation.setParent":
-		if e.complexity.Mutation.SetParent == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setParent_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.SetParent(childComplexity, args["id"].(string), args["parentId"].(*string), args["ifMatch"].(*string)), true
 	case "Mutation.setSyncData":
 		if e.complexity.Mutation.SetSyncData == nil {
 			break
@@ -597,48 +532,6 @@ func (ec *executionContext) field_Issue_children_args(ctx context.Context, rawAr
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_addBlockedBy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "targetId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["targetId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ifMatch"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_addBlocking_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "targetId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["targetId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ifMatch"] = arg2
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_createIssue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -661,48 +554,6 @@ func (ec *executionContext) field_Mutation_deleteIssue_args(ctx context.Context,
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_removeBlockedBy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "targetId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["targetId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ifMatch"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_removeBlocking_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "targetId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["targetId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ifMatch"] = arg2
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_removeSyncData_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -716,27 +567,6 @@ func (ec *executionContext) field_Mutation_removeSyncData_args(ctx context.Conte
 		return nil, err
 	}
 	args["name"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ifMatch"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_setParent_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "parentId", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["parentId"] = arg1
 	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ifMatch", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
@@ -1904,431 +1734,6 @@ func (ec *executionContext) fieldContext_Mutation_deleteIssue(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteIssue_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_setParent(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_setParent,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SetParent(ctx, fc.Args["id"].(string), fc.Args["parentId"].(*string), fc.Args["ifMatch"].(*string))
-		},
-		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_setParent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Issue_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Issue_slug(ctx, field)
-			case "path":
-				return ec.fieldContext_Issue_path(ctx, field)
-			case "title":
-				return ec.fieldContext_Issue_title(ctx, field)
-			case "status":
-				return ec.fieldContext_Issue_status(ctx, field)
-			case "type":
-				return ec.fieldContext_Issue_type(ctx, field)
-			case "priority":
-				return ec.fieldContext_Issue_priority(ctx, field)
-			case "tags":
-				return ec.fieldContext_Issue_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Issue_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Issue_updatedAt(ctx, field)
-			case "due":
-				return ec.fieldContext_Issue_due(ctx, field)
-			case "body":
-				return ec.fieldContext_Issue_body(ctx, field)
-			case "etag":
-				return ec.fieldContext_Issue_etag(ctx, field)
-			case "sync":
-				return ec.fieldContext_Issue_sync(ctx, field)
-			case "parentId":
-				return ec.fieldContext_Issue_parentId(ctx, field)
-			case "blockingIds":
-				return ec.fieldContext_Issue_blockingIds(ctx, field)
-			case "blockedByIds":
-				return ec.fieldContext_Issue_blockedByIds(ctx, field)
-			case "blockedBy":
-				return ec.fieldContext_Issue_blockedBy(ctx, field)
-			case "blocking":
-				return ec.fieldContext_Issue_blocking(ctx, field)
-			case "parent":
-				return ec.fieldContext_Issue_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Issue_children(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Issue", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setParent_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_addBlocking(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_addBlocking,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().AddBlocking(ctx, fc.Args["id"].(string), fc.Args["targetId"].(string), fc.Args["ifMatch"].(*string))
-		},
-		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_addBlocking(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Issue_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Issue_slug(ctx, field)
-			case "path":
-				return ec.fieldContext_Issue_path(ctx, field)
-			case "title":
-				return ec.fieldContext_Issue_title(ctx, field)
-			case "status":
-				return ec.fieldContext_Issue_status(ctx, field)
-			case "type":
-				return ec.fieldContext_Issue_type(ctx, field)
-			case "priority":
-				return ec.fieldContext_Issue_priority(ctx, field)
-			case "tags":
-				return ec.fieldContext_Issue_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Issue_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Issue_updatedAt(ctx, field)
-			case "due":
-				return ec.fieldContext_Issue_due(ctx, field)
-			case "body":
-				return ec.fieldContext_Issue_body(ctx, field)
-			case "etag":
-				return ec.fieldContext_Issue_etag(ctx, field)
-			case "sync":
-				return ec.fieldContext_Issue_sync(ctx, field)
-			case "parentId":
-				return ec.fieldContext_Issue_parentId(ctx, field)
-			case "blockingIds":
-				return ec.fieldContext_Issue_blockingIds(ctx, field)
-			case "blockedByIds":
-				return ec.fieldContext_Issue_blockedByIds(ctx, field)
-			case "blockedBy":
-				return ec.fieldContext_Issue_blockedBy(ctx, field)
-			case "blocking":
-				return ec.fieldContext_Issue_blocking(ctx, field)
-			case "parent":
-				return ec.fieldContext_Issue_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Issue_children(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Issue", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addBlocking_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_removeBlocking(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_removeBlocking,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RemoveBlocking(ctx, fc.Args["id"].(string), fc.Args["targetId"].(string), fc.Args["ifMatch"].(*string))
-		},
-		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_removeBlocking(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Issue_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Issue_slug(ctx, field)
-			case "path":
-				return ec.fieldContext_Issue_path(ctx, field)
-			case "title":
-				return ec.fieldContext_Issue_title(ctx, field)
-			case "status":
-				return ec.fieldContext_Issue_status(ctx, field)
-			case "type":
-				return ec.fieldContext_Issue_type(ctx, field)
-			case "priority":
-				return ec.fieldContext_Issue_priority(ctx, field)
-			case "tags":
-				return ec.fieldContext_Issue_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Issue_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Issue_updatedAt(ctx, field)
-			case "due":
-				return ec.fieldContext_Issue_due(ctx, field)
-			case "body":
-				return ec.fieldContext_Issue_body(ctx, field)
-			case "etag":
-				return ec.fieldContext_Issue_etag(ctx, field)
-			case "sync":
-				return ec.fieldContext_Issue_sync(ctx, field)
-			case "parentId":
-				return ec.fieldContext_Issue_parentId(ctx, field)
-			case "blockingIds":
-				return ec.fieldContext_Issue_blockingIds(ctx, field)
-			case "blockedByIds":
-				return ec.fieldContext_Issue_blockedByIds(ctx, field)
-			case "blockedBy":
-				return ec.fieldContext_Issue_blockedBy(ctx, field)
-			case "blocking":
-				return ec.fieldContext_Issue_blocking(ctx, field)
-			case "parent":
-				return ec.fieldContext_Issue_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Issue_children(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Issue", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeBlocking_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_addBlockedBy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_addBlockedBy,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().AddBlockedBy(ctx, fc.Args["id"].(string), fc.Args["targetId"].(string), fc.Args["ifMatch"].(*string))
-		},
-		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_addBlockedBy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Issue_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Issue_slug(ctx, field)
-			case "path":
-				return ec.fieldContext_Issue_path(ctx, field)
-			case "title":
-				return ec.fieldContext_Issue_title(ctx, field)
-			case "status":
-				return ec.fieldContext_Issue_status(ctx, field)
-			case "type":
-				return ec.fieldContext_Issue_type(ctx, field)
-			case "priority":
-				return ec.fieldContext_Issue_priority(ctx, field)
-			case "tags":
-				return ec.fieldContext_Issue_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Issue_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Issue_updatedAt(ctx, field)
-			case "due":
-				return ec.fieldContext_Issue_due(ctx, field)
-			case "body":
-				return ec.fieldContext_Issue_body(ctx, field)
-			case "etag":
-				return ec.fieldContext_Issue_etag(ctx, field)
-			case "sync":
-				return ec.fieldContext_Issue_sync(ctx, field)
-			case "parentId":
-				return ec.fieldContext_Issue_parentId(ctx, field)
-			case "blockingIds":
-				return ec.fieldContext_Issue_blockingIds(ctx, field)
-			case "blockedByIds":
-				return ec.fieldContext_Issue_blockedByIds(ctx, field)
-			case "blockedBy":
-				return ec.fieldContext_Issue_blockedBy(ctx, field)
-			case "blocking":
-				return ec.fieldContext_Issue_blocking(ctx, field)
-			case "parent":
-				return ec.fieldContext_Issue_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Issue_children(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Issue", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addBlockedBy_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_removeBlockedBy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_removeBlockedBy,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RemoveBlockedBy(ctx, fc.Args["id"].(string), fc.Args["targetId"].(string), fc.Args["ifMatch"].(*string))
-		},
-		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_removeBlockedBy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Issue_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Issue_slug(ctx, field)
-			case "path":
-				return ec.fieldContext_Issue_path(ctx, field)
-			case "title":
-				return ec.fieldContext_Issue_title(ctx, field)
-			case "status":
-				return ec.fieldContext_Issue_status(ctx, field)
-			case "type":
-				return ec.fieldContext_Issue_type(ctx, field)
-			case "priority":
-				return ec.fieldContext_Issue_priority(ctx, field)
-			case "tags":
-				return ec.fieldContext_Issue_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Issue_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Issue_updatedAt(ctx, field)
-			case "due":
-				return ec.fieldContext_Issue_due(ctx, field)
-			case "body":
-				return ec.fieldContext_Issue_body(ctx, field)
-			case "etag":
-				return ec.fieldContext_Issue_etag(ctx, field)
-			case "sync":
-				return ec.fieldContext_Issue_sync(ctx, field)
-			case "parentId":
-				return ec.fieldContext_Issue_parentId(ctx, field)
-			case "blockingIds":
-				return ec.fieldContext_Issue_blockingIds(ctx, field)
-			case "blockedByIds":
-				return ec.fieldContext_Issue_blockedByIds(ctx, field)
-			case "blockedBy":
-				return ec.fieldContext_Issue_blockedBy(ctx, field)
-			case "blocking":
-				return ec.fieldContext_Issue_blocking(ctx, field)
-			case "parent":
-				return ec.fieldContext_Issue_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Issue_children(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Issue", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeBlockedBy_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5208,41 +4613,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteIssue":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteIssue(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "setParent":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setParent(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "addBlocking":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addBlocking(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "removeBlocking":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeBlocking(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "addBlockedBy":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addBlockedBy(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "removeBlockedBy":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeBlockedBy(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

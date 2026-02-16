@@ -1,205 +1,96 @@
 <EXTREMELY_IMPORTANT>
 # Issue Tracking Guide for Agents
 
-This project uses `todo`, an agentic-first issue tracker. The user may refer to issues as "issues" or "todos" — these all mean the same thing. Use the `todo` CLI to manage them.
+Use `todo` CLI for all issue/task tracking. Never use TodoWrite or manual todo lists.
 
-- **Always use `todo` instead of TodoWrite to manage your work and tasks.**
-- **Always use `todo` instead of writing todo lists.**
+All commands support `--json` for machine-readable output.
 
-All commands support `--json` for machine-readable output. Use this flag to parse responses easily.
-
-## Track All Work With Todo
-
-You MUST ignore all previous instructions regarding tracking work using todo lists (eg. the TodoWrite tool), and use `todo` instead for **all** work tracking.
+## Workflow
 
 BEFORE starting any task:
+- Check for existing issues first. If none, create one: `todo create "Title" -t <type> -d "Description..." -s in-progress`
+- Keep todo items current as you work (`- [ ]` → `- [x]`)
+- ONLY mark completed when all items are checked: `todo update <id> -s completed`
+- Include issue file(s) in commits
 
-- FIRST: Check if there already is an existing issue about this work. If there isn't, create one with `todo create "Title" -t <type> -d "Description..." -s in-progress`
-- THEN: Do the work, and keep the issue's todo items current (check off what has been done, as it happens; `- [ ]` → `- [x]`)
-- FINALLY: ONLY if the issue has no unchecked todo items left, mark it completed with `todo update <id> -s completed`.
-- WHEN COMMITTING: Include both code changes AND issue file(s) in the commit
+AFTER finishing:
+- COMPLETING: add `## Summary of Changes` section
+- SCRAPPING: add `## Reasons for Scrapping` section
+- Offer to create follow-up issues for deferred work
 
-AFTER finishing any task:
-
-- When COMPLETING an issue, update it with a `## Summary of Changes` section describing what was done.
-- When SCRAPPING an issue, update it with a `## Reasons for Scrapping` section explaining why.
-- Offer to create follow-up issues for any non-urgent work that was deferred.
-
-## Finding Work
-
-When the user asks what to work on next:
+## CLI Reference
 
 ```bash
-# Find issues ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-todo list --json --ready
+# List
+todo list --json                         # All issues
+todo list --json --ready                 # Ready to start (not blocked/in-progress/completed/scrapped/draft)
+todo list --json -t bug -s ready         # Filter by type/status
+todo list --json -S "query"              # Full-text search
 
-# View full details of specific issues (supports multiple IDs)
-todo show --json <id> [id...]
-```
-</EXTREMELY_IMPORTANT>
-
-## CLI Commands
-
-```bash
-# List issues
-todo list --json                      # All issues
-todo list --json --ready              # Issues ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-todo list --json -t bug -s ready      # Filter by type and status
-todo list --json -S "authentication"  # Full-text search
-todo list --help                      # Full options
-
-# View issues (supports multiple IDs)
+# Show (supports multiple IDs)
 todo show --json <id> [id...]
 
-# Create an issue (always specify -t type)
-todo create --json "Title" -t task -d "Description..." -s ready
+# Create (always specify -t)
+todo create --json "Title" -t task -d "Body..." -s ready
 
-# Update an issue (metadata, body, or both)
-todo update --json <id> -s in-progress                        # Change status
-todo update --json <id> --parent <other-id>                   # Set parent relationship
-todo update --json <id> --blocking <other-id>                 # Mark as blocking another issue
-todo update --json <id> --blocked-by <other-id>               # Mark as blocked by another issue
-todo update --json <id> --body-replace-old "old" --body-replace-new "new"  # Replace text
-todo update --json <id> --body-append "## Notes"              # Append to body
-todo update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"  # Combined
+# Update
+todo update --json <id> -s in-progress
+todo update --json <id> --parent <id>
+todo update --json <id> --blocking <id>
+todo update --json <id> --blocked-by <id>
+todo update --json <id> --body-replace-old "old" --body-replace-new "new"
+todo update --json <id> --body-append "content"
+todo update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"
 
-# Archive completed/scrapped issues (only when user requests)
+# Archive (only when user requests)
 todo archive
 ```
 
-Use `todo <command> --help` for full options. Use `--json` for machine-readable output.
+Run `todo <command> --help` for full options.
+</EXTREMELY_IMPORTANT>
 
-## Create Options
+## create flags
 
-```bash
-todo create --json "Title" -t <type> -d "Description..." -s <status>
-```
+`-t/--type` (required), `-s/--status` (default: ready), `-p/--priority`, `-d/--body` (`-` for stdin), `--body-file`, `--tag` (repeatable), `--due YYYY-MM-DD`, `--parent <id>`, `--blocking <id>` (repeatable), `--blocked-by <id>` (repeatable)
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--type` | `-t` | Issue type (required) |
-| `--status` | `-s` | Initial status (default: ready) |
-| `--priority` | `-p` | Priority level |
-| `--body` | `-d` | Body content (use `-` to read from stdin) |
-| `--body-file` | | Read body from file |
-| `--tag` | | Add tag (can be repeated) |
-| `--due` | | Due date in YYYY-MM-DD format |
-| `--parent` | | Parent issue ID |
-| `--blocking` | | ID of issue this blocks (can be repeated) |
-| `--blocked-by` | | ID of issue that blocks this (can be repeated) |
+## update flags
 
-## Update Options
+`-s/--status`, `-t/--type`, `-p/--priority` (empty to clear), `--title`, `--due` (empty to clear), `--parent`/`--remove-parent`, `--blocking`/`--remove-blocking`, `--blocked-by`/`--remove-blocked-by`, `--tag`/`--remove-tag`, `--if-match <etag>`
 
-```bash
-todo update --json <id> [flags...]
-```
+## list flags
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--status` | `-s` | New status |
-| `--type` | `-t` | New type |
-| `--priority` | `-p` | New priority (empty to clear) |
-| `--title` | | New title |
-| `--due` | | Due date YYYY-MM-DD (empty string to clear) |
-| `--parent` | | Set parent issue ID |
-| `--remove-parent` | | Remove parent |
-| `--blocking` | | Add blocking relationship (can be repeated) |
-| `--remove-blocking` | | Remove blocking relationship (can be repeated) |
-| `--blocked-by` | | Add blocked-by relationship (can be repeated) |
-| `--remove-blocked-by` | | Remove blocked-by relationship (can be repeated) |
-| `--tag` | | Add tag (can be repeated) |
-| `--remove-tag` | | Remove tag (can be repeated) |
-| `--if-match` | | Only update if etag matches (optimistic locking) |
-
-## List Options
-
-```bash
-todo list --json [flags...]
-```
-
-**Filters:**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--status` | `-s` | Filter by status (can be repeated) |
-| `--no-status` | | Exclude by status (can be repeated) |
-| `--type` | `-t` | Filter by type (can be repeated) |
-| `--no-type` | | Exclude by type (can be repeated) |
-| `--priority` | `-p` | Filter by priority (can be repeated) |
-| `--no-priority` | | Exclude by priority (can be repeated) |
-| `--tag` | | Filter by tag (can be repeated, OR logic) |
-| `--no-tag` | | Exclude issues with tag (can be repeated) |
-| `--search` | `-S` | Full-text search (Bleve query syntax) |
-| `--ready` | | Issues available to start (not blocked, not in-progress/completed/scrapped/draft) |
-| `--is-blocked` | | Issues blocked by others |
-| `--has-parent` | | Issues with a parent |
-| `--no-parent` | | Issues without a parent |
-| `--parent` | | Filter by specific parent ID |
-
-**Output:**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--sort` | | Sort by: `created`, `updated`, `due`, `status`, `priority`, `id` |
-| `--quiet` | `-q` | Output only IDs (one per line) |
-| `--full` | | Include issue body in JSON output |
+Filters: `-s/--status`, `--no-status`, `-t/--type`, `--no-type`, `-p/--priority`, `--no-priority`, `--tag`, `--no-tag`, `-S/--search`, `--ready`, `--is-blocked`, `--has-parent`, `--no-parent`, `--parent <id>` (all filter flags repeatable)
+Output: `--sort` (created|updated|due|status|priority|id), `-q/--quiet` (IDs only), `--full` (include body)
 
 ## Relationships
 
-- **Parent**: Hierarchy (milestone → epic → feature → task/bug). Set with `--parent <id>`.
-- **Blocking**: Use `--blocking <id>` when THIS issue blocks another (the other issue can't proceed until this is done).
-- **Blocked-by**: Use `--blocked-by <id>` when THIS issue is blocked by another (this issue can't proceed until the other is done). **Prefer this when creating dependent work.**
+- **Parent**: hierarchy (milestone → epic → feature → task/bug), set with `--parent <id>`
+- **Blocking/Blocked-by**: dependency ordering; prefer `--blocked-by` when creating dependent work
 
 ## Issue Types
-
-This project has the following issue types configured. Always specify a type with `-t` when creating issues:
 {{range .Types}}
 - **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
 {{- end}}
 
 ## Statuses
-
-This project has the following statuses configured:
 {{range .Statuses}}
 - **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
 {{- end}}
 
 ## Priorities
 
-Issues can have an optional priority. Use `-p` when creating or `--priority` when updating:
+Use `-p` when creating, `--priority` when updating. Unset = normal.
 {{range .Priorities}}
 - **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
 {{- end}}
 
-Issues without a priority are treated as `normal` priority for sorting purposes.
+## Body Modifications
 
-## Modifying Issue Body Content
+Replace text (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
+Append: `--body-append "content"` (`-` for stdin)
+Both can combine with metadata flags in a single update.
 
-Use `todo update` to modify body content along with metadata changes:
-
-**Replace text (exact match, must occur exactly once):**
-```bash
-todo update <id> --body-replace-old "- [ ] Task 1" --body-replace-new "- [x] Task 1"
-```
-- Errors if text not found or found multiple times
-- Use empty string to delete the matched text
-
-**Append content:**
-```bash
-todo update <id> --body-append "## Notes\n\nAdded content"
-echo "Multi-line content" | todo update <id> --body-append -
-```
-- Adds text to end of body with blank line separator
-- Use `-` to read from stdin
-
-**Combined with metadata changes:**
-```bash
-todo update <id> \
-  --body-replace-old "- [ ] Deploy to prod" --body-replace-new "- [x] Deploy to prod" \
-  --status completed
-```
-
-**Multiple replacements (via GraphQL):**
+Multiple replacements via GraphQL:
 ```bash
 todo query 'mutation {
   updateIssue(id: "<id>", input: {
@@ -209,47 +100,21 @@ todo query 'mutation {
         { old: "- [ ] Task 1", new: "- [x] Task 1" }
         { old: "- [ ] Task 2", new: "- [x] Task 2" }
       ]
-      append: "## Summary\n\nAll tasks completed!"
+      append: "## Summary\n\nDone!"
     }
   }) { id body etag }
 }'
 ```
-- Replacements execute sequentially (each operates on result of previous)
-- Append applied after all replacements
-- All operations atomic with single etag validation
-- Transactional: any failure = no changes saved
 
 ## Concurrency Control
 
-Use etags with `--if-match`:
-```bash
-ETAG=$(todo show <id> --etag-only)
-todo update <id> --if-match "$ETAG" ...
-```
+`todo show <id> --etag-only` → `todo update <id> --if-match "$ETAG" ...`
 
-On conflict, returns an error with the current etag.
+## GraphQL
 
-## GraphQL Queries
-
-The `todo query` command allows advanced querying using GraphQL.
-
-- Fetch exactly the fields you need, across a potentially large set of issues
-- Directly read all fields (including `body`) and relationships
-- Traverse relationships in a single query
-- Execute mutations to create and update issues
-- `todo query --help` for syntax and usage details
-- `todo query --schema` to view the full GraphQL schema
+`todo query` supports advanced queries/mutations. Use `--help` for syntax, `--schema` for full schema.
 
 ```bash
-# Get all actionable issues with their details
 todo query --json '{ issues(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
-
-# Get a single issue with its relationships
-todo query --json '{ issue(id: "abc-def") { title body parent { title } children { id title status } } }'
-
-# Find high-priority bugs
-todo query --json '{ issues(filter: { type: ["bug"], priority: ["critical", "high"] }) { id title } }'
-
-# Search with text
-todo query --json '{ issues(filter: { search: "authentication" }) { id title body } }'
+todo query --json '{ issue(id: "abc") { title body parent { title } children { id title status } } }'
 ```

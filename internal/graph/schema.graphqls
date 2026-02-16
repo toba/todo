@@ -32,31 +32,6 @@ type Mutation {
   deleteIssue(id: ID!): Boolean!
 
   """
-  Set or clear the parent of an issue (validates type hierarchy)
-  """
-  setParent(id: ID!, parentId: String, ifMatch: String): Issue!
-
-  """
-  Add an issue to the blocking list
-  """
-  addBlocking(id: ID!, targetId: ID!, ifMatch: String): Issue!
-
-  """
-  Remove an issue from the blocking list
-  """
-  removeBlocking(id: ID!, targetId: ID!, ifMatch: String): Issue!
-
-  """
-  Add an issue to the blocked-by list (this issue is blocked by targetId)
-  """
-  addBlockedBy(id: ID!, targetId: ID!, ifMatch: String): Issue!
-
-  """
-  Remove an issue from the blocked-by list
-  """
-  removeBlockedBy(id: ID!, targetId: ID!, ifMatch: String): Issue!
-
-  """
   Set sync data for a named integration (full replacement of sync entry)
   """
   setSyncData(id: ID!, name: String!, data: Map!, ifMatch: String): Issue!
