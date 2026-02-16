@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toba/todo/internal/config"
 	"github.com/toba/todo/internal/ui"
 )
 
@@ -14,7 +15,7 @@ import (
 type sortOrder string
 
 const (
-	sortDefault sortOrder = "default"
+	sortDefault sortOrder = sortOrder(config.SortDefault)
 	sortCreated sortOrder = "created"
 	sortUpdated sortOrder = "updated"
 	sortDue     sortOrder = "due"

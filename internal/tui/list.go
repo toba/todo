@@ -228,14 +228,14 @@ func (m listModel) loadIssues() tea.Msg {
 	var sortFn func([]*issue.Issue)
 	switch m.sortOrder {
 	case sortCreated:
-		effectiveDates := issue.ComputeEffectiveDates(allIssues, "created_at")
+		effectiveDates := issue.ComputeEffectiveDates(allIssues, issue.FieldCreatedAt)
 		sortFn = func(issues []*issue.Issue) {
-			issue.SortByCreatedAt(issues, effectiveDates)
+			issue.SortByEffectiveDate(issues, effectiveDates)
 		}
 	case sortUpdated:
-		effectiveDates := issue.ComputeEffectiveDates(allIssues, "updated_at")
+		effectiveDates := issue.ComputeEffectiveDates(allIssues, issue.FieldUpdatedAt)
 		sortFn = func(issues []*issue.Issue) {
-			issue.SortByUpdatedAt(issues, effectiveDates)
+			issue.SortByEffectiveDate(issues, effectiveDates)
 		}
 	case sortDue:
 		sortFn = func(issues []*issue.Issue) {

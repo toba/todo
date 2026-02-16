@@ -739,9 +739,5 @@ func int64PtrEqual(a, b *int64) bool {
 	return *a == *b
 }
 
-// ptrBool returns a pointer to a bool value.
-//
 //go:fix inline
-func ptrBool(v bool) *bool {
-	return new(v)
-}
+func ptr[T any](v T) *T { return new(v) }

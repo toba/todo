@@ -6,3 +6,10 @@ const (
 	LinkTypeBlocking  = "blocking"
 	LinkTypeBlockedBy = "blocked_by"
 )
+
+// Field name constants for ComputeEffectiveDates.
+const (
+	FieldCreatedAt = "created_at"
+	FieldUpdatedAt = "updated_at"
+)
+

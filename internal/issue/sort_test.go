@@ -143,7 +143,7 @@ func TestSortByStatusPriorityAndType(t *testing.T) {
 }
 
 //go:fix inline
-func timePtr(t time.Time) *time.Time { return new(t) }
+func ptr[T any](v T) *T { return new(v) }
 
 func TestComputeEffectiveDates(t *testing.T) {
 	now := time.Now()
@@ -152,7 +152,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 		issues := []*Issue{
 			{ID: "1", CreatedAt: new(now)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
 		if !dates["1"].Equal(now) {
 			t.Errorf("effective date = %v, want %v", dates["1"], now)
 		}
@@ -168,7 +168,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 			{ID: "child1", Parent: "parent", CreatedAt: new(childTime)},
 			{ID: "child2", Parent: "parent", CreatedAt: new(newestChildTime)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
 		if !dates["parent"].Equal(newestChildTime) {
 			t.Errorf("parent effective date = %v, want %v", dates["parent"], newestChildTime)
 		}
@@ -182,7 +182,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 			{ID: "parent", CreatedAt: new(parentTime)},
 			{ID: "child", Parent: "parent", CreatedAt: new(childTime)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
 		if !dates["parent"].Equal(parentTime) {
 			t.Errorf("parent effective date = %v, want %v", dates["parent"], parentTime)
 		}
@@ -196,7 +196,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 			{ID: "child", Parent: "root", CreatedAt: new(now.Add(-2 * time.Hour))},
 			{ID: "grandchild", Parent: "child", CreatedAt: new(grandchildTime)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
 		if !dates["root"].Equal(grandchildTime) {
 			t.Errorf("root effective date = %v, want %v", dates["root"], grandchildTime)
 		}
@@ -212,7 +212,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 			{ID: "parent", UpdatedAt: new(now.Add(-1 * time.Hour))},
 			{ID: "child", Parent: "parent", UpdatedAt: new(updatedTime)},
 		}
-		dates := ComputeEffectiveDates(issues, "updated_at")
+		dates := ComputeEffectiveDates(issues, FieldUpdatedAt)
 		if !dates["parent"].Equal(updatedTime) {
 			t.Errorf("parent effective date = %v, want %v", dates["parent"], updatedTime)
 		}
@@ -223,7 +223,7 @@ func TestComputeEffectiveDates(t *testing.T) {
 			{ID: "1", CreatedAt: nil},
 			{ID: "2", CreatedAt: new(now)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
 		if !dates["1"].IsZero() {
 			t.Errorf("issue without date should have zero time, got %v", dates["1"])
 		}
@@ -242,8 +242,8 @@ func TestSortByCreatedAt(t *testing.T) {
 			{ID: "2", Title: "New", CreatedAt: new(now)},
 			{ID: "3", Title: "Mid", CreatedAt: new(now.Add(-1 * time.Hour))},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
-		SortByCreatedAt(issues, dates)
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
+		SortByEffectiveDate(issues, dates)
 
 		expected := []string{"New", "Mid", "Old"}
 		for i, title := range expected {
@@ -258,8 +258,8 @@ func TestSortByCreatedAt(t *testing.T) {
 			{ID: "1", Title: "No Date"},
 			{ID: "2", Title: "Has Date", CreatedAt: new(now)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
-		SortByCreatedAt(issues, dates)
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
+		SortByEffectiveDate(issues, dates)
 
 		if issues[0].Title != "Has Date" {
 			t.Errorf("first = %q, want \"Has Date\"", issues[0].Title)
@@ -274,8 +274,8 @@ func TestSortByCreatedAt(t *testing.T) {
 			{ID: "1", Title: "Zebra", CreatedAt: new(now)},
 			{ID: "2", Title: "Apple", CreatedAt: new(now)},
 		}
-		dates := ComputeEffectiveDates(issues, "created_at")
-		SortByCreatedAt(issues, dates)
+		dates := ComputeEffectiveDates(issues, FieldCreatedAt)
+		SortByEffectiveDate(issues, dates)
 
 		if issues[0].Title != "Apple" {
 			t.Errorf("first = %q, want \"Apple\"", issues[0].Title)
@@ -292,8 +292,8 @@ func TestSortByUpdatedAt(t *testing.T) {
 			{ID: "2", Title: "New", UpdatedAt: new(now)},
 			{ID: "3", Title: "Mid", UpdatedAt: new(now.Add(-1 * time.Hour))},
 		}
-		dates := ComputeEffectiveDates(issues, "updated_at")
-		SortByUpdatedAt(issues, dates)
+		dates := ComputeEffectiveDates(issues, FieldUpdatedAt)
+		SortByEffectiveDate(issues, dates)
 
 		expected := []string{"New", "Mid", "Old"}
 		for i, title := range expected {
@@ -308,8 +308,8 @@ func TestSortByUpdatedAt(t *testing.T) {
 			{ID: "1", Title: "No Date"},
 			{ID: "2", Title: "Has Date", UpdatedAt: new(now)},
 		}
-		dates := ComputeEffectiveDates(issues, "updated_at")
-		SortByUpdatedAt(issues, dates)
+		dates := ComputeEffectiveDates(issues, FieldUpdatedAt)
+		SortByEffectiveDate(issues, dates)
 
 		if issues[0].Title != "Has Date" {
 			t.Errorf("first = %q, want \"Has Date\"", issues[0].Title)

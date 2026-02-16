@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -41,6 +42,11 @@ const (
 	PriorityNormal   = "normal"
 	PriorityLow      = "low"
 	PriorityDeferred = "deferred"
+)
+
+// Sort order constants.
+const (
+	SortDefault = "default"
 )
 
 // DefaultStatuses defines the hardcoded status configuration.
@@ -236,45 +242,64 @@ func (c *Config) Save(dir string) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// IsValidStatus returns true if the status is a valid hardcoded status.
-func (c *Config) IsValidStatus(status string) bool {
-	for _, s := range DefaultStatuses {
-		if s.Name == status {
-			return true
-		}
-	}
-	return false
+// named is a constraint for config types that have a Name field.
+type named interface {
+	StatusConfig | TypeConfig | PriorityConfig
 }
 
-// StatusList returns a comma-separated list of valid statuses.
-// Statuses are hardcoded and not configurable.
-func (c *Config) StatusList() string {
-	names := make([]string, len(DefaultStatuses))
-	for i, s := range DefaultStatuses {
-		names[i] = s.Name
-	}
-	return strings.Join(names, ", ")
-}
-
-// StatusNames returns a slice of valid status names.
-// Statuses are hardcoded and not configurable.
-func (c *Config) StatusNames() []string {
-	names := make([]string, len(DefaultStatuses))
-	for i, s := range DefaultStatuses {
-		names[i] = s.Name
+// configNames extracts name strings from a slice of config items.
+func configNames[T named](items []T, getName func(*T) string) []string {
+	names := make([]string, len(items))
+	for i := range items {
+		names[i] = getName(&items[i])
 	}
 	return names
 }
 
-// GetStatus returns the StatusConfig for a given status name, or nil if not found.
-// Statuses are hardcoded and not configurable.
-func (c *Config) GetStatus(name string) *StatusConfig {
-	for i := range DefaultStatuses {
-		if DefaultStatuses[i].Name == name {
-			return &DefaultStatuses[i]
+// configList returns a comma-separated list of names.
+func configList[T named](items []T, getName func(*T) string) string {
+	return strings.Join(configNames(items, getName), ", ")
+}
+
+// configFind returns a pointer to the item with the given name, or nil.
+func configFind[T named](items []T, name string, getName func(*T) string) *T {
+	for i := range items {
+		if getName(&items[i]) == name {
+			return &items[i]
 		}
 	}
 	return nil
+}
+
+// configIsValid returns true if name matches any item.
+func configIsValid[T named](items []T, name string, getName func(*T) string) bool {
+	return slices.ContainsFunc(items, func(item T) bool {
+		return getName(&item) == name
+	})
+}
+
+func statusName(s *StatusConfig) string     { return s.Name }
+func typeName(t *TypeConfig) string         { return t.Name }
+func priorityName(p *PriorityConfig) string { return p.Name }
+
+// IsValidStatus returns true if the status is a valid hardcoded status.
+func (c *Config) IsValidStatus(status string) bool {
+	return configIsValid(DefaultStatuses, status, statusName)
+}
+
+// StatusList returns a comma-separated list of valid statuses.
+func (c *Config) StatusList() string {
+	return configList(DefaultStatuses, statusName)
+}
+
+// StatusNames returns a slice of valid status names.
+func (c *Config) StatusNames() []string {
+	return configNames(DefaultStatuses, statusName)
+}
+
+// GetStatus returns the StatusConfig for a given status name, or nil if not found.
+func (c *Config) GetStatus(name string) *StatusConfig {
+	return configFind(DefaultStatuses, name, statusName)
 }
 
 // GetDefaultStatus returns the default status name for new issues.
@@ -295,7 +320,7 @@ func (c *Config) GetEditor() string {
 // GetDefaultSort returns the default sort order for the TUI.
 // Returns "default" if not set.
 func (c *Config) GetDefaultSort() string {
-	return cmp.Or(c.Issues.DefaultSort, "default")
+	return cmp.Or(c.Issues.DefaultSort, SortDefault)
 }
 
 // IsArchiveStatus returns true if the given status is marked for archiving.
@@ -308,43 +333,23 @@ func (c *Config) IsArchiveStatus(name string) bool {
 }
 
 // GetType returns the TypeConfig for a given type name, or nil if not found.
-// Types are hardcoded and not configurable.
 func (c *Config) GetType(name string) *TypeConfig {
-	for i := range DefaultTypes {
-		if DefaultTypes[i].Name == name {
-			return &DefaultTypes[i]
-		}
-	}
-	return nil
+	return configFind(DefaultTypes, name, typeName)
 }
 
 // TypeNames returns a slice of valid type names.
-// Types are hardcoded and not configurable.
 func (c *Config) TypeNames() []string {
-	names := make([]string, len(DefaultTypes))
-	for i, t := range DefaultTypes {
-		names[i] = t.Name
-	}
-	return names
+	return configNames(DefaultTypes, typeName)
 }
 
 // IsValidType returns true if the type is a valid hardcoded type.
-func (c *Config) IsValidType(typeName string) bool {
-	for _, t := range DefaultTypes {
-		if t.Name == typeName {
-			return true
-		}
-	}
-	return false
+func (c *Config) IsValidType(name string) bool {
+	return configIsValid(DefaultTypes, name, typeName)
 }
 
 // TypeList returns a comma-separated list of valid types.
 func (c *Config) TypeList() string {
-	names := make([]string, len(DefaultTypes))
-	for i, t := range DefaultTypes {
-		names[i] = t.Name
-	}
-	return strings.Join(names, ", ")
+	return configList(DefaultTypes, typeName)
 }
 
 // IssueColors holds resolved color information for rendering an issue
@@ -382,21 +387,12 @@ func (c *Config) GetIssueColors(status, typeName, priority string) IssueColors {
 
 // GetPriority returns the PriorityConfig for a given priority name, or nil if not found.
 func (c *Config) GetPriority(name string) *PriorityConfig {
-	for i := range DefaultPriorities {
-		if DefaultPriorities[i].Name == name {
-			return &DefaultPriorities[i]
-		}
-	}
-	return nil
+	return configFind(DefaultPriorities, name, priorityName)
 }
 
 // PriorityNames returns a slice of valid priority names in order from highest to lowest.
 func (c *Config) PriorityNames() []string {
-	names := make([]string, len(DefaultPriorities))
-	for i, p := range DefaultPriorities {
-		names[i] = p.Name
-	}
-	return names
+	return configNames(DefaultPriorities, priorityName)
 }
 
 // IsValidPriority returns true if the priority is a valid hardcoded priority.
@@ -405,12 +401,7 @@ func (c *Config) IsValidPriority(priority string) bool {
 	if priority == "" {
 		return true
 	}
-	for _, p := range DefaultPriorities {
-		if p.Name == priority {
-			return true
-		}
-	}
-	return false
+	return configIsValid(DefaultPriorities, priority, priorityName)
 }
 
 // SyncConfig returns the configuration data for a named sync integration,
@@ -424,36 +415,20 @@ func (c *Config) SyncConfig(name string) map[string]any {
 
 // PriorityList returns a comma-separated list of valid priorities.
 func (c *Config) PriorityList() string {
-	names := make([]string, len(DefaultPriorities))
-	for i, p := range DefaultPriorities {
-		names[i] = p.Name
-	}
-	return strings.Join(names, ", ")
+	return configList(DefaultPriorities, priorityName)
 }
 
 // DefaultStatusNames returns the names of all default statuses.
 func DefaultStatusNames() []string {
-	names := make([]string, len(DefaultStatuses))
-	for i, s := range DefaultStatuses {
-		names[i] = s.Name
-	}
-	return names
+	return configNames(DefaultStatuses, statusName)
 }
 
 // DefaultTypeNames returns the names of all default types.
 func DefaultTypeNames() []string {
-	names := make([]string, len(DefaultTypes))
-	for i, t := range DefaultTypes {
-		names[i] = t.Name
-	}
-	return names
+	return configNames(DefaultTypes, typeName)
 }
 
 // DefaultPriorityNames returns the names of all default priorities.
 func DefaultPriorityNames() []string {
-	names := make([]string, len(DefaultPriorities))
-	for i, p := range DefaultPriorities {
-		names[i] = p.Name
-	}
-	return names
+	return configNames(DefaultPriorities, priorityName)
 }

@@ -517,7 +517,7 @@ func TestBuildUpdateRequest_TypeChange(t *testing.T) {
 			name:        "type changed",
 			currentType: &IssueType{Name: "Task"},
 			newType:     "Bug",
-			wantType:    strPtr("Bug"),
+			wantType:    new("Bug"),
 		},
 		{
 			name:        "type unchanged",
@@ -529,7 +529,7 @@ func TestBuildUpdateRequest_TypeChange(t *testing.T) {
 			name:        "no current type, setting new",
 			currentType: nil,
 			newType:     "Feature",
-			wantType:    strPtr("Feature"),
+			wantType:    new("Feature"),
 		},
 		{
 			name:        "no current type, no new type",
@@ -566,7 +566,8 @@ func TestBuildUpdateRequest_TypeChange(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string { return &s }
+//go:fix inline
+func ptr[T any](v T) *T { return new(v) }
 
 // redirectTransport redirects all requests to the test server.
 type redirectTransport struct {

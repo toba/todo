@@ -1,29 +1,19 @@
 # Toba TODO
 
-**todo is an issue tracker for you, your team, and your coding agents.** Instead of tracking tasks in a separate application, todo stores them right alongside your code as plain Markdown files. You can use the `todo` CLI to interact with your tasks, but more importantly, so can your favorite coding agent.
+This is derived from [hmans/beans](https://github.com/hmans/beans) which was in turn inspired by [steveyegge/beads](https://github.com/steveyegge/beads). (I apologize for not coming up with another rhyming *b* name.)
 
-This gives your robot friends a juicy upgrade: now they get a complete view of your project, make suggestions for what to work on next, track their progress, create bug issues for problems they find, and more.
+## why
 
-> Based on [hmans/beans](https://github.com/hmans/beans).
+Like the others, this is a git-diffable **issue tracker** that lives in your project. *Unlike the others* (last I checked), it has options to synchronize with popular issue trackers that regular people sometimes look at, and some small features I was too impatient to wait for.
 
-## Features
-
-- **Track tasks, bugs, features**, and more right alongside your code.
-- **Plain old Markdown files** stored in a `.issues` directory in your project. Easy to version control, readable and editable by humans and machines alike.
-- Use the `todo` CLI to create, list, view, update, and archive issues; or **let your coding agent do it for you**.
-- **Built-in GraphQL query engine** lets your agent get exactly the information it needs, keeping token use to a minimum.
-- **Project memory** — completed issues are archived and serve as project memory that your coding agent can query for context about past work.
-- **Sync to external trackers** — two-way sync with **ClickUp** and **GitHub Issues** via `todo sync`.
-- **Interactive TUI** for browsing and managing issues from the terminal, with substring filtering (`/`), deep search (`//`), and sort picker (`o`).
-- **Configurable editor** — set `editor` in `.todo.yml` to use a custom editor (supports multi-word commands like `code --wait`).
-- **Markdown roadmap** — generate a roadmap document from your milestones and epics.
+That's why I made yet another. The reason for such tooling at all is to encourage (and what more can we really do?) your LLM agent to track its work more reliably and token-efficiently.
 
 ## Installation
 
 Either download todo from the [Releases section](https://github.com/toba/todo/releases), or install it via Homebrew:
 
 ```bash
-brew install toba/todo/todo
+brew install toba/todo
 ```
 
 Alternatively, install directly via Go:
@@ -205,19 +195,6 @@ mutation { setSyncData(id: "abc-def", name: "clickup", data: { task_id: "xyz" })
 { beans(filter: { syncStale: "clickup" }) { id title } }
 ```
 
-### Building a Sync Integration
-
-Sync integrations are standalone programs that shell out to the `todo` CLI or use the GraphQL API directly. A typical integration:
-
-1. Reads its config from `.todo.yml` (under `sync.<name>`)
-2. Queries issues via `todo query --json '{ beans(filter: { syncStale: "myext" }) { ... } }'`
-3. Syncs data with the external system
-4. Writes back via `todo query 'mutation { setSyncData(...) { id } }'`
-
 ## License
 
 This project is licensed under the Apache-2.0 License. See the [LICENSE](LICENSE) file for details.
-
-## Getting in Touch
-
-If you have questions, suggestions, or feedback, please [open an issue](https://github.com/toba/todo/issues).

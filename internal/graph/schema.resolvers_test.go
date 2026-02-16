@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toba/todo/internal/issue"
-	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/config"
+	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/graph/model"
+	"github.com/toba/todo/internal/issue"
 )
 
 func setupTestResolver(t *testing.T) (*Resolver, *core.Core) {
@@ -1213,7 +1213,6 @@ func TestRelationshipFieldsWithFilter(t *testing.T) {
 		}
 	})
 }
-
 
 // setupTestResolverWithRequireIfMatch creates a test resolver with require_if_match enabled.
 func setupTestResolverWithRequireIfMatch(t *testing.T) (*Resolver, *core.Core) {
@@ -2627,12 +2626,8 @@ func TestQueryIssuesWithSyncFilters(t *testing.T) {
 	})
 }
 
-// Helper function for tests
-//
 //go:fix inline
-func stringPtr(s string) *string {
-	return new(s)
-}
+func ptr[T any](v T) *T { return new(v) }
 
 func TestBlockedByCycleDetection(t *testing.T) {
 	resolver, c := setupTestResolver(t)

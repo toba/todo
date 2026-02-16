@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/toba/todo/internal/config"
 )
 
 // CompareByStatusPriorityAndType returns true if a should sort before b,
@@ -27,7 +29,7 @@ func CompareByStatusPriorityAndType(a, b *Issue, statusNames, priorityNames, typ
 	// Find the index of "normal" priority for issues without priority set
 	normalPriorityOrder := len(priorityNames) // default to last if "normal" not found
 	for i, p := range priorityNames {
-		if p == "normal" {
+		if p == config.PriorityNormal {
 			normalPriorityOrder = i
 			break
 		}
@@ -108,11 +110,11 @@ func ComputeEffectiveDates(allIssues []*Issue, field string) map[string]time.Tim
 		var best time.Time
 		if b != nil {
 			switch field {
-			case "created_at":
+			case FieldCreatedAt:
 				if b.CreatedAt != nil {
 					best = *b.CreatedAt
 				}
-			case "updated_at":
+			case FieldUpdatedAt:
 				if b.UpdatedAt != nil {
 					best = *b.UpdatedAt
 				}
@@ -153,16 +155,6 @@ func SortByEffectiveDate(issues []*Issue, effectiveDates map[string]time.Time) {
 		}
 		return strings.ToLower(issues[i].Title) < strings.ToLower(issues[j].Title)
 	})
-}
-
-// SortByCreatedAt sorts issues by effective created_at date, newest first.
-func SortByCreatedAt(issues []*Issue, effectiveDates map[string]time.Time) {
-	SortByEffectiveDate(issues, effectiveDates)
-}
-
-// SortByUpdatedAt sorts issues by effective updated_at date, newest first.
-func SortByUpdatedAt(issues []*Issue, effectiveDates map[string]time.Time) {
-	SortByEffectiveDate(issues, effectiveDates)
 }
 
 // SortByDueDate sorts issues by due date, soonest first.
