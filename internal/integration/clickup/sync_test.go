@@ -651,6 +651,104 @@ func TestBuildUpdateRequest_Parent(t *testing.T) {
 	}
 }
 
+func TestSyncIssues_ParentNotInBatch(t *testing.T) {
+	// When syncing a child issue whose parent is NOT in the batch but HAS been
+	// previously synced, SyncIssues should still resolve the parent task ID from
+	// the sync store and set the parent on the ClickUp task.
+	var capturedParent *string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		// GetAuthorizedUser
+		if strings.Contains(r.URL.Path, "/user") {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"user": map[string]any{"id": 1},
+			})
+			return
+		}
+		// GetList (for space ID)
+		if r.Method == "GET" && strings.Contains(r.URL.Path, "/list/") && !strings.Contains(r.URL.Path, "/task") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "test-list", "space": map[string]any{"id": "space-1"}})
+			return
+		}
+		// GetSpaceTags
+		if strings.Contains(r.URL.Path, "/space/") && strings.Contains(r.URL.Path, "/tag") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"tags": []any{}})
+			return
+		}
+		// CreateTask - capture the parent field
+		if r.Method == "POST" && strings.Contains(r.URL.Path, "/list/") && strings.Contains(r.URL.Path, "/task") {
+			var req map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if p, ok := req["parent"]; ok && p != nil {
+				s := p.(string)
+				capturedParent = &s
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":   "new-task-456",
+				"name": req["name"],
+				"url":  "https://app.clickup.com/t/new-task-456",
+				"status": map[string]any{
+					"status": "to do",
+				},
+			})
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	client := &Client{
+		token: "test",
+		httpClient: &http.Client{
+			Transport: &redirectTransport{target: server.URL},
+		},
+	}
+
+	store := newMemorySyncProvider()
+	// Parent was previously synced (exists in store) but is NOT in the batch
+	store.SetTaskID("parent-issue", "clickup-parent-789")
+
+	syncer := &Syncer{
+		client:        client,
+		config:        &Config{},
+		opts:          SyncOptions{ListID: "test-list"},
+		syncStore:     store,
+		issueToTaskID: make(map[string]string),
+	}
+
+	now := time.Now()
+	childIssue := &issue.Issue{
+		ID:        "child-issue",
+		Title:     "Child task",
+		Status:    "ready",
+		Type:      "task",
+		Parent:    "parent-issue", // parent NOT in the batch
+		CreatedAt: &now,
+		UpdatedAt: &now,
+	}
+
+	// Sync only the child - parent is not in the batch
+	results, err := syncer.SyncIssues(context.Background(), []*issue.Issue{childIssue})
+	if err != nil {
+		t.Fatalf("SyncIssues failed: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Action != "created" {
+		t.Fatalf("expected action 'created', got %q", results[0].Action)
+	}
+	if capturedParent == nil {
+		t.Fatal("expected parent to be set in create request, but it was nil")
+	}
+	if *capturedParent != "clickup-parent-789" {
+		t.Errorf("parent = %q, want %q", *capturedParent, "clickup-parent-789")
+	}
+}
+
 func strPtr(s string) *string { return &s }
 
 func slicesEqual(a, b []string) bool {

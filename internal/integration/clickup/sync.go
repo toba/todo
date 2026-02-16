@@ -89,6 +89,17 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			s.issueToTaskID[b.ID] = *taskID
 		}
 	}
+	// Also pre-populate parents not in the batch so that parent
+	// relationships are set even when the parent isn't being synced.
+	for _, b := range issues {
+		if b.Parent != "" {
+			if _, exists := s.issueToTaskID[b.Parent]; !exists {
+				if parentTaskID := s.syncStore.GetTaskID(b.Parent); parentTaskID != nil && *parentTaskID != "" {
+					s.issueToTaskID[b.Parent] = *parentTaskID
+				}
+			}
+		}
+	}
 
 	// Build a set of issue IDs being synced
 	syncingIDs := make(map[string]bool)
