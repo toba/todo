@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/toba/todo/internal/core"
+	"github.com/toba/todo/internal/integration/syncutil"
 	"github.com/toba/todo/internal/issue"
 	"golang.org/x/sync/errgroup"
 )
@@ -163,6 +164,15 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	result := SyncResult{
 		IssueID:    b.ID,
 		IssueTitle: b.Title,
+	}
+
+	// Upload local images and replace paths with remote URLs
+	if !s.opts.DryRun {
+		if urlMap, err := UploadImages(ctx, s.client, b.Body); err == nil && len(urlMap) > 0 {
+			refs := syncutil.FindLocalImages(b.Body)
+			b.Body = syncutil.ReplaceImages(b.Body, refs, urlMap)
+			_ = s.core.Update(b, nil)
+		}
 	}
 
 	// Compute labels, state, and type

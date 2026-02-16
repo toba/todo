@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toba/todo/internal/core"
+	"github.com/toba/todo/internal/integration/syncutil"
 	"github.com/toba/todo/internal/issue"
 )
 
@@ -243,6 +244,14 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				return result
 			}
 
+			// Upload local images and replace paths with remote URLs
+			if urlMap, err := UploadImages(ctx, s.client, *taskID, b.Body); err == nil && len(urlMap) > 0 {
+				refs := syncutil.FindLocalImages(b.Body)
+				description = syncutil.ReplaceImages(description, refs, urlMap)
+				b.Body = syncutil.ReplaceImages(b.Body, refs, urlMap)
+				_ = s.core.Update(b, nil)
+			}
+
 			// Build update request with only changed fields
 			update := s.buildUpdateRequest(task, b, description, priority, clickUpStatus)
 
@@ -315,6 +324,15 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	result.TaskID = task.ID
 	result.TaskURL = task.URL
 	s.issueToTaskID[b.ID] = task.ID
+
+	// Upload local images and replace paths with remote URLs
+	if urlMap, err := UploadImages(ctx, s.client, task.ID, b.Body); err == nil && len(urlMap) > 0 {
+		refs := syncutil.FindLocalImages(b.Body)
+		newDesc := syncutil.ReplaceImages(b.Body, refs, urlMap)
+		s.client.UpdateTask(ctx, task.ID, &UpdateTaskRequest{MarkdownDescription: &newDesc})
+		b.Body = newDesc
+		_ = s.core.Update(b, nil)
+	}
 
 	// Sync tags for new task (no existing tags to remove)
 	s.syncTags(ctx, task.ID, b, nil)
