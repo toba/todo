@@ -5,15 +5,20 @@ description: ClickUp API reference for discovery and validation. Use when (1) in
 
 # ClickUp API Reference
 
+## Workspace
+
+- **Team ID**: `9011518645`
+- **List ID**: See project's `todo.yaml` sync config for the target list
+
 ## Authentication
 
-API token from `CLICKUP_TOKEN` env var. All requests:
-```
-Authorization: $CLICKUP_TOKEN
-Content-Type: application/json
-```
+API token from `CLICKUP_TOKEN` env var (personal token, starts with `pk_`).
 
-Note: ClickUp uses token directly, NOT `Bearer $TOKEN`.
+**IMPORTANT:** The env var may contain a trailing newline. Always trim it:
+```bash
+TOKEN=$(printenv CLICKUP_TOKEN | tr -d '\n')
+curl -s "https://api.clickup.com/api/v2/..." -H "Authorization: $TOKEN"
+```
 
 Base URL: `https://api.clickup.com/api/v2`
 

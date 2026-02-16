@@ -94,8 +94,12 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	for _, b := range issues {
 		if b.Parent != "" {
 			if _, exists := s.issueToTaskID[b.Parent]; !exists {
-				if parentTaskID := s.syncStore.GetTaskID(b.Parent); parentTaskID != nil && *parentTaskID != "" {
-					s.issueToTaskID[b.Parent] = *parentTaskID
+				// The sync store is only populated with batch issues, so look up
+				// the parent directly from the issue store.
+				if parent, err := s.core.Get(b.Parent); err == nil {
+					if taskID := GetSyncString(parent, SyncKeyTaskID); taskID != "" {
+						s.issueToTaskID[b.Parent] = taskID
+					}
 				}
 			}
 		}

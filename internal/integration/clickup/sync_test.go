@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/toba/todo/internal/config"
+	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/issue"
 )
 
@@ -653,8 +657,8 @@ func TestBuildUpdateRequest_Parent(t *testing.T) {
 
 func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 	// When syncing a child issue whose parent is NOT in the batch but HAS been
-	// previously synced, SyncIssues should still resolve the parent task ID from
-	// the sync store and set the parent on the ClickUp task.
+	// previously synced, SyncIssues should resolve the parent task ID from
+	// the parent issue's sync metadata and set the parent on the ClickUp task.
 	var capturedParent *string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -706,14 +710,41 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 		},
 	}
 
+	// Set up a core.Core with the parent issue that has sync metadata
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, ".issues")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		t.Fatalf("failed to create data dir: %v", err)
+	}
+	cfg := config.Default()
+	c := core.New(dataDir, cfg)
+	c.SetWarnWriter(nil)
+	if err := c.Load(); err != nil {
+		t.Fatalf("failed to load core: %v", err)
+	}
+
+	// Create parent issue with clickup sync metadata (already synced)
+	parentIssue := &issue.Issue{
+		ID:     "parent-issue",
+		Slug:   "parent-issue",
+		Title:  "Parent epic",
+		Status: "in-progress",
+		Type:   "epic",
+	}
+	parentIssue.SetSync(SyncName, map[string]any{
+		SyncKeyTaskID: "clickup-parent-789",
+	})
+	if err := c.Create(parentIssue); err != nil {
+		t.Fatalf("failed to create parent issue: %v", err)
+	}
+
 	store := newMemorySyncProvider()
-	// Parent was previously synced (exists in store) but is NOT in the batch
-	store.SetTaskID("parent-issue", "clickup-parent-789")
 
 	syncer := &Syncer{
 		client:        client,
 		config:        &Config{},
 		opts:          SyncOptions{ListID: "test-list"},
+		core:          c,
 		syncStore:     store,
 		issueToTaskID: make(map[string]string),
 	}
