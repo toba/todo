@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/toba/todo/internal/config"
 	"github.com/toba/todo/internal/core"
 	"github.com/toba/todo/internal/integration/clickup"
 	"github.com/toba/todo/internal/issue"
@@ -263,6 +265,9 @@ func (cu *clickUpIntegration) checkConfiguration(ctx context.Context, opts Check
 		}
 	}
 
+	// Check status mapping keys are valid project statuses
+	section.Checks = append(section.Checks, cu.checkMappingKeys()...)
+
 	// Check priority mapping
 	priorityMapping := cu.cfg.GetPriorityMapping()
 	var invalidPriorities []string
@@ -301,6 +306,110 @@ func (cu *clickUpIntegration) checkConfiguration(ctx context.Context, opts Check
 	}
 
 	return section
+}
+
+func (cu *clickUpIntegration) checkMappingKeys() []CheckResult {
+	var results []CheckResult
+	projectCfg := cu.core.Config()
+
+	// Check status mapping keys are valid project statuses
+	statusMapping := cu.cfg.GetStatusMapping()
+	var unknownStatuses []string
+	for key := range statusMapping {
+		if !projectCfg.IsValidStatus(key) {
+			unknownStatuses = append(unknownStatuses, key)
+		}
+	}
+	if len(unknownStatuses) > 0 {
+		results = append(results, CheckResult{
+			Name:    "Status mapping keys valid",
+			Status:  CheckFail,
+			Message: fmt.Sprintf("Unknown statuses in mapping: %v (valid: %s)", unknownStatuses, validStatusList(projectCfg)),
+		})
+	}
+
+	// Check all project statuses have a mapping
+	var unmappedStatuses []string
+	for _, s := range config.DefaultStatuses {
+		if _, ok := statusMapping[s.Name]; !ok {
+			unmappedStatuses = append(unmappedStatuses, s.Name)
+		}
+	}
+	if len(unmappedStatuses) > 0 {
+		results = append(results, CheckResult{
+			Name:    "Status mapping coverage",
+			Status:  CheckWarn,
+			Message: fmt.Sprintf("Unmapped statuses (will use defaults or fail): %v", unmappedStatuses),
+		})
+	}
+
+	if len(unknownStatuses) == 0 && len(unmappedStatuses) == 0 {
+		results = append(results, CheckResult{
+			Name:    "Status mapping keys valid",
+			Status:  CheckPass,
+			Message: fmt.Sprintf("All %d statuses mapped", len(statusMapping)),
+		})
+	}
+
+	// Check type mapping keys are valid project types
+	if len(cu.cfg.TypeMapping) > 0 {
+		var unknownTypes []string
+		for key := range cu.cfg.TypeMapping {
+			if !projectCfg.IsValidType(key) {
+				unknownTypes = append(unknownTypes, key)
+			}
+		}
+		if len(unknownTypes) > 0 {
+			results = append(results, CheckResult{
+				Name:    "Type mapping keys valid",
+				Status:  CheckWarn,
+				Message: fmt.Sprintf("Unknown types in mapping: %v", unknownTypes),
+			})
+		}
+	}
+
+	// Check priority mapping keys are valid project priorities
+	priorityMapping := cu.cfg.GetPriorityMapping()
+	var unknownPriorities []string
+	for key := range priorityMapping {
+		if !projectCfg.IsValidPriority(key) {
+			unknownPriorities = append(unknownPriorities, key)
+		}
+	}
+	if len(unknownPriorities) > 0 {
+		results = append(results, CheckResult{
+			Name:    "Priority mapping keys valid",
+			Status:  CheckWarn,
+			Message: fmt.Sprintf("Unknown priorities in mapping: %v", unknownPriorities),
+		})
+	}
+
+	// Check sync filter exclude_status values are valid
+	if cu.cfg.SyncFilter != nil {
+		var unknownFilterStatuses []string
+		for _, s := range cu.cfg.SyncFilter.ExcludeStatus {
+			if !projectCfg.IsValidStatus(s) {
+				unknownFilterStatuses = append(unknownFilterStatuses, s)
+			}
+		}
+		if len(unknownFilterStatuses) > 0 {
+			results = append(results, CheckResult{
+				Name:    "Sync filter statuses valid",
+				Status:  CheckWarn,
+				Message: fmt.Sprintf("Unknown statuses in exclude filter: %v", unknownFilterStatuses),
+			})
+		}
+	}
+
+	return results
+}
+
+func validStatusList(cfg *config.Config) string {
+	names := make([]string, len(config.DefaultStatuses))
+	for i, s := range config.DefaultStatuses {
+		names[i] = s.Name
+	}
+	return strings.Join(names, ", ")
 }
 
 func (cu *clickUpIntegration) checkStatusMapping(list *clickup.List) []CheckResult {

@@ -24,6 +24,7 @@ var syncCheckCmd = &cobra.Command{
 
 Checks include:
   - Configuration (list ID, status/priority/type mappings, custom fields)
+  - Mapping key validation (status/type/priority keys match project values)
   - Integration connectivity (API token, access)
   - Sync state (linked issues, stale syncs, missing tasks)
 
