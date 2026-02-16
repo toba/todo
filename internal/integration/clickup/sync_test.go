@@ -580,6 +580,79 @@ func TestSyncIssue_UpdateDueDate(t *testing.T) {
 	}
 }
 
+func TestBuildUpdateRequest_Parent(t *testing.T) {
+	syncer := &Syncer{
+		config:        &Config{},
+		issueToTaskID: map[string]string{
+			"parent-issue": "clickup-parent-123",
+		},
+	}
+
+	tests := []struct {
+		name       string
+		current    *TaskInfo
+		issue      *issue.Issue
+		wantParent *string
+	}{
+		{
+			name:    "set parent on previously unparented task",
+			current: &TaskInfo{Name: "Child", Status: Status{Status: "to do"}},
+			issue: &issue.Issue{
+				Title:  "Child",
+				Status: "ready",
+				Parent: "parent-issue",
+			},
+			wantParent: strPtr("clickup-parent-123"),
+		},
+		{
+			name:    "no change when parent matches",
+			current: &TaskInfo{Name: "Child", Status: Status{Status: "to do"}, Parent: strPtr("clickup-parent-123")},
+			issue: &issue.Issue{
+				Title:  "Child",
+				Status: "ready",
+				Parent: "parent-issue",
+			},
+			wantParent: nil, // nil means no change in update request
+		},
+		{
+			name:    "no change when both have no parent",
+			current: &TaskInfo{Name: "Task", Status: Status{Status: "to do"}},
+			issue: &issue.Issue{
+				Title:  "Task",
+				Status: "ready",
+			},
+			wantParent: nil,
+		},
+		{
+			name:    "skip when parent issue not in issueToTaskID map",
+			current: &TaskInfo{Name: "Child", Status: Status{Status: "to do"}},
+			issue: &issue.Issue{
+				Title:  "Child",
+				Status: "ready",
+				Parent: "unknown-parent",
+			},
+			wantParent: nil, // can't resolve, so don't update
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			update := syncer.buildUpdateRequest(tt.current, tt.issue, "", nil, "")
+			if tt.wantParent == nil && update.Parent != nil {
+				t.Errorf("expected no parent update, got %q", *update.Parent)
+			}
+			if tt.wantParent != nil && update.Parent == nil {
+				t.Error("expected parent update, got nil")
+			}
+			if tt.wantParent != nil && update.Parent != nil && *tt.wantParent != *update.Parent {
+				t.Errorf("parent = %q, want %q", *update.Parent, *tt.wantParent)
+			}
+		})
+	}
+}
+
+func strPtr(s string) *string { return &s }
+
 func slicesEqual(a, b []string) bool {
 	if len(a) == 0 && len(b) == 0 {
 		return true

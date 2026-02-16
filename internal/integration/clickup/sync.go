@@ -458,6 +458,17 @@ func (s *Syncer) buildUpdateRequest(current *TaskInfo, b *issue.Issue, descripti
 		update.CustomItemID = newItemID
 	}
 
+	// Only include parent if changed
+	var wantParent *string
+	if b.Parent != "" {
+		if parentTaskID, ok := s.issueToTaskID[b.Parent]; ok {
+			wantParent = &parentTaskID
+		}
+	}
+	if !stringPtrEqual(current.Parent, wantParent) {
+		update.Parent = wantParent
+	}
+
 	return update
 }
 
@@ -470,6 +481,17 @@ func (s *Syncer) priorityEqual(current *TaskPriority, target *int) bool {
 		return false
 	}
 	return current.ID == *target
+}
+
+// stringPtrEqual compares two string pointers for equality.
+func stringPtrEqual(a, b *string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 // intPtrEqual compares two int pointers for equality.
