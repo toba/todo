@@ -3,7 +3,10 @@ package tui
 import (
 	"testing"
 
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/toba/todo/internal/config"
 	"github.com/toba/todo/internal/issue"
+	"github.com/toba/todo/internal/ui"
 )
 
 func TestSortIssues(t *testing.T) {
@@ -351,6 +354,69 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		}
 		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("task should sort before unknown")
+		}
+	})
+}
+
+func TestIssuesLoadedMsgReturnsFilterCmd(t *testing.T) {
+	cfg := config.Default()
+	deepSearch := false
+
+	// Create a listModel with a bubbles list that has filtering enabled
+	delegate := itemDelegate{cfg: cfg}
+	l := list.New([]list.Item{}, delegate, 80, 24)
+	l.SetFilteringEnabled(true)
+	l.Filter = substringFilter
+
+	m := listModel{
+		list:       l,
+		config:     cfg,
+		width:      80,
+		height:     24,
+		deepSearch: &deepSearch,
+	}
+
+	// Set initial items so the list has content
+	initialItems := []list.Item{
+		issueItem{issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, cfg: cfg, matched: true, deepSearch: &deepSearch},
+		issueItem{issue: &issue.Issue{ID: "2", Title: "Add logout"}, cfg: cfg, matched: true, deepSearch: &deepSearch},
+		issueItem{issue: &issue.Issue{ID: "3", Title: "Update docs"}, cfg: cfg, matched: true, deepSearch: &deepSearch},
+	}
+	m.list.SetItems(initialItems)
+
+	// Simulate an active filter by setting filter state to FilterApplied
+	m.list.SetFilterState(list.FilterApplied)
+
+	t.Run("returns non-nil cmd when filter is active", func(t *testing.T) {
+		msg := issuesLoadedMsg{
+			items: []ui.FlatItem{
+				{Issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, Matched: true},
+				{Issue: &issue.Issue{ID: "2", Title: "Add logout"}, Matched: true},
+				{Issue: &issue.Issue{ID: "3", Title: "Update docs"}, Matched: true},
+			},
+			idColWidth: 3,
+		}
+
+		_, cmd := m.Update(msg)
+		if cmd == nil {
+			t.Error("expected non-nil cmd when filter is active, got nil (filter would be lost on refresh)")
+		}
+	})
+
+	t.Run("returns nil cmd when no filter is active", func(t *testing.T) {
+		// Reset filter state to unfiltered
+		m.list.ResetFilter()
+
+		msg := issuesLoadedMsg{
+			items: []ui.FlatItem{
+				{Issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, Matched: true},
+			},
+			idColWidth: 3,
+		}
+
+		_, cmd := m.Update(msg)
+		if cmd != nil {
+			t.Error("expected nil cmd when no filter is active")
 		}
 	})
 }
