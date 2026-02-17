@@ -71,7 +71,7 @@ func TestParseConfig_FullConfig(t *testing.T) {
 			"feature": float64(200),
 		},
 		"custom_fields": map[string]any{
-			"bean_id":    "cf-1",
+			"issue_id":   "cf-1",
 			"created_at": "cf-2",
 			"updated_at": "cf-3",
 		},
@@ -116,8 +116,8 @@ func TestParseConfig_FullConfig(t *testing.T) {
 	if cfg.CustomFields == nil {
 		t.Fatal("expected non-nil custom fields")
 	}
-	if cfg.CustomFields.BeanID != "cf-1" {
-		t.Errorf("CustomFields.BeanID = %q, want %q", cfg.CustomFields.BeanID, "cf-1")
+	if cfg.CustomFields.IssueID != "cf-1" {
+		t.Errorf("CustomFields.IssueID = %q, want %q", cfg.CustomFields.IssueID, "cf-1")
 	}
 	if cfg.CustomFields.CreatedAt != "cf-2" {
 		t.Errorf("CustomFields.CreatedAt = %q, want %q", cfg.CustomFields.CreatedAt, "cf-2")

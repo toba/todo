@@ -24,7 +24,7 @@ type Config struct {
 
 // CustomFieldsMap maps issue fields to ClickUp custom field UUIDs.
 type CustomFieldsMap struct {
-	BeanID    string
+	IssueID   string
 	CreatedAt string
 	UpdatedAt string
 }
@@ -137,10 +137,10 @@ func ParseConfig(m map[string]any) (*Config, error) {
 	if v, ok := m["custom_fields"]; ok {
 		if cf, ok := v.(map[string]any); ok {
 			fields := &CustomFieldsMap{}
-			fields.BeanID, _ = cf["bean_id"].(string)
+			fields.IssueID, _ = cf["issue_id"].(string)
 			fields.CreatedAt, _ = cf["created_at"].(string)
 			fields.UpdatedAt, _ = cf["updated_at"].(string)
-			if fields.BeanID != "" || fields.CreatedAt != "" || fields.UpdatedAt != "" {
+			if fields.IssueID != "" || fields.CreatedAt != "" || fields.UpdatedAt != "" {
 				cfg.CustomFields = fields
 			}
 		}

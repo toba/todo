@@ -308,6 +308,7 @@ func (s *Syncer) buildIssueBody(b *issue.Issue) string {
 	if b.Body != "" {
 		parts = append(parts, b.Body)
 	}
+	parts = append(parts, syncutil.SyncFooter)
 	parts = append(parts, fmt.Sprintf("<!-- todo:%s -->", b.ID))
 	return strings.Join(parts, "\n\n")
 }

@@ -32,6 +32,7 @@ Ask the user whether to:
 4. If output contains "PUSH_AFTER_COMMIT":
    a. Tag a version bump using `mise release:<level>` (see Version Bumps below)
    b. Run `git push && git push --tags`
+   c. Run `todo sync` to sync issues to GitHub
 
 ## Version Bumps
 

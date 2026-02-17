@@ -203,8 +203,13 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 		IssueTitle: b.Title,
 	}
 
-	// Build the task description
+	// Build the task description with sync footer
 	description := b.Body
+	if description != "" {
+		description += "\n\n" + syncutil.SyncFooter
+	} else {
+		description = syncutil.SyncFooter
+	}
 
 	// Map issue status to ClickUp status
 	clickUpStatus := s.getClickUpStatus(b.Status)
@@ -388,10 +393,10 @@ func (s *Syncer) buildCustomFields(b *issue.Issue) []CustomField {
 	var fields []CustomField
 	cf := s.config.CustomFields
 
-	// Issue ID field (text)
-	if cf.BeanID != "" {
+	// Issue ID field (short text)
+	if cf.IssueID != "" {
 		fields = append(fields, CustomField{
-			ID:    cf.BeanID,
+			ID:    cf.IssueID,
 			Value: b.ID,
 		})
 	}
@@ -555,10 +560,10 @@ func (s *Syncer) updateChangedCustomFields(ctx context.Context, current *TaskInf
 	}
 
 	// Issue ID field (text)
-	if cf.BeanID != "" {
-		currentVal, _ := currentFields[cf.BeanID].(string)
+	if cf.IssueID != "" {
+		currentVal, _ := currentFields[cf.IssueID].(string)
 		if currentVal != b.ID {
-			if err := s.client.SetCustomFieldValue(ctx, taskID, cf.BeanID, b.ID); err == nil {
+			if err := s.client.SetCustomFieldValue(ctx, taskID, cf.IssueID, b.ID); err == nil {
 				updated = true
 			}
 		}

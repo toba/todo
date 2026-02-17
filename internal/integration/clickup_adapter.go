@@ -479,9 +479,9 @@ func (cu *clickUpIntegration) checkCustomFields(ctx context.Context, client *cli
 	cf := cu.cfg.CustomFields
 	var invalidFields []string
 
-	if cf.BeanID != "" {
-		if _, ok := validFields[cf.BeanID]; !ok {
-			invalidFields = append(invalidFields, "bean_id")
+	if cf.IssueID != "" {
+		if _, ok := validFields[cf.IssueID]; !ok {
+			invalidFields = append(invalidFields, "issue_id")
 		}
 	}
 	if cf.CreatedAt != "" {
@@ -503,7 +503,7 @@ func (cu *clickUpIntegration) checkCustomFields(ctx context.Context, client *cli
 		})
 	} else {
 		configuredCount := 0
-		if cf.BeanID != "" {
+		if cf.IssueID != "" {
 			configuredCount++
 		}
 		if cf.CreatedAt != "" {

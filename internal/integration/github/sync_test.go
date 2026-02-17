@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toba/todo/internal/integration/syncutil"
 	"github.com/toba/todo/internal/issue"
 )
 
@@ -158,12 +159,12 @@ func TestBuildIssueBody(t *testing.T) {
 		{
 			name:     "with body",
 			issue:    &issue.Issue{ID: "test-1", Body: "Some description"},
-			wantBody: "Some description\n\n<!-- todo:test-1 -->",
+			wantBody: "Some description\n\n" + syncutil.SyncFooter + "\n\n<!-- todo:test-1 -->",
 		},
 		{
 			name:     "empty body",
 			issue:    &issue.Issue{ID: "test-2"},
-			wantBody: "<!-- todo:test-2 -->",
+			wantBody: syncutil.SyncFooter + "\n\n<!-- todo:test-2 -->",
 		},
 	}
 

@@ -106,6 +106,12 @@ todo query 'mutation {
 }'
 ```
 
+## Sync (External Integrations)
+{{if .HasSync}}
+This project syncs with: {{range $i, $name := .SyncNames}}{{if $i}}, {{end}}**{{$name}}**{{end}}. Config is in `.todo.yml` under `sync:`.
+{{- end}}
+`todo sync` pushes issues to an external tracker (GitHub Issues or ClickUp) configured in `.todo.yml` under `sync:`. Run `todo sync --help` for setup and usage.
+
 ## Concurrency Control
 
 `todo show <id> --etag-only` → `todo update <id> --if-match "$ETAG" ...`

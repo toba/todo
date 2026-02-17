@@ -6,7 +6,7 @@ This is derived from [hmans/beans](https://github.com/hmans/beans) which was in 
 
 Like the others, this is a git-diffable **issue tracker** that lives in your project. *Unlike the others* (last I checked), it has options to synchronize with popular issue trackers that regular people sometimes look at, and some small features I was too impatient to wait for.
 
-That's why I made yet another. The reason for such tooling at all is to encourage (and what more can we really do?) your LLM agent to track its work more reliably and token-efficiently.
+That's why I made yet another thing. The reason for such tooling at all is to encourage (and what more can we really do?) your LLM agent to track its work more reliably and token-efficiently.
 
 ## what's different
 

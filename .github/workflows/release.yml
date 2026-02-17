@@ -38,8 +38,14 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
 
+          ASSET="todo_darwin_arm64.tar.gz"
           SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt -O - \
-            | grep 'todo_darwin_arm64.tar.gz' | awk '{print $1}')
+            | grep "$ASSET" | awk '{print $1}')
+
+          if [ -z "$SHA" ]; then
+            echo "ERROR: Could not extract SHA256 for $ASSET"
+            exit 1
+          fi
 
           git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-todo.git" tap
           cd tap

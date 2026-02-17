@@ -17,6 +17,8 @@ type promptData struct {
 	Types      []config.TypeConfig
 	Statuses   []config.StatusConfig
 	Priorities []config.PriorityConfig
+	HasSync    bool
+	SyncNames  []string
 }
 
 var primeCmd = &cobra.Command{
@@ -27,6 +29,7 @@ var primeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If no explicit path given, check if an issues project exists by searching
 		// upward for a .todo.yml config file
+		var cfg *config.Config
 		if dataPath == "" && configPath == "" {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -37,6 +40,9 @@ var primeCmd = &cobra.Command{
 				// No config file found - silently exit
 				return nil
 			}
+			cfg, _ = config.Load(configFile)
+		} else if configPath != "" {
+			cfg, _ = config.Load(configPath)
 		}
 
 		tmpl, err := template.New("prompt").Parse(agentPromptTemplate)
@@ -48,6 +54,13 @@ var primeCmd = &cobra.Command{
 			Types:      config.DefaultTypes,
 			Statuses:   config.DefaultStatuses,
 			Priorities: config.DefaultPriorities,
+		}
+
+		if cfg != nil && cfg.Sync != nil {
+			data.HasSync = true
+			for name := range cfg.Sync {
+				data.SyncNames = append(data.SyncNames, name)
+			}
 		}
 
 		return tmpl.Execute(os.Stdout, data)
