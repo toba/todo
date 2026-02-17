@@ -12,9 +12,14 @@ That's why I made yet another thing. The reason for such tooling at all is to en
 
 Everything in [beans](https://github.com/hmans/beans), plus:
 
-- **External sync** — bidirectional sync with ClickUp and GitHub Issues (`todo sync`)
-- **Due dates** — date field with sort support
-- **TUI improvements** — status icons instead of text labels, sort picker (`o` key), substring search instead of fuzzy match (tap `/` twice to search descriptions too), due date indicators
+- **External sync**: bidirectional sync with ClickUp and GitHub Issues (`todo sync`)
+- **Due dates**: date field with sort support
+- **TUI improvements**
+    - Status icons instead of text labels
+    - Sort picker (`o` key)
+    - Substring search instead of fuzzy match
+    - Tap `/` twice to search descriptions too
+    - Due date indicators
 
 ## Installation
 
