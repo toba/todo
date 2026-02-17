@@ -21,6 +21,9 @@ Everything in [beans](https://github.com/hmans/beans), plus:
     - Tap `/` twice to search descriptions too
     - Due date indicators
 
+![tui](assets/tui.png)
+
+
 ## Installation
 
 Either download todo from the [Releases section](https://github.com/toba/todo/releases), or install it via Homebrew:
