@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-16T18:18:39Z
 updated_at: 2026-02-16T18:19:40Z
+sync:
+    github:
+        issue_number: "3"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 When syncing issues to ClickUp, the parent-child relationship is only set during task creation. If an issue gains a parent after the ClickUp task already exists, the update path doesn't reparent it. Need to add parent comparison in buildUpdateRequest.

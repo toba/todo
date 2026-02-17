@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-14T20:27:16Z
 updated_at: 2026-02-14T20:37:21Z
+sync:
+    github:
+        issue_number: "2"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Mechanical rename of extensions to sync across all layers: YAML keys, Go struct fields/methods, GraphQL schema, and the migrate command.

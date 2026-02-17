@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2025-12-27T19:32:26Z
 updated_at: 2025-12-27T19:39:08Z
+sync:
+    github:
+        issue_number: "42"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 When beans are deleted or their IDs change, other beans may be left with broken references (parent or blocking fields pointing to non-existent beans).

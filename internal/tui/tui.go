@@ -36,7 +36,9 @@ const (
 )
 
 // issuesChangedMsg is sent when issues change on disk (via file watcher)
-type issuesChangedMsg struct{}
+type issuesChangedMsg struct {
+	changedIDs map[string]bool
+}
 
 // tickMsg is sent periodically to refresh the TUI as a safety net
 type tickMsg time.Time
@@ -121,9 +123,11 @@ func New(core *core.Core, cfg *config.Config) *App {
 	}
 }
 
-// tickCmd returns a command that sends a tickMsg after 2 seconds.
+const tickInterval = 2 * time.Second
+
+// tickCmd returns a command that sends a tickMsg after the tick interval.
 func tickCmd() tea.Cmd {
-	return tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+	return tea.Tick(tickInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -194,20 +198,26 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case issuesChangedMsg:
-		// Issues changed on disk - refresh
+		// Issues changed on disk - only refresh detail if a visible issue changed
 		if a.state == viewDetail {
-			// Try to reload the current issue via GraphQL
-			updatedIssue, err := a.resolver.Query().Issue(context.Background(), a.detail.issue.ID)
-			if err != nil || updatedIssue == nil {
-				// Issue was deleted - return to list
-				a.state = viewList
-				a.history = nil
-			} else {
-				// Recreate detail view with fresh issue data
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
+			visible := a.detail.visibleIssueIDs()
+			relevant := false
+			for id := range msg.changedIDs {
+				if visible[id] {
+					relevant = true
+					break
+				}
+			}
+			if relevant {
+				updatedIssue, err := a.resolver.Query().Issue(context.Background(), a.detail.issue.ID)
+				if err != nil || updatedIssue == nil {
+					a.state = viewList
+					a.history = nil
+				} else {
+					a.detail.refreshIssue(updatedIssue)
+				}
 			}
 		}
-		// Trigger list refresh
 		return a, a.list.loadIssues
 
 	case tickMsg:
@@ -218,7 +228,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.state = viewList
 				a.history = nil
 			} else {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
+				a.detail.refreshIssue(updatedIssue)
 			}
 		}
 		return a, tea.Batch(tickCmd(), a.list.loadIssues)
@@ -275,21 +285,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Status: &msg.status,
 			})
 			if err != nil {
-				// Continue with other issues even if one fails
 				continue
 			}
 		}
-		// Return to the previous view and refresh
-		a.state = a.previousState
-		// Clear selection after batch edit
-		clear(a.list.selectedIssues)
-		if a.state == viewDetail && len(msg.issueIDs) == 1 {
-			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
-			if updatedIssue != nil {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
-			}
-		}
-		return a, a.list.loadIssues
+		return a.finishBatchEdit(msg.issueIDs)
 
 	case openTypePickerMsg:
 		a.previousState = a.state
@@ -309,21 +308,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Type: &msg.issueType,
 			})
 			if err != nil {
-				// Continue with other issues even if one fails
 				continue
 			}
 		}
-		// Return to the previous view and refresh
-		a.state = a.previousState
-		// Clear selection after batch edit
-		clear(a.list.selectedIssues)
-		if a.state == viewDetail && len(msg.issueIDs) == 1 {
-			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
-			if updatedIssue != nil {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
-			}
-		}
-		return a, a.list.loadIssues
+		return a.finishBatchEdit(msg.issueIDs)
 
 	case openPriorityPickerMsg:
 		a.previousState = a.state
@@ -343,21 +331,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Priority: &msg.priority,
 			})
 			if err != nil {
-				// Continue with other issues even if one fails
 				continue
 			}
 		}
-		// Return to the previous view and refresh
-		a.state = a.previousState
-		// Clear selection after batch edit
-		clear(a.list.selectedIssues)
-		if a.state == viewDetail && len(msg.issueIDs) == 1 {
-			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
-			if updatedIssue != nil {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
-			}
-		}
-		return a, a.list.loadIssues
+		return a.finishBatchEdit(msg.issueIDs)
 
 	case openSortPickerMsg:
 		a.previousState = a.state
@@ -409,7 +386,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a.state == viewDetail {
 			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueID)
 			if updatedIssue != nil {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
+				a.detail.refreshIssue(updatedIssue)
 			}
 		}
 		return a, a.list.loadIssues
@@ -493,22 +470,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, issueID := range msg.issueIDs {
 			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, input)
 			if err != nil {
-				// Continue with other issues even if one fails
 				continue
 			}
 		}
-		// Return to the previous view and refresh
-		a.state = a.previousState
-		// Clear selection after batch edit
-		clear(a.list.selectedIssues)
-		if a.state == viewDetail && len(msg.issueIDs) == 1 {
-			// Refresh the issue to show updated parent
-			updatedIssue, _ := a.resolver.Query().Issue(context.Background(), msg.issueIDs[0])
-			if updatedIssue != nil {
-				a.detail = newDetailModel(updatedIssue, a.resolver, a.config, a.width, a.height)
-			}
-		}
-		return a, a.list.loadIssues
+		return a.finishBatchEdit(msg.issueIDs)
 
 	case clearFilterMsg:
 		a.list.clearFilter()
@@ -585,6 +550,20 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return a, cmd
+}
+
+// finishBatchEdit completes a batch edit operation by returning to the previous view,
+// clearing selection, refreshing the detail view if applicable, and reloading the list.
+func (a *App) finishBatchEdit(issueIDs []string) (tea.Model, tea.Cmd) {
+	a.state = a.previousState
+	clear(a.list.selectedIssues)
+	if a.state == viewDetail && len(issueIDs) == 1 {
+		updatedIssue, _ := a.resolver.Query().Issue(context.Background(), issueIDs[0])
+		if updatedIssue != nil {
+			a.detail.refreshIssue(updatedIssue)
+		}
+	}
+	return a, a.list.loadIssues
 }
 
 // collectTagsWithCounts returns all tags with their usage counts
@@ -726,12 +705,14 @@ func Run(core *core.Core, cfg *config.Config) error {
 	defer unsubscribe()
 
 	// Forward events to TUI in a goroutine
+	prog := app.program
 	go func() {
-		for range eventCh {
-			// Send message to TUI when issues change
-			if app.program != nil {
-				app.program.Send(issuesChangedMsg{})
+		for events := range eventCh {
+			ids := make(map[string]bool, len(events))
+			for _, e := range events {
+				ids[e.IssueID] = true
 			}
+			prog.Send(issuesChangedMsg{changedIDs: ids})
 		}
 	}()
 

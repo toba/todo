@@ -8,6 +8,10 @@ tags:
     - integrations
 created_at: 2025-12-14T18:42:32Z
 updated_at: 2025-12-20T16:12:26Z
+sync:
+    github:
+        issue_number: "62"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Research how to integrate Beans with OpenCode. Explore their architecture, any extension points, and how Beans could be integrated to provide issue tracking context to the agent.

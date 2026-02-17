@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2025-12-24T22:20:21Z
 updated_at: 2025-12-24T22:21:58Z
+sync:
+    github:
+        issue_number: "19"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 The version command fails when run in a directory without .beans/ because PersistentPreRunE validates the directory exists. Add version to the exemption list in cmd/root.go.

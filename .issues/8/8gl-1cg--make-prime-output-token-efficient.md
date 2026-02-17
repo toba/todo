@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-16T23:25:56Z
 updated_at: 2026-02-16T23:26:58Z
+sync:
+    github:
+        issue_number: "31"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Rewrite cmd/prompt.tmpl to reduce token count while preserving all behavioral instructions and CLI references. Current: ~1545 words.

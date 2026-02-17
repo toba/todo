@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2025-12-22T19:57:32Z
 updated_at: 2025-12-28T11:30:55Z
+sync:
+    github:
+        issue_number: "44"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Implement a 'y' keyboard shortcut in the bean TUI to yank/copy the current bean ID to the clipboard.
@@ -305,4 +309,3 @@ After implementation:
 - `internal/tui/list.go` - List view keyboard handling and status display
 - `internal/tui/detail.go` - Detail view keyboard handling and status display
 - `internal/tui/help.go` - Help overlay text
-

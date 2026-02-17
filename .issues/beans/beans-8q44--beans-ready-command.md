@@ -7,6 +7,10 @@ priority: normal
 created_at: 2025-12-27T21:44:04Z
 updated_at: 2025-12-28T11:47:36Z
 parent: beans-mmyp
+sync:
+    github:
+        issue_number: "65"
+        synced_at: "2026-02-17T18:33:11Z"
 ---
 
 Add `beans ready` command to find beans that are ready to work on.

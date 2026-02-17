@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-14T19:48:19Z
 updated_at: 2026-02-14T19:56:04Z
+sync:
+    github:
+        issue_number: "24"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Port GitHub Issues sync from toba/bean-hub into internal/integration/github/. Refactor shared integration layer to be provider-agnostic.

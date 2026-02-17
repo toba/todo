@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-15T05:06:38Z
 updated_at: 2026-02-15T05:09:31Z
+sync:
+    github:
+        issue_number: "29"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 The GitHub sync maps types, priorities, and statuses to labels. GitHub now has a native type field on issues via REST API — use that instead. Priority and status should not be labels at all; only tags should become labels.

@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2025-12-28T01:00:18Z
 updated_at: 2025-12-28T01:03:37Z
+sync:
+    github:
+        issue_number: "14"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 When pressing space in the TUI to select a bean, it should also automatically jump to the next bean. This makes it easy to select multiple beans in sequence.

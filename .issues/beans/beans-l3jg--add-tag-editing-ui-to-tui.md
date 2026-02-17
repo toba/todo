@@ -1,10 +1,15 @@
 ---
+# beans-l3jg
 title: Add tag editing UI to TUI
 status: ready
 type: feature
 priority: normal
 created_at: 2025-12-12T22:58:14Z
 updated_at: 2025-12-13T02:02:16Z
+sync:
+    github:
+        issue_number: "28"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Add the ability to edit tags on beans from within the TUI.

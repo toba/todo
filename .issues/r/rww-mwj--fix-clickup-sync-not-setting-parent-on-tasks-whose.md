@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-16T18:34:46Z
 updated_at: 2026-02-16T18:57:42Z
+sync:
+    github:
+        issue_number: "37"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 When syncing a subset of issues to ClickUp, parent relationships are not set if the parent issue is not included in the sync batch. The issueToTaskID map is only pre-populated for issues in the current batch, so parents that were previously synced but aren't in the current batch are never resolved.

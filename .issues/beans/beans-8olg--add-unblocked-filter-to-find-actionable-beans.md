@@ -10,6 +10,10 @@ tags:
 created_at: 2025-12-07T11:29:37Z
 updated_at: 2025-12-13T14:44:14Z
 parent: beans-f11p
+sync:
+    github:
+        issue_number: "76"
+        synced_at: "2026-02-17T18:33:10Z"
 ---
 
 

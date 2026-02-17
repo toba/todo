@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-16T23:46:45Z
 updated_at: 2026-02-16T23:50:50Z
+sync:
+    github:
+        issue_number: "60"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Detect local image references in issue bodies (markdown and custom format), upload them to the sync target (ClickUp attachments or GitHub Contents API), and replace local paths with hosted URLs in both the synced copy and local issue file.

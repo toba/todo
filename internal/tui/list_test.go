@@ -263,10 +263,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "draft", Type: "task", Title: "B"}
 
 		// draft < todo, so b should come before a
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("draft issue should come before todo issue")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("draft issue should come before todo issue")
 		}
 	})
@@ -276,10 +276,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "todo", Type: "task", Priority: "high", Title: "B"}
 
 		// high < low, so b should come before a
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("high priority issue should come before low priority issue")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("high priority issue should come before low priority issue")
 		}
 	})
@@ -289,10 +289,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "todo", Type: "bug", Title: "B"}
 
 		// bug < task, so b should come before a
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("bug issue should come before task issue")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("bug issue should come before task issue")
 		}
 	})
@@ -302,10 +302,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "todo", Type: "task", Title: "Apple"}
 
 		// Apple < Zebra, so b should come before a
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("Apple issue should come before Zebran issue")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("Apple issue should come before Zebran issue")
 		}
 	})
@@ -315,7 +315,7 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "todo", Type: "task", Title: "APPLE"}
 
 		// apple < zebra (case-insensitive), so b should come before a
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("APPLE issue should come before zebran issue (case-insensitive)")
 		}
 	})
@@ -326,7 +326,7 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 
 		// Both should be equivalent in priority ordering
 		// Since titles differ, A < B, so a should come before b
-		if !compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("empty priority should be treated as normal")
 		}
 	})
@@ -336,10 +336,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "scrapped", Type: "task", Title: "B"}
 
 		// scrapped is last known status, unknown should be after it
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("unknown status should sort after scrapped")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("scrapped should sort before unknown")
 		}
 	})
@@ -349,10 +349,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 		b := &issue.Issue{ID: "2", Status: "todo", Type: "task", Title: "B"}
 
 		// task is last known type, unknown should be after it
-		if compareIssuesByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
+		if issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames) {
 			t.Error("unknown type should sort after task")
 		}
-		if !compareIssuesByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
+		if !issue.CompareByStatusPriorityAndType(b, a, statusNames, priorityNames, typeNames) {
 			t.Error("task should sort before unknown")
 		}
 	})

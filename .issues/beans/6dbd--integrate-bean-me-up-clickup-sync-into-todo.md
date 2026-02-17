@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-14T19:28:07Z
 updated_at: 2026-02-14T19:36:40Z
+sync:
+    github:
+        issue_number: "47"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Port the ClickUp sync functionality from toba/bean-me-up into toba/todo as a built-in integration.

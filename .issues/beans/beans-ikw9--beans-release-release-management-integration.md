@@ -9,6 +9,10 @@ tags:
 created_at: 2025-12-08T17:11:36Z
 updated_at: 2025-12-13T14:44:14Z
 parent: beans-f11p
+sync:
+    github:
+        issue_number: "71"
+        synced_at: "2026-02-17T18:33:10Z"
 ---
 
 Add a `beans release` command that uses Beans for release management and changelog updating.

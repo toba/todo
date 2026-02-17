@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-14T18:21:07Z
 updated_at: 2026-02-14T18:32:24Z
+sync:
+    github:
+        issue_number: "12"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Remove configurable prefix and IDLength from config. Change ID format to fixed xxx-xxx (3+hyphen+3). Store new beans in 1-char hash subfolders.

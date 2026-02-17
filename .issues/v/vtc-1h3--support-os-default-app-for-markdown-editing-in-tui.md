@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-15T17:37:13Z
 updated_at: 2026-02-15T17:38:21Z
+sync:
+    github:
+        issue_number: "57"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 When pressing 'e' in the TUI, support using the OS default markdown editor via a 'system' keyword and as a fallback before vi/nano. On macOS, use 'open -W -n -g' to open files with the registered .md handler.

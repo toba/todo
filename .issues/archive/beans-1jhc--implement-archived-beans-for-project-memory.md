@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2025-12-27T17:53:18Z
 updated_at: 2025-12-27T18:08:15Z
+sync:
+    github:
+        issue_number: "30"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Use beans as project memory by archiving completed/scrapped beans instead of deleting them.

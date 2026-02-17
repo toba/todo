@@ -1,10 +1,15 @@
 ---
+# beans-digu
 title: Support custom properties on beans
 status: ready
 type: feature
 priority: normal
 created_at: 2025-12-13T00:52:24Z
 updated_at: 2025-12-13T02:02:08Z
+sync:
+    github:
+        issue_number: "18"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Allow users to attach custom key-value properties to beans. Custom properties should live under a dedicated `properties` key in the frontmatter to keep them separate from built-in fields.

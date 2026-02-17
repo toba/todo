@@ -3,9 +3,14 @@
 title: beans milestones command
 status: ready
 type: task
+priority: normal
 created_at: 2025-12-27T21:44:05Z
 updated_at: 2025-12-27T21:44:05Z
 parent: beans-mmyp
+sync:
+    github:
+        issue_number: "75"
+        synced_at: "2026-02-17T18:33:10Z"
 ---
 
 Add `beans milestones` command to list planned milestones.

@@ -6,4 +6,9 @@ type: milestone
 priority: normal
 created_at: 2025-12-13T14:43:29Z
 updated_at: 2025-12-13T14:44:17Z
+sync:
+    github:
+        issue_number: "54"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
+

@@ -1,13 +1,19 @@
 ---
+# beans-jwy7
 title: Use semantic markdown sections in bean bodies
 status: draft
 type: feature
+priority: normal
 tags:
-  - parsing
-  - schema
-  - idea
+    - parsing
+    - schema
+    - idea
 created_at: 2025-12-07T12:33:57Z
 updated_at: 2025-12-08T17:02:44Z
+sync:
+    github:
+        issue_number: "9"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 ## Overview

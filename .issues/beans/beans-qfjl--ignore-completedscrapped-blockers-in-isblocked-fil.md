@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-29T09:13:26Z
 updated_at: 2026-01-29T09:17:06Z
+sync:
+    github:
+        issue_number: "6"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Currently beans are blocked by just existence of blocking beans, regardless of their status. This feature makes the isBlocked filter ignore completed/scrapped blocking beans.

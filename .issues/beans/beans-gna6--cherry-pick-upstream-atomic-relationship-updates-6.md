@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-10T18:03:30Z
 updated_at: 2026-02-10T18:05:40Z
+sync:
+    github:
+        issue_number: "22"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Cherry-pick commit 6beaf6a from hmans/beans which adds atomic relationship updates to updateBean mutation. Resolve conflicts and fix import paths.

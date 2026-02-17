@@ -1,10 +1,11 @@
 package tui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
@@ -148,18 +149,10 @@ func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config
 	// Resolve all links
 	m.links = m.resolveAllLinks()
 
-	// Check if any linked issues have tags
-	hasTags := false
-	for _, link := range m.links {
-		if len(link.issue.Tags) > 0 {
-			hasTags = true
-			break
-		}
-	}
-
 	// Calculate responsive columns for links section
 	// Account for the label column (12 chars) + cursor (2 chars) + border padding
 	linkAreaWidth := width - 12 - 2 - 8
+	hasTags := linksHaveTags(m.links)
 	m.cols = ui.CalculateResponsiveColumns(linkAreaWidth, hasTags)
 
 	// Initialize link list with items
@@ -243,14 +236,8 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 		m.height = msg.Height
 
 		// Recalculate responsive columns for links
-		hasTags := false
-		for _, link := range m.links {
-			if len(link.issue.Tags) > 0 {
-				hasTags = true
-				break
-			}
-		}
 		linkAreaWidth := msg.Width - 12 - 2 - 8
+		hasTags := linksHaveTags(m.links)
 		m.cols = ui.CalculateResponsiveColumns(linkAreaWidth, hasTags)
 
 		// Update link list delegate with new dimensions
@@ -542,6 +529,41 @@ func (m detailModel) formatLinkLabel(linkType string, incoming bool) string {
 	}
 }
 
+// visibleIssueIDs returns the set of issue IDs currently displayed in the detail view
+// (the viewed issue itself plus all linked issues).
+func (m detailModel) visibleIssueIDs() map[string]bool {
+	ids := map[string]bool{m.issue.ID: true}
+	for _, link := range m.links {
+		ids[link.issue.ID] = true
+	}
+	return ids
+}
+
+// refreshIssue updates the detail view with fresh issue data without resetting
+// the cursor position or focus state.
+func (m *detailModel) refreshIssue(b *issue.Issue) {
+	m.issue = b
+	m.links = m.resolveAllLinks()
+
+	oldIndex := m.linkList.Index()
+	oldLinksActive := m.linksActive
+
+	// Recalculate columns (tags may have changed)
+	linkAreaWidth := m.width - 12 - 2 - 8
+	hasTags := linksHaveTags(m.links)
+	m.cols = ui.CalculateResponsiveColumns(linkAreaWidth, hasTags)
+
+	m.linkList = m.createLinkList()
+
+	// Restore cursor (clamped to new length)
+	if len(m.links) > 0 {
+		m.linkList.Select(min(oldIndex, len(m.links)-1))
+	}
+	m.linksActive = oldLinksActive
+
+	m.viewport.SetContent(m.renderBody(m.width - 4))
+}
+
 func (m detailModel) resolveAllLinks() []resolvedLink {
 	var links []resolvedLink
 	ctx := context.Background()
@@ -572,25 +594,28 @@ func (m detailModel) resolveAllLinks() []resolvedLink {
 	// Sort all links by link type label first, then by issue status/type/title
 	// This keeps link categories together while ordering issues consistently with the main list
 	statusNames := m.config.StatusNames()
+	priorityNames := m.config.PriorityNames()
 	typeNames := m.config.TypeNames()
-	sort.Slice(links, func(i, j int) bool {
-		// First: group by link label (e.g., "Child", "Parent", "Blocks", etc.)
-		labelI := m.formatLinkLabel(links[i].linkType, links[i].incoming)
-		labelJ := m.formatLinkLabel(links[j].linkType, links[j].incoming)
-		if labelI != labelJ {
-			return labelI < labelJ
+	slices.SortFunc(links, func(a, b resolvedLink) int {
+		labelA := m.formatLinkLabel(a.linkType, a.incoming)
+		labelB := m.formatLinkLabel(b.linkType, b.incoming)
+		if labelA != labelB {
+			return cmp.Compare(labelA, labelB)
 		}
-		// Within same link type: sort by status, priority, type, then title
-		priorityNames := m.config.PriorityNames()
-		return compareIssuesByStatusPriorityAndType(links[i].issue, links[j].issue, statusNames, priorityNames, typeNames)
+		if issue.CompareByStatusPriorityAndType(a.issue, b.issue, statusNames, priorityNames, typeNames) {
+			return -1
+		}
+		return 1
 	})
 
 	return links
 }
 
-// compareIssuesByStatusPriorityAndType compares two issues using the same ordering as issue.SortByStatusPriorityAndType.
-func compareIssuesByStatusPriorityAndType(a, b *issue.Issue, statusNames, priorityNames, typeNames []string) bool {
-	return issue.CompareByStatusPriorityAndType(a, b, statusNames, priorityNames, typeNames)
+// linksHaveTags reports whether any linked issue has tags.
+func linksHaveTags(links []resolvedLink) bool {
+	return slices.ContainsFunc(links, func(l resolvedLink) bool {
+		return len(l.issue.Tags) > 0
+	})
 }
 
 func (m detailModel) renderBody(_ int) string {

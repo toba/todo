@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-14T19:00:25Z
 updated_at: 2026-02-14T19:04:51Z
+sync:
+    github:
+        issue_number: "41"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Implement the `beans migrate` CLI command to convert old-format beans projects to the new structure.

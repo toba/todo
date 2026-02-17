@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-08T21:34:34Z
 updated_at: 2026-02-08T21:34:46Z
+sync:
+    github:
+        issue_number: "50"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Add an `external` field to bean frontmatter that plugins can use to store arbitrary metadata (external IDs, sync timestamps, etc.), along with dedicated GraphQL mutations and filters to support sync workflows.

@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2025-12-28T11:44:10Z
 updated_at: 2025-12-28T11:46:51Z
+sync:
+    github:
+        issue_number: "23"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Add --ready convenience flag to beans list command:

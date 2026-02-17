@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-20T08:06:07Z
 updated_at: 2026-01-20T08:12:39Z
+sync:
+    github:
+        issue_number: "51"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Allow beans delete to accept multiple IDs like beans show does. GitHub issue #64.

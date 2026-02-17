@@ -3,8 +3,13 @@
 title: Workflow CLI commands
 status: ready
 type: epic
+priority: normal
 created_at: 2025-12-27T21:43:38Z
 updated_at: 2025-12-27T21:43:38Z
+sync:
+    github:
+        issue_number: "25"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Add explicit workflow-style CLI commands that provide intuitive shortcuts for common operations. These commands wrap existing functionality with cleaner, more memorable interfaces.

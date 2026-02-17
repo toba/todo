@@ -7,6 +7,10 @@ priority: normal
 created_at: 2025-12-14T14:37:11Z
 updated_at: 2026-01-20T08:19:45Z
 parent: beans-f11p
+sync:
+    github:
+        issue_number: "70"
+        synced_at: "2026-02-17T18:33:11Z"
 ---
 
 ## Summary

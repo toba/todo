@@ -1,12 +1,18 @@
 ---
+# beans-j03e
 title: Show relationship counts in list output
 status: draft
 type: feature
+priority: normal
 tags:
     - cli
     - relationships
 created_at: 2025-12-07T11:29:37Z
 updated_at: 2025-12-08T17:02:44Z
+sync:
+    github:
+        issue_number: "48"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 

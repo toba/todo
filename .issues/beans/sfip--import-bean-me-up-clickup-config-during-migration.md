@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-14T20:08:30Z
 updated_at: 2026-02-14T20:10:35Z
+sync:
+    github:
+        issue_number: "43"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Make `beans migrate` automatically detect and import ClickUp config from either `.beans.clickup.yml` (standalone) or `.beans.yml` (inline extensions.clickup section).

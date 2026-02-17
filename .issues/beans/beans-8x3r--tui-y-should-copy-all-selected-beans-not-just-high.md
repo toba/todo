@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2025-12-28T00:49:03Z
 updated_at: 2025-12-28T00:55:06Z
+sync:
+    github:
+        issue_number: "55"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Currently y only yanks the highlighted bean. The rest of the UI supports multi-select. Yank should support multi-select as well.

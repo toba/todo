@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-12T19:27:29Z
 updated_at: 2026-02-12T19:32:35Z
+sync:
+    github:
+        issue_number: "59"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Add optional due date field to beans with YYYY-MM-DD format, sort by due date, CLI flags, and TUI support.

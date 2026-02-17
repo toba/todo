@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-16T23:18:45Z
 updated_at: 2026-02-16T23:22:23Z
+sync:
+    github:
+        issue_number: "33"
+        synced_at: "2026-02-17T18:33:09Z"
 ---
 
 Remove 5 redundant standalone mutations (setParent, addBlocking, removeBlocking, addBlockedBy, removeBlockedBy) from GraphQL schema. Remove dead GraphQLSchema field from prime.go. Update tests.

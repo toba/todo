@@ -3,9 +3,14 @@
 title: beans progress command
 status: ready
 type: task
+priority: normal
 created_at: 2025-12-27T21:44:05Z
 updated_at: 2025-12-27T21:44:05Z
 parent: beans-mmyp
+sync:
+    github:
+        issue_number: "72"
+        synced_at: "2026-02-17T18:33:10Z"
 ---
 
 Add `beans progress` command to show a summary of work status.

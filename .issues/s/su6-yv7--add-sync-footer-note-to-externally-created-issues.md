@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-17T18:26:10Z
 updated_at: 2026-02-17T18:27:12Z
+sync:
+    github:
+        issue_number: "21"
+        synced_at: "2026-02-17T18:33:08Z"
 ---
 
 Issues synced to GitHub and ClickUp should include a visible attribution footer so viewers know the issue is managed externally and edits will be overwritten.

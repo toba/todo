@@ -3,9 +3,14 @@
 title: Refactor TUI to two-column layout with hierarchical navigation
 status: ready
 type: feature
+priority: normal
 created_at: 2025-12-14T15:37:22Z
 updated_at: 2025-12-14T15:37:22Z
 parent: beans-f11p
+sync:
+    github:
+        issue_number: "66"
+        synced_at: "2026-02-17T18:33:10Z"
 ---
 
 ## Summary
