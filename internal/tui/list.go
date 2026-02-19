@@ -474,7 +474,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				return m, func() tea.Msg {
 					return openSortPickerMsg{currentOrder: m.sortOrder}
 				}
-			case "c":
+			case "C":
 				// Open create modal
 				return m, func() tea.Msg {
 					return openCreateModalMsg{}
@@ -489,7 +489,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						}
 					}
 				}
-			case "y":
+			case "c":
 				// Copy issue ID(s) to clipboard
 				if len(m.selectedIssues) > 0 {
 					// Multi-select mode: copy all selected IDs
@@ -589,7 +589,7 @@ func (m listModel) View() string {
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
-			helpKeyStyle.Render("y") + " " + helpStyle.Render("copy id") + "  " +
+			helpKeyStyle.Render("c") + " " + helpStyle.Render("copy id") + "  " +
 			helpKeyStyle.Render("esc") + " " + helpStyle.Render("clear selection") + "  " +
 			helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
@@ -597,14 +597,14 @@ func (m listModel) View() string {
 		help = helpKeyStyle.Render("space") + " " + helpStyle.Render("select") + "  " +
 			helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
 			helpKeyStyle.Render("b") + " " + helpStyle.Render("blocking") + "  " +
-			helpKeyStyle.Render("c") + " " + helpStyle.Render("create") + "  " +
+			helpKeyStyle.Render("c") + " " + helpStyle.Render("copy id") + "  " +
+			helpKeyStyle.Render("C") + " " + helpStyle.Render("create") + "  " +
 			helpKeyStyle.Render("e") + " " + helpStyle.Render("edit") + "  " +
 			helpKeyStyle.Render("o") + " " + helpStyle.Render("sort") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
-			helpKeyStyle.Render("y") + " " + helpStyle.Render("copy id") + "  " +
 			helpKeyStyle.Render("esc") + " " + helpStyle.Render("clear filter") + "  " +
 			helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
@@ -612,14 +612,14 @@ func (m listModel) View() string {
 		help = helpKeyStyle.Render("space") + " " + helpStyle.Render("select") + "  " +
 			helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
 			helpKeyStyle.Render("b") + " " + helpStyle.Render("blocking") + "  " +
-			helpKeyStyle.Render("c") + " " + helpStyle.Render("create") + "  " +
+			helpKeyStyle.Render("c") + " " + helpStyle.Render("copy id") + "  " +
+			helpKeyStyle.Render("C") + " " + helpStyle.Render("create") + "  " +
 			helpKeyStyle.Render("e") + " " + helpStyle.Render("edit") + "  " +
 			helpKeyStyle.Render("o") + " " + helpStyle.Render("sort") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
-			helpKeyStyle.Render("y") + " " + helpStyle.Render("copy id") + "  " +
 			helpKeyStyle.Render("/") + " " + helpStyle.Render("filter") + "  " +
 			helpKeyStyle.Render("//") + " " + helpStyle.Render("search") + "  " +
 			helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +

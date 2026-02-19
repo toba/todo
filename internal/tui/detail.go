@@ -357,7 +357,7 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 				}
 			}
 
-		case "y":
+		case "c":
 			// Copy issue ID to clipboard
 			return m, func() tea.Msg {
 				return copyIssueIDMsg{ids: []string{m.issue.ID}}
@@ -436,7 +436,7 @@ func (m detailModel) View() string {
 		helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 		helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 		helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
-		helpKeyStyle.Render("y") + " " + helpStyle.Render("copy id") + "  " +
+		helpKeyStyle.Render("c") + " " + helpStyle.Render("copy id") + "  " +
 		helpKeyStyle.Render("j/k") + " " + helpStyle.Render("scroll") + "  " +
 		helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +
 		helpKeyStyle.Render("esc") + " " + helpStyle.Render("back") + "  " +

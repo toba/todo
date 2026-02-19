@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-17T19:36:30Z
 updated_at: 2026-02-17T19:38:20Z
+sync:
+    github:
+        issue_number: "78"
+        synced_at: "2026-02-17T19:44:07Z"
 ---
 
 When viewing an issue's detail page and navigating the child/linked issues list, the cursor bounces back to the top item whenever the file watcher (or periodic tick) triggers a refresh.
