@@ -21,7 +21,7 @@ var (
 var syncCmd = &cobra.Command{
 	Use:   "sync [issue-id...]",
 	Short: "Sync issues to external integrations",
-	Long: `Syncs issues to an external integration configured in .todo.yml.
+	Long: `Syncs issues to an external integration configured in .toba.yaml.
 
 If issue IDs are provided, only those issues are synced. Otherwise, all issues
 matching the sync filter are synced.
@@ -31,18 +31,20 @@ The sync operation:
 2. Updates existing tasks if the issue has changed since last sync
 3. Optionally syncs blocking relationships as task dependencies
 
-To enable sync, add a sync section to your .todo.yml config file:
+To enable sync, add a sync section to your .toba.yaml config file:
 
   GitHub Issues:
-    sync:
-      github:
-        repo: owner/repo
+    todo:
+      sync:
+        github:
+          repo: owner/repo
     Requires: GITHUB_TOKEN environment variable
 
   ClickUp:
-    sync:
-      clickup:
-        list_id: "123456"
+    todo:
+      sync:
+        clickup:
+          list_id: "123456"
     Requires: CLICKUP_TOKEN environment variable`,
 	RunE: runSync,
 }
@@ -67,7 +69,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 		if syncJSON {
 			return outputSyncJSON(nil)
 		}
-		fmt.Println("No integration configured. Add a sync section (clickup or github) to .todo.yml.")
+		fmt.Println("No integration configured. Add a sync section (clickup or github) to .toba.yaml.")
 		return nil
 	}
 

@@ -222,9 +222,10 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ConfigFileName)
 
-	// Write minimal config (missing default_type)
-	minimalConfig := `issues:
-  path: ".issues"
+	// Write minimal config (missing default_type) in new .toba.yaml format
+	minimalConfig := `todo:
+  issues:
+    path: ".issues"
 `
 	if err := os.WriteFile(configPath, []byte(minimalConfig), 0644); err != nil {
 		t.Fatalf("WriteFile error = %v", err)
@@ -422,17 +423,10 @@ func TestTypeDescriptions(t *testing.T) {
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 
 		// Config with custom types (should be ignored)
-		configYAML := `issues:
-  default_type: task
-
-  default_status: open
-statuses:
-  - name: open
-    color: green
-types:
-  - name: custom-type
-    color: pink
-    description: "This should be ignored"
+		configYAML := `todo:
+  issues:
+    default_type: task
+    default_status: open
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -486,13 +480,9 @@ func TestStatusDescriptions(t *testing.T) {
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 
 		// Config with custom statuses (should be ignored)
-		configYAML := `issues:
-  default_type: task
-
-statuses:
-  - name: custom-status
-    color: pink
-    description: "This should be ignored"
+		configYAML := `todo:
+  issues:
+    default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -519,7 +509,7 @@ func TestFindConfig(t *testing.T) {
 	t.Run("finds config in current directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("issues:\n  path: .issues\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("todo:\n  issues:\n    path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -540,7 +530,7 @@ func TestFindConfig(t *testing.T) {
 		}
 
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("issues:\n  path: .issues\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("todo:\n  issues:\n    path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -564,14 +554,74 @@ func TestFindConfig(t *testing.T) {
 			t.Errorf("FindConfig() = %q, want empty string", found)
 		}
 	})
+
+	t.Run("finds and migrates legacy .todo.yml", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		legacyPath := filepath.Join(tmpDir, LegacyConfigFileName)
+		if err := os.WriteFile(legacyPath, []byte("issues:\n  path: .issues\n  default_type: bug\n"), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		found, err := FindConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("FindConfig() error = %v", err)
+		}
+
+		// Should return the new .toba.yaml path
+		expectedPath := filepath.Join(tmpDir, ConfigFileName)
+		if found != expectedPath {
+			t.Errorf("FindConfig() = %q, want %q", found, expectedPath)
+		}
+
+		// New file should exist
+		if _, err := os.Stat(expectedPath); err != nil {
+			t.Errorf(".toba.yaml was not created: %v", err)
+		}
+
+		// Legacy file should be removed
+		if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+			t.Error("legacy .todo.yml was not removed after migration")
+		}
+
+		// Should be loadable in new format
+		cfg, err := Load(found)
+		if err != nil {
+			t.Fatalf("Load() after migration error = %v", err)
+		}
+		if cfg.Issues.DefaultType != "bug" {
+			t.Errorf("DefaultType = %q, want \"bug\"", cfg.Issues.DefaultType)
+		}
+	})
+
+	t.Run("prefers .toba.yaml over .todo.yml", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		// Write both files
+		newPath := filepath.Join(tmpDir, ConfigFileName)
+		legacyPath := filepath.Join(tmpDir, LegacyConfigFileName)
+		if err := os.WriteFile(newPath, []byte("todo:\n  issues:\n    default_type: feature\n"), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+		if err := os.WriteFile(legacyPath, []byte("issues:\n  default_type: bug\n"), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		found, err := FindConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("FindConfig() error = %v", err)
+		}
+		if found != newPath {
+			t.Errorf("FindConfig() = %q, want %q (should prefer .toba.yaml)", found, newPath)
+		}
+	})
 }
 
 func TestLoadFromDirectory(t *testing.T) {
-	t.Run("loads config from directory with .todo.yml", func(t *testing.T) {
+	t.Run("loads config from directory with .toba.yaml", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  path: custom-issues
+		configYAML := `todo:
+  issues:
+    path: custom-issues
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -780,9 +830,10 @@ func TestGetEditor(t *testing.T) {
 	t.Run("loads from YAML", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
-  editor: "vim"
+		configYAML := `todo:
+  issues:
+    default_type: task
+    editor: "vim"
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -801,8 +852,9 @@ func TestGetEditor(t *testing.T) {
 	t.Run("empty in YAML returns empty", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
+		configYAML := `todo:
+  issues:
+    default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -840,9 +892,10 @@ func TestGetDefaultSort(t *testing.T) {
 	t.Run("loads from YAML", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
-  default_sort: created
+		configYAML := `todo:
+  issues:
+    default_type: task
+    default_sort: created
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -861,8 +914,9 @@ func TestGetDefaultSort(t *testing.T) {
 	t.Run("empty in YAML returns default", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
+		configYAML := `todo:
+  issues:
+    default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -921,14 +975,15 @@ func TestSyncConfig(t *testing.T) {
 	t.Run("loads from YAML", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
-sync:
-  clickup:
-    list_id: "456"
-    workspace: "my-workspace"
-  jira:
-    project_key: "PROJ"
+		configYAML := `todo:
+  issues:
+    default_type: task
+  sync:
+    clickup:
+      list_id: "456"
+      workspace: "my-workspace"
+    jira:
+      project_key: "PROJ"
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -967,8 +1022,9 @@ sync:
 	t.Run("no sync section in YAML", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		configYAML := `issues:
-  default_type: task
+		configYAML := `todo:
+  issues:
+    default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)

@@ -28,7 +28,7 @@ var primeCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If no explicit path given, check if an issues project exists by searching
-		// upward for a .todo.yml config file
+		// upward for a .toba.yaml config file
 		var cfg *config.Config
 		if dataPath == "" && configPath == "" {
 			cwd, err := os.Getwd()

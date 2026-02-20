@@ -16,7 +16,7 @@ var initJSON bool
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a todo project",
-	Long:  `Creates a data directory and .todo.yml config file in the current directory.`,
+	Long:  `Creates a data directory and .toba.yaml config file in the current directory.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var projectDir string
 		var dataDir string

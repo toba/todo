@@ -2,6 +2,7 @@ package config
 
 import (
 	"cmp"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,10 +13,19 @@ import (
 
 const (
 	// ConfigFileName is the name of the config file at project root
-	ConfigFileName = ".todo.yml"
+	ConfigFileName = ".toba.yaml"
+	// LegacyConfigFileName is the old config file name (pre-migration)
+	LegacyConfigFileName = ".todo.yml"
 	// DefaultDataPath is the default directory for storing issues
 	DefaultDataPath = ".issues"
 )
+
+// TobaConfig is the top-level wrapper for the .toba.yaml file format.
+// The todo configuration lives under the "todo" key to support
+// a shared config format where multiple toba tools each have their own section.
+type TobaConfig struct {
+	Todo Config `yaml:"todo"`
+}
 
 // Status name constants.
 const (
@@ -134,7 +144,9 @@ func Default() *Config {
 	}
 }
 
-// FindConfig searches upward from the given directory for a .todo.yml config file.
+// FindConfig searches upward from the given directory for a .toba.yaml config file,
+// falling back to the legacy .todo.yml. If only a legacy file is found, it is
+// automatically migrated to .toba.yaml (written in the new format, old file removed).
 // Returns the absolute path to the config file, or empty string if not found.
 func FindConfig(startDir string) (string, error) {
 	dir, err := filepath.Abs(startDir)
@@ -143,9 +155,23 @@ func FindConfig(startDir string) (string, error) {
 	}
 
 	for {
-		configPath := filepath.Join(dir, ConfigFileName)
-		if _, err := os.Stat(configPath); err == nil {
-			return configPath, nil
+		newPath := filepath.Join(dir, ConfigFileName)
+		if _, err := os.Stat(newPath); err == nil {
+			return newPath, nil
+		}
+
+		legacyPath := filepath.Join(dir, LegacyConfigFileName)
+		if _, err := os.Stat(legacyPath); err == nil {
+			// Auto-migrate legacy config to new format
+			migrated, migrateErr := migrateLegacyConfig(legacyPath, newPath)
+			if migrateErr != nil {
+				return "", fmt.Errorf("migrating %s to %s: %w", LegacyConfigFileName, ConfigFileName, migrateErr)
+			}
+			if migrated {
+				return newPath, nil
+			}
+			// If migration failed silently, fall back to legacy
+			return legacyPath, nil
 		}
 
 		parent := filepath.Dir(dir)
@@ -157,8 +183,45 @@ func FindConfig(startDir string) (string, error) {
 	}
 }
 
+// migrateLegacyConfig reads a legacy .todo.yml, wraps it in the TobaConfig
+// format, writes .toba.yaml, and removes the old file.
+// Returns true if migration was performed successfully.
+func migrateLegacyConfig(legacyPath, newPath string) (bool, error) {
+	data, err := os.ReadFile(legacyPath)
+	if err != nil {
+		return false, err
+	}
+
+	// Parse the legacy flat format
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return false, err
+	}
+
+	// Write in new TobaConfig wrapper format
+	wrapper := TobaConfig{Todo: cfg}
+	out, err := yaml.Marshal(&wrapper)
+	if err != nil {
+		return false, err
+	}
+
+	if err := os.WriteFile(newPath, out, 0644); err != nil {
+		return false, err
+	}
+
+	// Remove legacy file
+	if err := os.Remove(legacyPath); err != nil {
+		// Non-fatal: new file is written, old file just lingers
+		return true, nil
+	}
+
+	return true, nil
+}
+
 // Load reads configuration from the given config file path.
 // Returns default config if the file doesn't exist.
+// Handles both the new .toba.yaml format (with "todo:" wrapper) and
+// the legacy .todo.yml flat format.
 func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -169,8 +232,18 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+	if isLegacyConfig(configPath) {
+		// Legacy .todo.yml: flat format
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
+			return nil, err
+		}
+	} else {
+		// New .toba.yaml: wrapped in "todo:" key
+		var wrapper TobaConfig
+		if err := yaml.Unmarshal(data, &wrapper); err != nil {
+			return nil, err
+		}
+		cfg = wrapper.Todo
 	}
 
 	// Store the config directory for resolving relative paths
@@ -182,6 +255,11 @@ func Load(configPath string) (*Config, error) {
 	cfg.Issues.DefaultType = cmp.Or(cfg.Issues.DefaultType, DefaultTypes[0].Name)
 
 	return &cfg, nil
+}
+
+// isLegacyConfig returns true if the given path is a legacy .todo.yml file.
+func isLegacyConfig(configPath string) bool {
+	return filepath.Base(configPath) == LegacyConfigFileName
 }
 
 // LoadFromDirectory finds and loads the config file by searching upward from the given directory.
@@ -225,7 +303,7 @@ func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
 }
 
-// Save writes the configuration to the config file.
+// Save writes the configuration to .toba.yaml using the TobaConfig wrapper format.
 // If configDir is set, saves to that directory; otherwise saves to the given directory.
 func (c *Config) Save(dir string) error {
 	targetDir := c.configDir
@@ -234,7 +312,8 @@ func (c *Config) Save(dir string) error {
 	}
 	path := filepath.Join(targetDir, ConfigFileName)
 
-	data, err := yaml.Marshal(c)
+	wrapper := TobaConfig{Todo: *c}
+	data, err := yaml.Marshal(&wrapper)
 	if err != nil {
 		return err
 	}

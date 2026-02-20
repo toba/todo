@@ -46,15 +46,16 @@ Inside the root directory of your project, run:
 todo init
 ```
 
-This creates a `.issues/` directory and a `.todo.yml` configuration file at the project root. Both are meant to be tracked in version control.
+This creates a `.issues/` directory and a `.toba.yaml` configuration file at the project root. Both are meant to be tracked in version control.
 
 ### Sample Configuration
 
 ```yaml
-# .todo.yml
-issues:
-  path: .issues
-  editor: "code --wait"
+# .toba.yaml
+todo:
+  issues:
+    path: .issues
+    editor: "code --wait"
 ```
 
 ## Agent Configuration
@@ -117,7 +118,7 @@ Please inspect this project's issues and reorganize them into epics and mileston
 
 ## Syncing with External Trackers
 
-todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.todo.yml` under `sync`, then run:
+todo syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.toba.yaml` under `todo.sync`, then run:
 
 ```bash
 todo sync                  # Sync all issues
@@ -161,29 +162,30 @@ mutation { setSyncData(id: "abc-def", name: "clickup", data: { task_id: "xyz" })
 Requires `CLICKUP_TOKEN` environment variable. Syncs statuses, priorities, types, and blocking relationships as ClickUp task dependencies.
 
 ```yaml
-sync:
-  clickup:
-    list_id: "123456789"           # Required
-    assignee: 42                    # Optional: default assignee
-    status_mapping:
-      draft: "backlog"
-      ready: "to do"
-      in-progress: "in progress"
-      completed: "complete"
-      scrapped: "closed"
-    priority_mapping:               # ClickUp: 1=Urgent, 2=High, 3=Normal, 4=Low
-      critical: 1
-      high: 2
-      normal: 3
-      low: 4
-    custom_fields:
-      issue_id: "cf-field-uuid"
-      created_at: "cf-field-uuid"
-      updated_at: "cf-field-uuid"
-    sync_filter:
-      exclude_status:
-        - completed
-        - scrapped
+todo:
+  sync:
+    clickup:
+      list_id: "123456789"           # Required
+      assignee: 42                    # Optional: default assignee
+      status_mapping:
+        draft: "backlog"
+        ready: "to do"
+        in-progress: "in progress"
+        completed: "complete"
+        scrapped: "closed"
+      priority_mapping:               # ClickUp: 1=Urgent, 2=High, 3=Normal, 4=Low
+        critical: 1
+        high: 2
+        normal: 3
+        low: 4
+      custom_fields:
+        issue_id: "cf-field-uuid"
+        created_at: "cf-field-uuid"
+        updated_at: "cf-field-uuid"
+      sync_filter:
+        exclude_status:
+          - completed
+          - scrapped
 ```
 
 ### GitHub Issues
@@ -191,9 +193,10 @@ sync:
 Requires `GITHUB_TOKEN` environment variable. Maps statuses, priorities, and types to GitHub labels (e.g., `status:in-progress`, `priority:high`, `type:bug`). Blocking relationships are rendered as text in the issue body.
 
 ```yaml
-sync:
-  github:
-    repo: "owner/repo"   # Required
+todo:
+  sync:
+    github:
+      repo: "owner/repo"   # Required
 ```
 
 ## License

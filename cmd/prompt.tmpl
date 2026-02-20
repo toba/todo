@@ -108,9 +108,9 @@ todo query 'mutation {
 
 ## Sync (External Integrations)
 {{if .HasSync}}
-This project syncs with: {{range $i, $name := .SyncNames}}{{if $i}}, {{end}}**{{$name}}**{{end}}. Config is in `.todo.yml` under `sync:`.
+This project syncs with: {{range $i, $name := .SyncNames}}{{if $i}}, {{end}}**{{$name}}**{{end}}. Config is in `.toba.yaml` under `sync:`.
 {{- end}}
-`todo sync` pushes issues to an external tracker (GitHub Issues or ClickUp) configured in `.todo.yml` under `sync:`. Run `todo sync --help` for setup and usage.
+`todo sync` pushes issues to an external tracker (GitHub Issues or ClickUp) configured in `.toba.yaml` under `sync:`. Run `todo sync --help` for setup and usage.
 
 ## Concurrency Control
 

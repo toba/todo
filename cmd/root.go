@@ -22,7 +22,7 @@ Track your work alongside your code and supercharge your coding agent with
 a full view of your project.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip core initialization for init, prime, and version commands
-		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "version" || cmd.Name() == "migrate" {
+		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "version" {
 			return nil
 		}
 
@@ -36,7 +36,7 @@ a full view of your project.`,
 				return fmt.Errorf("loading config from %s: %w", configPath, err)
 			}
 		} else {
-			// Search upward for .todo.yml
+			// Search upward for .toba.yaml
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("getting current directory: %w", err)
@@ -76,7 +76,7 @@ a full view of your project.`,
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&dataPath, "data-path", "", "Path to data directory (overrides config)")
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: searches upward for .todo.yml)")
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: searches upward for .toba.yaml)")
 }
 
 func Execute() {
