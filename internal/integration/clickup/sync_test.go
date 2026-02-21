@@ -586,7 +586,7 @@ func TestSyncIssue_UpdateDueDate(t *testing.T) {
 
 func TestBuildUpdateRequest_Parent(t *testing.T) {
 	syncer := &Syncer{
-		config:        &Config{},
+		config: &Config{},
 		issueToTaskID: map[string]string{
 			"parent-issue": "clickup-parent-123",
 		},
@@ -606,11 +606,11 @@ func TestBuildUpdateRequest_Parent(t *testing.T) {
 				Status: "ready",
 				Parent: "parent-issue",
 			},
-			wantParent: strPtr("clickup-parent-123"),
+			wantParent: new("clickup-parent-123"),
 		},
 		{
 			name:    "no change when parent matches",
-			current: &TaskInfo{Name: "Child", Status: Status{Status: "to do"}, Parent: strPtr("clickup-parent-123")},
+			current: &TaskInfo{Name: "Child", Status: Status{Status: "to do"}, Parent: new("clickup-parent-123")},
 			issue: &issue.Issue{
 				Title:  "Child",
 				Status: "ready",
@@ -779,8 +779,6 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 		t.Errorf("parent = %q, want %q", *capturedParent, "clickup-parent-789")
 	}
 }
-
-func strPtr(s string) *string { return &s }
 
 func slicesEqual(a, b []string) bool {
 	if len(a) == 0 && len(b) == 0 {

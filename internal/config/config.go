@@ -114,16 +114,6 @@ type PriorityConfig struct {
 // Config holds the todo configuration.
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
-	Issues     IssuesConfig              `yaml:"issues"`
-	Sync map[string]map[string]any `yaml:"sync,omitempty"`
-
-	// configDir is the directory containing the config file (not serialized)
-	// Used to resolve relative paths
-	configDir string `yaml:"-"`
-}
-
-// IssuesConfig defines settings for issue creation.
-type IssuesConfig struct {
 	// Path is the path to the issues directory (relative to config file location)
 	Path           string `yaml:"path,omitempty"`
 	DefaultStatus  string `yaml:"default_status,omitempty"`
@@ -131,16 +121,19 @@ type IssuesConfig struct {
 	DefaultSort    string `yaml:"default_sort,omitempty"`
 	Editor         string `yaml:"editor,omitempty"`
 	RequireIfMatch bool   `yaml:"require_if_match,omitempty"`
+	Sync map[string]map[string]any `yaml:"sync,omitempty"`
+
+	// configDir is the directory containing the config file (not serialized)
+	// Used to resolve relative paths
+	configDir string `yaml:"-"`
 }
 
 // Default returns a Config with default values.
 func Default() *Config {
 	return &Config{
-		Issues: IssuesConfig{
-			Path:          DefaultDataPath,
-			DefaultStatus: StatusReady,
-			DefaultType:   TypeTask,
-		},
+		Path:          DefaultDataPath,
+		DefaultStatus: StatusReady,
+		DefaultType:   TypeTask,
 	}
 }
 
@@ -183,6 +176,20 @@ func FindConfig(startDir string) (string, error) {
 	}
 }
 
+// legacyConfig is used to parse the old .todo.yml format which had
+// an "issues:" top-level key containing the issue settings.
+type legacyConfig struct {
+	Issues struct {
+		Path           string `yaml:"path,omitempty"`
+		DefaultStatus  string `yaml:"default_status,omitempty"`
+		DefaultType    string `yaml:"default_type,omitempty"`
+		DefaultSort    string `yaml:"default_sort,omitempty"`
+		Editor         string `yaml:"editor,omitempty"`
+		RequireIfMatch bool   `yaml:"require_if_match,omitempty"`
+	} `yaml:"issues"`
+	Sync map[string]map[string]any `yaml:"sync,omitempty"`
+}
+
 // migrateLegacyConfig reads a legacy .todo.yml, wraps it in the TobaConfig
 // format, writes .toba.yaml, and removes the old file.
 // Returns true if migration was performed successfully.
@@ -192,10 +199,21 @@ func migrateLegacyConfig(legacyPath, newPath string) (bool, error) {
 		return false, err
 	}
 
-	// Parse the legacy flat format
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	// Parse the legacy flat format (has "issues:" top-level key)
+	var legacy legacyConfig
+	if err := yaml.Unmarshal(data, &legacy); err != nil {
 		return false, err
+	}
+
+	// Flatten into the new Config format
+	cfg := Config{
+		Path:           legacy.Issues.Path,
+		DefaultStatus:  legacy.Issues.DefaultStatus,
+		DefaultType:    legacy.Issues.DefaultType,
+		DefaultSort:    legacy.Issues.DefaultSort,
+		Editor:         legacy.Issues.Editor,
+		RequireIfMatch: legacy.Issues.RequireIfMatch,
+		Sync:           legacy.Sync,
 	}
 
 	// Write in new TobaConfig wrapper format
@@ -233,9 +251,19 @@ func Load(configPath string) (*Config, error) {
 
 	var cfg Config
 	if isLegacyConfig(configPath) {
-		// Legacy .todo.yml: flat format
-		if err := yaml.Unmarshal(data, &cfg); err != nil {
+		// Legacy .todo.yml: has "issues:" top-level key
+		var legacy legacyConfig
+		if err := yaml.Unmarshal(data, &legacy); err != nil {
 			return nil, err
+		}
+		cfg = Config{
+			Path:           legacy.Issues.Path,
+			DefaultStatus:  legacy.Issues.DefaultStatus,
+			DefaultType:    legacy.Issues.DefaultType,
+			DefaultSort:    legacy.Issues.DefaultSort,
+			Editor:         legacy.Issues.Editor,
+			RequireIfMatch: legacy.Issues.RequireIfMatch,
+			Sync:           legacy.Sync,
 		}
 	} else {
 		// New .toba.yaml: wrapped in "todo:" key
@@ -250,9 +278,9 @@ func Load(configPath string) (*Config, error) {
 	cfg.configDir = filepath.Dir(configPath)
 
 	// Apply defaults for missing values
-	cfg.Issues.Path = cmp.Or(cfg.Issues.Path, DefaultDataPath)
-	cfg.Issues.DefaultStatus = cmp.Or(cfg.Issues.DefaultStatus, StatusReady)
-	cfg.Issues.DefaultType = cmp.Or(cfg.Issues.DefaultType, DefaultTypes[0].Name)
+	cfg.Path = cmp.Or(cfg.Path, DefaultDataPath)
+	cfg.DefaultStatus = cmp.Or(cfg.DefaultStatus, StatusReady)
+	cfg.DefaultType = cmp.Or(cfg.DefaultType, DefaultTypes[0].Name)
 
 	return &cfg, nil
 }
@@ -282,15 +310,15 @@ func LoadFromDirectory(startDir string) (*Config, error) {
 
 // ResolveDataPath returns the absolute path to the issues directory.
 func (c *Config) ResolveDataPath() string {
-	if filepath.IsAbs(c.Issues.Path) {
-		return c.Issues.Path
+	if filepath.IsAbs(c.Path) {
+		return c.Path
 	}
 	if c.configDir == "" {
 		// Fallback: use current directory
 		cwd, _ := os.Getwd()
-		return filepath.Join(cwd, c.Issues.Path)
+		return filepath.Join(cwd, c.Path)
 	}
-	return filepath.Join(c.configDir, c.Issues.Path)
+	return filepath.Join(c.configDir, c.Path)
 }
 
 // ConfigDir returns the directory containing the config file.
@@ -383,23 +411,23 @@ func (c *Config) GetStatus(name string) *StatusConfig {
 
 // GetDefaultStatus returns the default status name for new issues.
 func (c *Config) GetDefaultStatus() string {
-	return cmp.Or(c.Issues.DefaultStatus, StatusReady)
+	return cmp.Or(c.DefaultStatus, StatusReady)
 }
 
 // GetDefaultType returns the default type name for new issues.
 func (c *Config) GetDefaultType() string {
-	return c.Issues.DefaultType
+	return c.DefaultType
 }
 
 // GetEditor returns the configured editor command, or empty string if unset.
 func (c *Config) GetEditor() string {
-	return c.Issues.Editor
+	return c.Editor
 }
 
 // GetDefaultSort returns the default sort order for the TUI.
 // Returns "default" if not set.
 func (c *Config) GetDefaultSort() string {
-	return cmp.Or(c.Issues.DefaultSort, SortDefault)
+	return cmp.Or(c.DefaultSort, SortDefault)
 }
 
 // IsArchiveStatus returns true if the given status is marked for archiving.

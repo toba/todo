@@ -566,10 +566,6 @@ func TestBuildUpdateRequest_TypeChange(t *testing.T) {
 		})
 	}
 }
-
-//go:fix inline
-func ptr[T any](v T) *T { return new(v) }
-
 // redirectTransport redirects all requests to the test server.
 type redirectTransport struct {
 	target string

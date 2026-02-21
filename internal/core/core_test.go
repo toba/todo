@@ -40,7 +40,7 @@ func setupTestCoreWithRequireIfMatch(t *testing.T) (*Core, string) {
 	}
 
 	cfg := config.Default()
-	cfg.Issues.RequireIfMatch = true
+	cfg.RequireIfMatch = true
 	core := New(dataDir, cfg)
 	core.SetWarnWriter(nil) // suppress warnings in tests
 	if err := core.Load(); err != nil {

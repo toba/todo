@@ -404,7 +404,7 @@ func (c *Core) SaveSyncOnly(b *issue.Issue, ifMatch *string) error {
 // validateETagLocked validates the etag for a stored issue against the provided ifMatch value.
 // Must be called with c.mu held.
 func (c *Core) validateETagLocked(storedIssue *issue.Issue, ifMatch *string) error {
-	requireIfMatch := c.config != nil && c.config.Issues.RequireIfMatch
+	requireIfMatch := c.config != nil && c.config.RequireIfMatch
 
 	if requireIfMatch && (ifMatch == nil || *ifMatch == "") {
 		return &ETagRequiredError{}

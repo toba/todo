@@ -798,6 +798,3 @@ func int64PtrEqual(a, b *int64) bool {
 	}
 	return *a == *b
 }
-
-//go:fix inline
-func ptr[T any](v T) *T { return new(v) }

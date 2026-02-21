@@ -19,7 +19,7 @@ type Resolver struct {
 // Returns an error if validation fails or if require_if_match is enabled and no etag provided.
 func (r *Resolver) validateETag(b *issue.Issue, ifMatch *string) error {
 	cfg := r.Core.Config()
-	requireIfMatch := cfg != nil && cfg.Issues.RequireIfMatch
+	requireIfMatch := cfg != nil && cfg.RequireIfMatch
 
 	// If require_if_match is enabled and no etag provided, reject
 	if requireIfMatch && (ifMatch == nil || *ifMatch == "") {

@@ -9,11 +9,11 @@ import (
 func TestDefault(t *testing.T) {
 	cfg := Default()
 
-	if cfg.Issues.DefaultStatus != "ready" {
-		t.Errorf("DefaultStatus = %q, want \"ready\"", cfg.Issues.DefaultStatus)
+	if cfg.DefaultStatus != "ready" {
+		t.Errorf("DefaultStatus = %q, want \"ready\"", cfg.DefaultStatus)
 	}
-	if cfg.Issues.DefaultType != "task" {
-		t.Errorf("DefaultType = %q, want \"task\"", cfg.Issues.DefaultType)
+	if cfg.DefaultType != "task" {
+		t.Errorf("DefaultType = %q, want \"task\"", cfg.DefaultType)
 	}
 	// Both types and statuses are hardcoded
 	if len(DefaultTypes) != 5 {
@@ -172,8 +172,8 @@ func TestLoadNonExistent(t *testing.T) {
 	}
 
 	// Should have default values
-	if cfg.Issues.Path != DefaultDataPath {
-		t.Errorf("Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
+	if cfg.Path != DefaultDataPath {
+		t.Errorf("Path = %q, want %q", cfg.Path, DefaultDataPath)
 	}
 }
 
@@ -183,10 +183,8 @@ func TestLoadAndSave(t *testing.T) {
 
 	// Create a config (statuses are no longer stored in config)
 	cfg := &Config{
-		Issues: IssuesConfig{
-			Path:        ".todo",
-			DefaultType: "bug",
-		},
+		Path:        ".todo",
+		DefaultType: "bug",
 	}
 	cfg.SetConfigDir(tmpDir)
 
@@ -208,8 +206,8 @@ func TestLoadAndSave(t *testing.T) {
 	}
 
 	// Verify values
-	if loaded.Issues.DefaultType != "bug" {
-		t.Errorf("DefaultType = %q, want \"bug\"", loaded.Issues.DefaultType)
+	if loaded.DefaultType != "bug" {
+		t.Errorf("DefaultType = %q, want \"bug\"", loaded.DefaultType)
 	}
 	// Statuses are hardcoded, not stored in config
 	if len(loaded.StatusNames()) != 5 {
@@ -224,7 +222,6 @@ func TestLoadAppliesDefaults(t *testing.T) {
 
 	// Write minimal config (missing default_type) in new .toba.yaml format
 	minimalConfig := `todo:
-  issues:
     path: ".issues"
 `
 	if err := os.WriteFile(configPath, []byte(minimalConfig), 0644); err != nil {
@@ -246,8 +243,8 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		t.Errorf("DefaultStatus: got %q, want \"ready\"", cfg.GetDefaultStatus())
 	}
 	// DefaultType should be first type name when not specified
-	if cfg.Issues.DefaultType != "milestone" {
-		t.Errorf("DefaultType default not applied: got %q, want \"milestone\"", cfg.Issues.DefaultType)
+	if cfg.DefaultType != "milestone" {
+		t.Errorf("DefaultType default not applied: got %q, want \"milestone\"", cfg.DefaultType)
 	}
 }
 
@@ -355,10 +352,8 @@ func TestTypesAreHardcoded(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &Config{
-		Issues: IssuesConfig{
-			Path:        ".todo",
-			DefaultType: "task",
-		},
+		Path:        ".todo",
+		DefaultType: "task",
 	}
 	cfg.SetConfigDir(tmpDir)
 
@@ -424,7 +419,6 @@ func TestTypeDescriptions(t *testing.T) {
 
 		// Config with custom types (should be ignored)
 		configYAML := `todo:
-  issues:
     default_type: task
     default_status: open
 `
@@ -481,7 +475,6 @@ func TestStatusDescriptions(t *testing.T) {
 
 		// Config with custom statuses (should be ignored)
 		configYAML := `todo:
-  issues:
     default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -509,7 +502,7 @@ func TestFindConfig(t *testing.T) {
 	t.Run("finds config in current directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("todo:\n  issues:\n    path: .issues\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("todo:\n    path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -530,7 +523,7 @@ func TestFindConfig(t *testing.T) {
 		}
 
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		if err := os.WriteFile(configPath, []byte("todo:\n  issues:\n    path: .issues\n"), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte("todo:\n    path: .issues\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
@@ -588,8 +581,8 @@ func TestFindConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Load() after migration error = %v", err)
 		}
-		if cfg.Issues.DefaultType != "bug" {
-			t.Errorf("DefaultType = %q, want \"bug\"", cfg.Issues.DefaultType)
+		if cfg.DefaultType != "bug" {
+			t.Errorf("DefaultType = %q, want \"bug\"", cfg.DefaultType)
 		}
 	})
 
@@ -598,7 +591,7 @@ func TestFindConfig(t *testing.T) {
 		// Write both files
 		newPath := filepath.Join(tmpDir, ConfigFileName)
 		legacyPath := filepath.Join(tmpDir, LegacyConfigFileName)
-		if err := os.WriteFile(newPath, []byte("todo:\n  issues:\n    default_type: feature\n"), 0644); err != nil {
+		if err := os.WriteFile(newPath, []byte("todo:\n    default_type: feature\n"), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
 		}
 		if err := os.WriteFile(legacyPath, []byte("issues:\n  default_type: bug\n"), 0644); err != nil {
@@ -620,7 +613,6 @@ func TestLoadFromDirectory(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     path: custom-issues
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -631,8 +623,8 @@ func TestLoadFromDirectory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LoadFromDirectory() error = %v", err)
 		}
-		if cfg.Issues.Path != "custom-issues" {
-			t.Errorf("Issues.Path = %q, want \"custom-issues\"", cfg.Issues.Path)
+		if cfg.Path != "custom-issues" {
+			t.Errorf("Path = %q, want \"custom-issues\"", cfg.Path)
 		}
 	})
 
@@ -643,8 +635,8 @@ func TestLoadFromDirectory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LoadFromDirectory() error = %v", err)
 		}
-		if cfg.Issues.Path != DefaultDataPath {
-			t.Errorf("Issues.Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
+		if cfg.Path != DefaultDataPath {
+			t.Errorf("Path = %q, want %q", cfg.Path, DefaultDataPath)
 		}
 		if cfg.ConfigDir() != tmpDir {
 			t.Errorf("ConfigDir() = %q, want %q", cfg.ConfigDir(), tmpDir)
@@ -655,7 +647,7 @@ func TestLoadFromDirectory(t *testing.T) {
 func TestResolveDataPath(t *testing.T) {
 	t.Run("resolves relative path from config directory", func(t *testing.T) {
 		cfg := &Config{
-			Issues: IssuesConfig{Path: "custom-data"},
+			Path: "custom-data",
 		}
 		cfg.SetConfigDir("/project/root")
 
@@ -668,7 +660,7 @@ func TestResolveDataPath(t *testing.T) {
 
 	t.Run("returns absolute path unchanged", func(t *testing.T) {
 		cfg := &Config{
-			Issues: IssuesConfig{Path: "/absolute/path/to/data"},
+			Path: "/absolute/path/to/data",
 		}
 		cfg.SetConfigDir("/project/root")
 
@@ -693,8 +685,8 @@ func TestResolveDataPath(t *testing.T) {
 
 func TestDefaultHasIssuesPath(t *testing.T) {
 	cfg := Default()
-	if cfg.Issues.Path != DefaultDataPath {
-		t.Errorf("Default().Issues.Path = %q, want %q", cfg.Issues.Path, DefaultDataPath)
+	if cfg.Path != DefaultDataPath {
+		t.Errorf("Default().Path = %q, want %q", cfg.Path, DefaultDataPath)
 	}
 }
 
@@ -821,7 +813,7 @@ func TestGetEditor(t *testing.T) {
 
 	t.Run("returns configured value", func(t *testing.T) {
 		cfg := Default()
-		cfg.Issues.Editor = "code --wait"
+		cfg.Editor = "code --wait"
 		if got := cfg.GetEditor(); got != "code --wait" {
 			t.Errorf("GetEditor() = %q, want \"code --wait\"", got)
 		}
@@ -831,7 +823,6 @@ func TestGetEditor(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
     editor: "vim"
 `
@@ -853,7 +844,6 @@ func TestGetEditor(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -882,7 +872,7 @@ func TestGetDefaultSort(t *testing.T) {
 
 	t.Run("returns configured value", func(t *testing.T) {
 		cfg := Default()
-		cfg.Issues.DefaultSort = "updated"
+		cfg.DefaultSort = "updated"
 		got := cfg.GetDefaultSort()
 		if got != "updated" {
 			t.Errorf("GetDefaultSort() = %q, want \"updated\"", got)
@@ -893,7 +883,6 @@ func TestGetDefaultSort(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
     default_sort: created
 `
@@ -915,7 +904,6 @@ func TestGetDefaultSort(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
@@ -976,14 +964,13 @@ func TestSyncConfig(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
-  sync:
-    clickup:
-      list_id: "456"
-      workspace: "my-workspace"
-    jira:
-      project_key: "PROJ"
+    sync:
+        clickup:
+            list_id: "456"
+            workspace: "my-workspace"
+        jira:
+            project_key: "PROJ"
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -1023,7 +1010,6 @@ func TestSyncConfig(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFileName)
 		configYAML := `todo:
-  issues:
     default_type: task
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {

@@ -142,9 +142,6 @@ func TestSortByStatusPriorityAndType(t *testing.T) {
 	})
 }
 
-//go:fix inline
-func ptr[T any](v T) *T { return new(v) }
-
 func TestComputeEffectiveDates(t *testing.T) {
 	now := time.Now()
 

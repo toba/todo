@@ -284,14 +284,14 @@ func convertConfig(projectDir string, beansCfg *BeansConfig) error {
 
 	// Convert default_status: todo -> ready
 	if beansCfg.Beans.DefaultStatus == "todo" || beansCfg.Beans.DefaultStatus == "" {
-		cfg.Issues.DefaultStatus = config.StatusReady
+		cfg.DefaultStatus = config.StatusReady
 	} else {
-		cfg.Issues.DefaultStatus = beansCfg.Beans.DefaultStatus
+		cfg.DefaultStatus = beansCfg.Beans.DefaultStatus
 	}
 
 	// Preserve default_type
 	if beansCfg.Beans.DefaultType != "" {
-		cfg.Issues.DefaultType = beansCfg.Beans.DefaultType
+		cfg.DefaultType = beansCfg.Beans.DefaultType
 	}
 
 	return cfg.Save(projectDir)

@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-20T23:41:42Z
 updated_at: 2026-02-20T23:47:33Z
+sync:
+    github:
+        issue_number: "79"
+        synced_at: "2026-02-21T00:25:14Z"
 ---
 
 - [x] Update config.go core loading/saving with TobaConfig wrapper and legacy migration

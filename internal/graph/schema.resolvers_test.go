@@ -1137,7 +1137,7 @@ func setupTestResolverWithRequireIfMatch(t *testing.T) (*Resolver, *core.Core) {
 	}
 
 	cfg := config.Default()
-	cfg.Issues.RequireIfMatch = true
+	cfg.RequireIfMatch = true
 	c := core.New(dataDir, cfg)
 	if err := c.Load(); err != nil {
 		t.Fatalf("failed to load core: %v", err)
@@ -2490,9 +2490,6 @@ func TestQueryIssuesWithSyncFilters(t *testing.T) {
 		}
 	})
 }
-
-//go:fix inline
-func ptr[T any](v T) *T { return new(v) }
 
 func TestCreateIssueBlockedByValidation(t *testing.T) {
 	resolver, c := setupTestResolver(t)

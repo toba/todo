@@ -23,7 +23,7 @@ func TestGetEditor(t *testing.T) {
 		os.Setenv("EDITOR", "nano")
 
 		cfg := config.Default()
-		cfg.Issues.Editor = "vim"
+		cfg.Editor = "vim"
 
 		cmd, args := getEditor(cfg)
 		if cmd != "vim" {
@@ -70,7 +70,7 @@ func TestGetEditor(t *testing.T) {
 		os.Unsetenv("EDITOR")
 
 		cfg := config.Default()
-		cfg.Issues.Editor = "code --wait"
+		cfg.Editor = "code --wait"
 
 		cmd, args := getEditor(cfg)
 		if cmd != "code" {
@@ -87,7 +87,7 @@ func TestGetEditor(t *testing.T) {
 
 		cfg := config.Default()
 		cfg.SetConfigDir("/project/root")
-		cfg.Issues.Editor = "./scripts/my-editor"
+		cfg.Editor = "./scripts/my-editor"
 
 		cmd, args := getEditor(cfg)
 		want := filepath.Join("/project/root", "scripts/my-editor")
@@ -105,7 +105,7 @@ func TestGetEditor(t *testing.T) {
 
 		cfg := config.Default()
 		cfg.SetConfigDir("/project/root")
-		cfg.Issues.Editor = "../bin/editor --flag"
+		cfg.Editor = "../bin/editor --flag"
 
 		cmd, args := getEditor(cfg)
 		want := filepath.Join("/project/root", "../bin/editor")
@@ -123,7 +123,7 @@ func TestGetEditor(t *testing.T) {
 
 		cfg := config.Default()
 		cfg.SetConfigDir("/project/root")
-		cfg.Issues.Editor = "/usr/local/bin/nvim"
+		cfg.Editor = "/usr/local/bin/nvim"
 
 		cmd, args := getEditor(cfg)
 		if cmd != "/usr/local/bin/nvim" {
@@ -139,7 +139,7 @@ func TestGetEditor(t *testing.T) {
 		os.Unsetenv("EDITOR")
 
 		cfg := config.Default()
-		cfg.Issues.Editor = "system"
+		cfg.Editor = "system"
 
 		cmd, args := getEditor(cfg)
 		if runtime.GOOS == "darwin" {
@@ -168,7 +168,7 @@ func TestGetEditor(t *testing.T) {
 		os.Unsetenv("EDITOR")
 
 		cfg := config.Default()
-		cfg.Issues.Editor = "System"
+		cfg.Editor = "System"
 
 		cmd, _ := getEditor(cfg)
 		if runtime.GOOS == "darwin" {
